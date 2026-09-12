@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../ink-asset-management"
+		},
+		{
+			"path": "../asset_management_backend"
+		}
+	],
+	"settings": {}
+}
