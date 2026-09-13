@@ -4,7 +4,20 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>scaffold-tmp</title>
+    <title>Tecres Asset Manager</title>
+    <script>
+      // Applied before paint to avoid a light-mode flash — plan defaults the product
+      // to a dark-first theme; a user's explicit choice in localStorage wins.
+      (function () {
+        try {
+          var stored = localStorage.getItem("tecres_theme");
+          var isDark = stored ? stored === "dark" : true;
+          if (isDark) document.documentElement.classList.add("dark");
+        } catch (e) {
+          document.documentElement.classList.add("dark");
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
