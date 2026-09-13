@@ -62,7 +62,7 @@ export function PlatformOrgsListPage() {
                     {org.assetCount} / {org.assetQuota}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {org.lastActivityAt ? new Date(org.lastActivityAt).toLocaleDateString() : "—"}
+                    {org.lastActivityAt ? new Date(org.lastActivityAt).toLocaleDateString() : "-"}
                   </TableCell>
                 </TableRow>
               ))

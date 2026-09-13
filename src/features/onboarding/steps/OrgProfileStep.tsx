@@ -62,7 +62,7 @@ export function OrgProfileStep({ org, onNext }: { org: Organization; onNext: () 
           <SelectContent>
             {CURRENCIES.map((c) => (
               <SelectItem key={c.code} value={c.code}>
-                {c.symbol} — {c.label} ({c.code})
+                {c.symbol} {c.label} ({c.code})
               </SelectItem>
             ))}
           </SelectContent>

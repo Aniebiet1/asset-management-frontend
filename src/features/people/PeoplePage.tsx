@@ -54,7 +54,7 @@ export function PeoplePage() {
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">{roleLabelMap[u.role]}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{u.employeeId}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{u.title ?? "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{u.title ?? "-"}</TableCell>
                 <TableCell>
                   <span className={`text-xs font-medium ${u.isActive ? "text-emerald-400" : "text-muted-foreground"}`}>
                     {u.isActive ? "Active" : "Inactive"}

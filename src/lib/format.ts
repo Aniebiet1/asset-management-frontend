@@ -29,7 +29,7 @@ export function formatCurrency(
 }
 
 export function formatDate(date: string | Date | null | undefined, dateFormat = "MMM dd, yyyy"): string {
-  if (!date) return "—";
+  if (!date) return "-";
   try {
     const d = typeof date === "string" ? parseISO(date) : date;
     return format(d, dateFormat);
@@ -39,7 +39,7 @@ export function formatDate(date: string | Date | null | undefined, dateFormat = 
 }
 
 export function formatDateTime(date: string | Date | null | undefined): string {
-  if (!date) return "—";
+  if (!date) return "-";
   try {
     const d = typeof date === "string" ? parseISO(date) : date;
     return format(d, "MMM dd, yyyy hh:mm a");

@@ -97,7 +97,7 @@ export function PlatformOrgDetailPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Last activity</p>
-              <p className="mt-1 text-sm font-medium text-foreground">{org.lastActivityAt ? formatDate(org.lastActivityAt) : "—"}</p>
+              <p className="mt-1 text-sm font-medium text-foreground">{org.lastActivityAt ? formatDate(org.lastActivityAt) : "-"}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Onboarding</p>

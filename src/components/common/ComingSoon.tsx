@@ -16,7 +16,7 @@ export function ComingSoon({ title, description, icon: Icon }: { title: string; 
         </div>
         <p className="text-sm font-medium text-foreground">Coming up in Phase 1</p>
         <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-          This page's mock UI hasn't been built out yet — the nav, shell, and routing around it are live.
+          This page's mock UI hasn't been built out yet. The nav, shell, and routing around it are live.
         </p>
       </div>
     </div>

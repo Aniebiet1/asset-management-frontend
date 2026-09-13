@@ -45,7 +45,7 @@ export function ResetPasswordPage() {
     setIsLoading(true);
     try {
       await confirmPasswordReset(token, newPassword);
-      toast.success("Password updated — sign in with your new password.");
+      toast.success("Password updated. Sign in with your new password.");
       navigate("/login", { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "That reset link is invalid or has expired.");

@@ -42,7 +42,7 @@ export function AuditsListPage() {
                     <AuditStatusBadge status={audit.status} />
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {audit.code} · Assigned to {audit.assignedToName ?? "—"} · {formatDate(audit.assignedAt)}
+                    {audit.code} · Assigned to {audit.assignedToName ?? "-"} · {formatDate(audit.assignedAt)}
                   </p>
                 </div>
                 <div className="flex items-center gap-4 text-xs sm:gap-6">

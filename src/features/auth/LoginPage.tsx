@@ -37,7 +37,7 @@ export function LoginPage() {
   };
 
   return (
-    <AuthLayout footer="New workspaces are set up by Tecres — contact your account team if you need one.">
+    <AuthLayout footer="New workspaces are set up by Tecres. Contact your account team if you need one.">
       <div className="mb-5 text-center">
         <h1 className="text-lg font-semibold text-foreground">Sign in to your workspace</h1>
         <p className="mt-1 text-sm text-muted-foreground">Enter your organization, email and password to continue.</p>

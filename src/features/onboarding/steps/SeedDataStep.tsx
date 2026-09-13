@@ -46,7 +46,7 @@ export function SeedDataStep({ onNext, onBack }: { onNext: () => void; onBack: (
       <div>
         <h2 className="text-base font-semibold text-foreground">Add your first location, category and department</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Optional — skip this and add them later from Settings if you'd rather set them up as a team.
+          Optional. Skip this and add them later from Settings if you'd rather set them up as a team.
         </p>
       </div>
 

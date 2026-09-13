@@ -74,7 +74,7 @@ export function PlatformOrgCreatePage() {
             <div>
               <h1 className="text-lg font-semibold text-foreground">Workspace created</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Hand these credentials to {created.orgName}'s admin securely — they won't be shown again.
+                Hand these credentials to {created.orgName}'s admin securely. They won't be shown again.
               </p>
             </div>
             <div className="w-full space-y-2 rounded-lg border border-border bg-muted/30 p-4 text-left font-mono text-xs">
@@ -155,7 +155,7 @@ export function PlatformOrgCreatePage() {
                       <Dices className="size-4" />
                     </Button>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">You'll see this once more on the next screen to copy — it isn't emailed automatically yet.</p>
+                  <p className="text-[11px] text-muted-foreground">You'll see this once more on the next screen to copy. It isn't emailed automatically yet.</p>
                 </div>
               </div>
             </div>

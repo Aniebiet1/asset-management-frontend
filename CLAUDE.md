@@ -114,6 +114,17 @@ cookie the backend sets, so there's nothing to persist client-side. On app boot,
 refresh before deciding whether to show `/login`. See `BUILD_PLAN.md` §2 for the full API-client
 contract once Phase 1 builds it.
 
+## No em dashes in the UI, ever
+
+Every piece of user-visible text — JSX copy, `placeholder`/`title`/`description`/`label` props,
+toast messages, empty-state fallbacks like `value ?? "—"`, mock data that stands in for real
+copy — must not contain an em dash (`—`). Rewrite the sentence, or use a period, comma, colon, or
+a plain hyphen (`-`) instead. This applies to `src/lib/mock-data.ts` too, since it renders into
+real UI even though it's fake data. For an empty/missing-value placeholder specifically, use `"-"`
+(plain hyphen), not `"—"`.
+
+This rule is about rendered UI text only — code comments and this file's own prose are exempt.
+
 ## Mock data is temporary, tracked, and phase-scoped
 
 `src/lib/mock-data.ts` exists so pages can be built and reviewed before their backend wiring lands.

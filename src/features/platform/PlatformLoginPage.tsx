@@ -36,7 +36,7 @@ export function PlatformLoginPage() {
   };
 
   return (
-    <AuthLayout footer="Tecres internal — not for customer use.">
+    <AuthLayout footer="Tecres internal, not for customer use.">
       <div className="mb-5 flex flex-col items-center text-center">
         <div className="mb-2 flex size-9 items-center justify-center rounded-full bg-muted">
           <ShieldCheck className="size-4 text-foreground" />

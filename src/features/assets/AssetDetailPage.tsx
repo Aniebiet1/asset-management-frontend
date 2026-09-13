@@ -113,7 +113,7 @@ export function AssetDetailPage() {
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Vendor</p>
-                      <p className="mt-1 font-medium text-foreground">{asset.vendorName ?? "—"}</p>
+                      <p className="mt-1 font-medium text-foreground">{asset.vendorName ?? "-"}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Warranty Expiry</p>
