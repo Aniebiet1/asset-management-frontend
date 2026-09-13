@@ -109,11 +109,14 @@ export function BrandingStep({ org, onNext, onBack }: { org: Organization; onNex
       </div>
 
       <div className="flex items-center gap-4">
-        <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
+        <div
+          className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border"
+          style={logoUrl ? undefined : { backgroundColor: primaryColor }}
+        >
           {logoUrl ? (
             <img src={logoUrl} alt="Organization logo" className="size-full object-cover" />
           ) : (
-            <span className="text-lg font-semibold text-muted-foreground">{getInitials(org.name)}</span>
+            <span className="text-lg font-semibold text-primary-foreground">{getInitials(org.name)}</span>
           )}
         </div>
         <div>

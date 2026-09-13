@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { TotpCodeInput } from "@/components/auth/TotpCodeInput";
 import { ApiError } from "@/lib/http-error";
 import { toast } from "sonner";
 
@@ -135,21 +136,13 @@ export function TotpEnrollForm({ enrollmentToken, startEnrollment, verifyEnrollm
         <Input readOnly value={enrollment.manualEntryKey} className="font-mono text-xs" onFocus={(e) => e.target.select()} />
       </div>
       <form onSubmit={handleVerify} className="space-y-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="totp-code">6-digit code</Label>
-          <Input
-            id="totp-code"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={6}
-            placeholder="000000"
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-            className="text-center text-lg tracking-[0.5em]"
-            required
-          />
+        <div className="space-y-2">
+          <Label htmlFor="totp-code" className="block text-center">
+            6-digit code
+          </Label>
+          <TotpCodeInput id="totp-code" value={code} onChange={setCode} />
         </div>
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {error && <p className="text-center text-sm text-destructive">{error}</p>}
         <Button type="submit" className="w-full" disabled={isLoading || code.length !== 6}>
           {isLoading && <Loader2 className="size-4 animate-spin" />}
           Verify and continue
