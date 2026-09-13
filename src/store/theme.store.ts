@@ -13,7 +13,7 @@ interface ThemeState {
    * --org-primary/--org-accent, so this is the only place per-tenant branding needs to
    * be wired — no component needs conditional styling for it.
    */
-  applyOrgTheme: (org: Pick<Organization, "primaryColor" | "accentColor" | "sidebarColor">) => void;
+  applyOrgTheme: (org: Partial<Pick<Organization, "primaryColor" | "accentColor" | "sidebarColor">>) => void;
 }
 
 function readStoredDark(): boolean {

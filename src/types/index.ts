@@ -426,7 +426,6 @@ export interface PlatformOrgSummary {
   userCount: number;
   userQuota: number;
   lastActivityAt: string | null;
-  createdAt: string;
 }
 
 // ---------------------------------------------------------------------------

@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/brand/Logo";
 import { useAuthStore } from "@/store/auth.store";
 import { useThemeStore } from "@/store/theme.store";
-import { mockNotifications, mockUsers } from "@/lib/mock-data";
+import { mockNotifications } from "@/lib/mock-data";
 import { getInitials } from "@/lib/format";
 import { toast } from "sonner";
 
@@ -26,18 +26,19 @@ export function Header({ onOpenCommandPalette, onOpenMobileMenu }: HeaderProps) 
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.currentUser);
   const logout = useAuthStore((s) => s.logout);
-  const switchPersona = useAuthStore((s) => s.switchPersona);
   const isDark = useThemeStore((s) => s.isDark);
   const toggleDark = useThemeStore((s) => s.toggleDark);
   const isSidebarCollapsed = useThemeStore((s) => s.isSidebarCollapsed);
   const toggleSidebar = useThemeStore((s) => s.toggleSidebar);
 
+  // Notifications are still mock — wiring GET /notifications is a later phase (BUILD_PLAN.md
+  // doesn't schedule it explicitly; treat it as part of Phase 2's dashboard/activity pass).
   const unreadCount = mockNotifications.filter((n) => !n.isRead).length;
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     toast.info("Signed out");
-    navigate("/login");
+    navigate("/login", { replace: true });
   };
 
   return (
@@ -126,15 +127,6 @@ export function Header({ onOpenCommandPalette, onOpenMobileMenu }: HeaderProps) 
               <div className="truncate font-semibold text-foreground">{currentUser?.name}</div>
               <div className="truncate text-[11px] text-muted-foreground">{currentUser?.email}</div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel className="px-2 py-1 text-[10px] font-medium uppercase text-muted-foreground">
-              Preview as (Phase 1 demo)
-            </DropdownMenuLabel>
-            {mockUsers.map((u) => (
-              <DropdownMenuItem key={u.id} className="cursor-pointer" onClick={() => switchPersona(u.id)}>
-                {u.name} <span className="ml-auto text-[10px] text-muted-foreground capitalize">{u.role.replace("_", " ")}</span>
-              </DropdownMenuItem>
-            ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:text-destructive">
               <LogOut className="mr-2 size-3.5" />
