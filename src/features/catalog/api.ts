@@ -6,7 +6,7 @@ import type { Category, Department, Location, Vendor } from "@/types";
  * Catalog CRUD (categories/locations/departments/vendors), all backed by the same
  * `createCrudRouter` shape on the backend: `GET/POST /<resource>`, `PUT/DELETE /<resource>/:id`,
  * each returning `{ data: T }` (list) or `{ data: T }` (item), 204 on delete. Vendors only gets a
- * read hook here, per BUILD_PLAN.md Phase 3 (write UI for vendors is Phase 7's job) — this list is
+ * read hook here, per BUILD_PLAN.md Phase 3 (write UI for vendors is Phase 7's job) â€” this list is
  * only needed for the asset form's vendor dropdown.
  */
 
@@ -69,5 +69,10 @@ export const useCreateDepartmentMutation = departmentHooks.useCreate;
 export const useUpdateDepartmentMutation = departmentHooks.useUpdate;
 export const useDeleteDepartmentMutation = departmentHooks.useDelete;
 
-/** Read-only: vendor CRUD UI is Phase 7's job (VendorsPage). This just feeds dropdowns. */
+/** Phase 7 (VendorsPage) builds vendor write UI on top of the same generic hooks used for
+ * categories/locations/departments above; the read hook also still feeds the asset form's
+ * vendor dropdown. */
 export const useVendorsQuery = vendorHooks.useList;
+export const useCreateVendorMutation = vendorHooks.useCreate;
+export const useUpdateVendorMutation = vendorHooks.useUpdate;
+export const useDeleteVendorMutation = vendorHooks.useDelete;

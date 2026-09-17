@@ -1,4 +1,4 @@
-import { statusColorMap, conditionColorMap, auditStatusColorMap, maintenanceStatusColorMap, planStatusColorMap, priorityColorMap, alertSeverityColorMap, type StatusVisual } from "@/lib/status";
+import { statusColorMap, conditionColorMap, auditStatusColorMap, auditItemStatusColorMap, maintenanceStatusColorMap, planStatusColorMap, priorityColorMap, alertSeverityColorMap, type StatusVisual } from "@/lib/status";
 import { cn } from "cn";
 
 function Dot({ visual, status, className }: { visual: Record<string, StatusVisual>; status: string; className?: string }) {
@@ -29,6 +29,10 @@ export function ConditionBadge({ condition, className }: { condition: string; cl
 
 export function AuditStatusBadge({ status, className }: { status: string; className?: string }) {
   return <Dot visual={auditStatusColorMap} status={status} className={className} />;
+}
+
+export function AuditItemStatusBadge({ status, className }: { status: string; className?: string }) {
+  return <Dot visual={auditItemStatusColorMap} status={status} className={className} />;
 }
 
 export function MaintenanceStatusBadge({ status, className }: { status: string; className?: string }) {

@@ -21,7 +21,9 @@ import { AssetEditPage } from "@/features/assets/AssetEditPage";
 import { CheckInOutPage } from "@/features/check-in-out/CheckInOutPage";
 import { MaintenancePage } from "@/features/maintenance/MaintenancePage";
 import { AuditsListPage } from "@/features/audits/AuditsListPage";
+import { AuditDetailPage } from "@/features/audits/AuditDetailPage";
 import { PeoplePage } from "@/features/people/PeoplePage";
+import { InviteAcceptPage } from "@/features/people/InviteAcceptPage";
 import { VendorsPage } from "@/features/vendors/VendorsPage";
 import { ReportsPage } from "@/features/reports/ReportsPage";
 import { LabelsPage } from "@/features/labels/LabelsPage";
@@ -97,6 +99,7 @@ export function AppRouter() {
           <Route path="/totp/challenge" element={<TotpChallengePage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/invite/:token/accept" element={<InviteAcceptPage />} />
 
           {/* Onboarding — session required, deliberately not wrapped in AppShell */}
           <Route path="/onboarding" element={<OnboardingRoute><OnboardingPage /></OnboardingRoute>} />
@@ -110,6 +113,7 @@ export function AppRouter() {
           <Route path="/check-in-out" element={<ProtectedRoute><CheckInOutPage /></ProtectedRoute>} />
           <Route path="/maintenance" element={<ProtectedRoute><MaintenancePage /></ProtectedRoute>} />
           <Route path="/audits" element={<ProtectedRoute><AuditsListPage /></ProtectedRoute>} />
+          <Route path="/audits/:id" element={<ProtectedRoute><AuditDetailPage /></ProtectedRoute>} />
           <Route path="/people" element={<ProtectedRoute><PeoplePage /></ProtectedRoute>} />
           <Route path="/vendors" element={<ProtectedRoute><VendorsPage /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />

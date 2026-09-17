@@ -447,3 +447,33 @@ export interface ApiListResponse<T> {
 export interface ApiItemResponse<T> {
   data: T;
 }
+
+// ---------------------------------------------------------------------------
+// Audit detail / report API response shapes (Phase 6)
+// ---------------------------------------------------------------------------
+
+/** `GET /audits/:id` response shape: the audit plus its scoped scan items. */
+export interface AuditWithItems {
+  audit: Audit;
+  items: AuditItem[];
+}
+
+/** `GET /audits/:id/report` response shape, only reachable once an audit is `verified`. */
+export interface AuditReport {
+  audit: Audit;
+  items: AuditItem[];
+  history: AuditStatusHistoryEntry[];
+  summary: {
+    totalExpected: number;
+    totalScanned: number;
+    totalMatched: number;
+    totalMissing: number;
+    totalDiscrepant: number;
+  };
+}
+
+/** `POST /audits/:id/scan` response shape. */
+export interface AuditScanResult {
+  asset: Asset;
+  status: AuditItemStatus;
+}

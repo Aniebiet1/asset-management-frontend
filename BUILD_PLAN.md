@@ -29,16 +29,31 @@ so keep it honest; a stale table is worse than no table.
 | 1 — Auth foundation, platform admin (minimal), onboarding | Done | Real login, TOTP enroll/challenge, onboarding wizard, and the minimal platform app are committed and wired. |
 | 2 — Dashboard (real data) | Done | Stats/charts/activity hit real endpoints (`features/dashboard/api.ts`); value-hiding confirmed for staff vs. admin; the Maintenance Due widget is still mock, which is expected, that's Phase 5's mock to remove, not this phase's. |
 | 3 — Assets + catalog dependencies | Working on it | Catalog CRUD (categories/locations/departments) lives under Settings > Catalog (`features/catalog/`); vendors stays read-only here (Phase 7 owns its write UI). `AssetsListPage`/`AssetDetailPage`/`AssetCreatePage`/new `AssetEditPage` are wired to real endpoints (`features/assets/api.ts`), including image upload and joined category/location/department/vendor/custodian names (added LEFT JOINs to `assets.service.ts`, which had none before). `tsc -b`/`npm run build` both clean. Not yet marked Done: got through login + TOTP enrollment in a live smoke test but hit the backend's 5/15min TOTP rate limiter before exercising the Catalog tab and Asset create/list/detail live; needs a manual pass (or a rerun after a backend restart) before flipping to Done. |
-| 4 — Check-Out / Return | Pending | `CheckInOutPage` is a `ComingSoon` stub. |
-| 5 — Maintenance | Pending | `MaintenancePage` is a `ComingSoon` stub. |
-| 6 — Audits | Pending | `AuditsListPage` renders mock audits; assigner/assignee/verifier workflow screens not built. |
-| 7 — People + Vendors | Pending | `PeoplePage` renders mock users; `VendorsPage` is a `ComingSoon` stub. |
-| 8 — Reports + Labels | Working on it | Labels' format picker is real and wired: `LabelsPage` renders 3 selectable previews (`features/labels/components/LabelPreview.tsx`) against real org/asset data, persists the org's choice via `PATCH /organizations/me/label-format`, and gates the Save action on `canManageOrg`. `ReportsPage` is still untouched, remains a `ComingSoon` stub. |
+| 4 — Check-Out / Return | Working on it | `CheckInOutPage` is wired to `features/check-in-out/api.ts`: search/scan (manual entry plus `html5-qrcode` camera scan) → checkout/checkin dialogs → active/overdue list with overdue highlighting → PDF receipt via `jspdf`. `tsc -b`/`npm run build` clean. Not yet Done: only the login/TOTP-challenge screens were click-through verified live, the actual checkout/checkin flow wasn't exercised against a running session (see the shared-account TOTP note below). |
+| 5 — Maintenance | Done | `MaintenancePage` wired to `features/maintenance/api.ts`, full CRUD with status filter, asset picker, overdue highlighting; Dashboard's Maintenance Due widget switched off `mockMaintenanceRecords` (now deleted from `mock-data.ts`) onto the same query. **Actually smoke-tested end to end against a live backend session**: create → status change → confirmed the asset's status and the Dashboard's "In Maintenance" KPI/chart both flip in response, not just the local UI. |
+| 6 — Audits | Working on it | Full assigner/assignee/verifier workflow built on a new `/audits/:id` (`AuditDetailPage`), ownership-checked assignee view, segregation-of-duties notice on the verifier view, history timeline, post-verification report panel. `mockAudits` deleted. `tsc -b`/`npm run build` clean. Not yet Done: only the login screen and the unauthenticated route-guard redirect were click-through verified live; the actual workflow wasn't exercised against a running session (see below). |
+| 7 — People + Vendors | Working on it | `PeoplePage` wired to `features/people/api.ts` (list/edit/deactivate/invite); new public `/invite/:token/accept` page; `VendorsPage` now reuses the existing `CatalogManager` component (categories/locations/departments' shared CRUD UI) with `canManageVendors`-gated fields matching the backend's `vendorCreateSchema`. `mockUsers` deleted. `tsc -b`/`npm run build` clean. Verified via a fully mocked Playwright pass (real `apiFetch`/TanStack Query code paths, stubbed network layer) rather than a live backend session, so it clears the bar below "Done": every People/Vendors/invite-accept flow rendered and functioned correctly against realistic fixtures, but not yet against the real API. |
+| 8 — Reports + Labels | Working on it | Labels is done (`LabelsPage`, real format picker, persists via `PATCH /organizations/me/label-format`). Reports is now built too: filter bar (category/location/custodian, purchase-date vs. depreciation-date mode matching the backend's real `dateField` param), server-side sort, client-side group-by (category/location/depreciation-bucket), CSV/Excel/PDF export, new shared `src/lib/depreciation.ts` (straight-line formula). The depreciation-range filter from this phase's original spec is deliberately **not built** since the backend doesn't support it yet (confirmed against `assetReportQuerySchema`/`buildAssetReportQuery`, only one `dateField` mode exists) — the UI has a visible notice explaining this instead of faking it client-side. `tsc -b`/`npm run build` clean. Not yet Done: build-verified and the depreciation formula was unit-verified standalone, but the live authenticated page wasn't click-through tested (see below). |
 | 9 — Settings | Done | Org profile, branding/theme (logo + colors, shared components with onboarding), catalog (categories/locations/departments CRUD) and a personal Appearance tab (light/dark/system, sidebar collapse) are real and wired; the whole page (not just individual tabs) is gated to `canManageSettings`/`canManageOrg` roles. |
 | 10 — Platform admin, full feature set | Pending | Base platform app (dashboard/orgs/suspend/quotas/alerts) landed in Phase 1; force-reset-password, impersonation, and the impersonation banner from this phase are not built. |
 | 11 — Polish / hardening | Pending | No route-level code-splitting yet (still a single bundle); no unified loading/empty/error states or tests yet. |
 
-Status last verified against the working tree on 2026-09-16 — re-check the actual code before
+**Why several rows above are "built, build-clean, not yet Done"**: Phases 4/6/8 were built and
+verified by `tsc -b`/`npm run build` but couldn't get a live click-through smoke test. The seeded
+demo tenant account already has TOTP enrolled from earlier phases' testing, and multiple agents
+building phases 4-8 in parallel were hitting it concurrently — nobody held a valid 6-digit code or
+recovery code for it, and correctly declined to read the secret out of the database or otherwise
+force past the wall to get one (that's exactly the kind of thing this repo's auth model is supposed
+to resist, see backend `CLAUDE.md`'s integration-test note). Two workarounds that stayed inside
+normal product flows *did* work when tried: Phase 5's agent registered its own throwaway org via
+the public signup endpoint and completed that org's own TOTP enrollment normally (the secret is
+shown on-screen during enrollment, that's not privileged); Phase 7's agent got equivalent coverage
+by mocking the network boundary in Playwright while exercising the real `apiFetch`/TanStack Query
+code paths. If you want full live verification across the rest, either path works, or seed a
+dedicated non-TOTP-enrolled test account for agent-driven smoke testing so this stops being
+one-shot-only per account.
+
+Status last verified against the working tree on 2026-09-17 — re-check the actual code before
 trusting a row that looks old, the same caveat §4 applies to the phase descriptions themselves.
 
 ---
@@ -207,17 +222,17 @@ Assets can't exist without categories/locations/departments/vendors, so this pha
   `POST /assets`. Edit reuses the same form → `PUT /assets/:id`.
 - File/image upload on the asset form → `POST /files/upload`.
 
-### Phase 4 — Check-Out / Return — Status: Pending
+### Phase 4 — Check-Out / Return — Status: Working on it
 - `GET /assignments` (active + overdue), `POST /assignments/checkout`, `POST /assignments/checkin`,
   `GET /assignments/:id/receipt` (render client-side via `jspdf`, per backend's "no server-side PDF
   rendering" note).
 - Camera/barcode scan flow (`html5-qrcode`, already installed) wired to asset lookup by tag.
 
-### Phase 5 — Maintenance — Status: Pending
+### Phase 5 — Maintenance — Status: Done
 - `GET/POST /maintenance`, `PUT/DELETE /maintenance/:id`. Straightforward CRUD list/detail/modal,
   same pattern as Phase 3.
 
-### Phase 6 — Audits (the workflow, not just a list) — Status: Pending
+### Phase 6 — Audits (the workflow, not just a list) — Status: Working on it
 The highest-complexity phase — three distinct role-scoped screens, not one page:
 - **Assigner view** (`canAssignAudits`): create audit + scope (`POST /audits`), assign
   (`PATCH /audits/:id/assign`).
@@ -230,14 +245,14 @@ The highest-complexity phase — three distinct role-scoped screens, not one pag
   the post-verification report view.
 - `AuditsListPage` (already stubbed in Phase 0 with mock audits) switches to `GET /audits`.
 
-### Phase 7 — People + Vendors — Status: Pending
+### Phase 7 — People + Vendors — Status: Working on it
 - `PeoplePage` (already stubbed with mock users) → `GET /people`, edit/deactivate
   (`PUT/DELETE /people/:id`), invite (`POST /people/invite`) + a public
   `/invite/:token/accept` page (no auth — this is the "additional staff" onboarding path, distinct
   from the first-admin flow in Phase 1).
 - `VendorsPage` → real catalog CRUD, same pattern as Phase 3's catalog work.
 
-### Phase 8 — Reports + Labels — Status: Pending
+### Phase 8 — Reports + Labels — Status: Working on it
 
 #### Reports
 
@@ -306,7 +321,7 @@ right. Persist it per-org (reuse the existing `systemSettings` table — `key: "
 key/value config) so it's set once, not re-entered every print run. Render via
 `jspdf`/`jspdf-autotable`, same as the Reports PDF export.
 
-### Phase 9 — Settings — Status: Pending
+### Phase 9 — Settings — Status: Done
 - Org profile + branding re-edit (same endpoints as Phase 1's onboarding, different entry point —
   worth sharing the branding form component between onboarding and settings rather than duplicating
   it).

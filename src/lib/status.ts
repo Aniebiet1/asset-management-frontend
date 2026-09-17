@@ -42,7 +42,7 @@ export const maintenanceStatusColorMap: Record<string, StatusVisual> = {
   cancelled: { bg: "bg-muted", text: "text-muted-foreground", border: "border-border", label: "Cancelled" },
 };
 
-/** Audit workflow states — plan §D: draft → assigned → in_progress → submitted → verified, or → rejected/cancelled. */
+/** Audit workflow states - plan §D: draft to assigned to in_progress to submitted to verified, or to rejected/cancelled. */
 export const auditStatusColorMap: Record<string, StatusVisual> = {
   draft: { bg: "bg-muted", text: "text-muted-foreground", border: "border-border", label: "Draft" },
   assigned: { bg: "bg-blue-500/10", text: "text-blue-400", border: "border-blue-500/20", label: "Assigned" },
@@ -51,6 +51,15 @@ export const auditStatusColorMap: Record<string, StatusVisual> = {
   verified: { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/20", label: "Verified" },
   rejected: { bg: "bg-rose-500/10", text: "text-rose-400", border: "border-rose-500/20", label: "Rejected" },
   cancelled: { bg: "bg-muted", text: "text-muted-foreground", border: "border-border", label: "Cancelled" },
+};
+
+/** Per-item scan outcome within an audit (plan §D) - distinct from the audit's own workflow status above. */
+export const auditItemStatusColorMap: Record<string, StatusVisual> = {
+  pending: { bg: "bg-muted", text: "text-muted-foreground", border: "border-border", label: "Pending" },
+  matched: { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/20", label: "Matched" },
+  missing: { bg: "bg-rose-500/10", text: "text-rose-400", border: "border-rose-500/20", label: "Missing" },
+  relocated: { bg: "bg-blue-500/10", text: "text-blue-400", border: "border-blue-500/20", label: "Relocated" },
+  damaged: { bg: "bg-orange-500/10", text: "text-orange-400", border: "border-orange-500/20", label: "Damaged" },
 };
 
 export const planStatusColorMap: Record<string, StatusVisual> = {

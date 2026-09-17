@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Box, CheckCircle2, Wrench, Users2, Wallet, ArrowUpRight, Plus, ScanLine } from "lucide-react";
 import {
@@ -19,9 +20,13 @@ import { StatusBadge, MaintenanceStatusBadge } from "@/components/common/StatusB
 import { hasPermission } from "@/lib/permissions";
 import { formatCurrency, formatDateTime, getInitials } from "@/lib/format";
 import { useAuthStore } from "@/store/auth.store";
-import { mockMaintenanceRecords } from "@/lib/mock-data";
 import { BrandedLoader } from "@/components/brand/BrandedLoader";
+import { useAssetsQuery } from "@/features/assets/api";
+import { useMaintenanceQuery } from "@/features/maintenance/api";
 import { useDashboardStatsQuery, useDashboardChartsQuery, useDashboardActivityQuery } from "./api";
+
+const UPCOMING_MAINTENANCE_STATUSES = new Set(["scheduled", "in_progress", "waiting_parts"]);
+const MAINTENANCE_DUE_LIMIT = 5;
 
 const CHART_COLORS = ["var(--color-chart-1)", "var(--color-chart-2)", "var(--color-chart-3)", "var(--color-chart-4)", "var(--color-chart-5)"];
 
@@ -40,8 +45,25 @@ export function DashboardPage() {
   const { data: stats, isLoading: statsLoading } = useDashboardStatsQuery();
   const { data: charts, isLoading: chartsLoading } = useDashboardChartsQuery();
   const { data: activity, isLoading: activityLoading } = useDashboardActivityQuery();
+  const { data: maintenance, isLoading: maintenanceLoading } = useMaintenanceQuery();
+  const assets = useAssetsQuery({ pageSize: 200 });
   const canViewValuation = hasPermission(currentUser?.role, "canViewAssetValuation");
   const canCreate = hasPermission(currentUser?.role, "canCreateAsset");
+
+  const assetById = useMemo(() => {
+    const map = new Map<string, { name: string; assetTag: string }>();
+    for (const a of assets.data?.data ?? []) {
+      map.set(a.id, { name: a.name, assetTag: a.assetTag });
+    }
+    return map;
+  }, [assets.data]);
+
+  const upcomingMaintenance = useMemo(() => {
+    return (maintenance ?? [])
+      .filter((m) => UPCOMING_MAINTENANCE_STATUSES.has(m.status))
+      .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())
+      .slice(0, MAINTENANCE_DUE_LIMIT);
+  }, [maintenance]);
 
   const kpis = stats
     ? [
@@ -226,17 +248,26 @@ export function DashboardPage() {
             </Button>
           </CardHeader>
           <CardContent className="space-y-3">
-            {mockMaintenanceRecords.map((m) => (
-              <div key={m.id} className="flex items-start justify-between gap-2 rounded-lg border border-border p-2.5 text-sm">
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-foreground">{m.title}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {m.assetName} · {m.assetTag}
-                  </p>
-                </div>
-                <MaintenanceStatusBadge status={m.status} className="shrink-0" />
-              </div>
-            ))}
+            {maintenanceLoading ? (
+              <CardSpinner />
+            ) : upcomingMaintenance.length > 0 ? (
+              upcomingMaintenance.map((m) => {
+                const asset = assetById.get(m.assetId);
+                return (
+                  <div key={m.id} className="flex items-start justify-between gap-2 rounded-lg border border-border p-2.5 text-sm">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-foreground">{m.title}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {asset?.name ?? m.assetName ?? "Unknown asset"} · {asset?.assetTag ?? m.assetTag ?? m.assetId}
+                      </p>
+                    </div>
+                    <MaintenanceStatusBadge status={m.status} className="shrink-0" />
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-sm text-muted-foreground">Nothing due right now.</p>
+            )}
           </CardContent>
         </Card>
       </div>
