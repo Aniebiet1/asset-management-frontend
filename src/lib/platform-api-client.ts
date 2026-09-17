@@ -1,7 +1,6 @@
 import { usePlatformAuthStore } from "@/store/platformAuth.store";
 import { ApiError } from "@/lib/http-error";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import { API_BASE_URL } from "@/lib/env";
 
 /**
  * Generic platform-admin API client. No refresh endpoint exists on the backend (see

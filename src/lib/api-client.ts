@@ -1,7 +1,6 @@
 import { useAuthStore } from "@/store/auth.store";
 import { ApiError } from "@/lib/http-error";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import { API_BASE_URL } from "@/lib/env";
 
 async function doFetch(path: string, init: RequestInit): Promise<Response> {
   const token = useAuthStore.getState().accessToken;

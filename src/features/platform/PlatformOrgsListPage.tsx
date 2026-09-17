@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/components/common/PageHeader";
 import { PlanStatusBadge } from "@/components/common/StatusBadge";
+import { BrandedLoader } from "@/components/brand/BrandedLoader";
 import { useOrgsQuery } from "./api";
 
 export function PlatformOrgsListPage() {
@@ -40,7 +41,7 @@ export function PlatformOrgsListPage() {
             {isLoading ? (
               <TableRow>
                 <TableCell colSpan={5} className="py-10 text-center">
-                  <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
+                  <BrandedLoader size="sm" />
                 </TableCell>
               </TableRow>
             ) : orgs?.length ? (

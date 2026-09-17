@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlanStatusBadge } from "@/components/common/StatusBadge";
+import { BrandedLoader } from "@/components/brand/BrandedLoader";
 import { formatDate } from "@/lib/format";
 import { useOrgDetailQuery, useUpdateOrgStatusMutation, useUpdateOrgQuotasMutation } from "./api";
 import { ApiError } from "@/lib/http-error";
@@ -23,7 +24,7 @@ export function PlatformOrgDetailPage() {
   if (isLoading || !data) {
     return (
       <div className="flex justify-center py-24">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        <BrandedLoader />
       </div>
     );
   }

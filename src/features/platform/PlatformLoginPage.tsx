@@ -7,10 +7,12 @@ import { Label } from "@/components/ui/label";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { usePlatformAuthStore } from "@/store/platformAuth.store";
 import { ApiError } from "@/lib/http-error";
+import { useTecresBrandTheme } from "./useTecresBrandTheme";
 
 export function PlatformLoginPage() {
   const navigate = useNavigate();
   const login = usePlatformAuthStore((s) => s.login);
+  useTecresBrandTheme();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

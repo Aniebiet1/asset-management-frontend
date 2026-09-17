@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TotpCodeInput } from "@/components/auth/TotpCodeInput";
+import { BrandedLoader } from "@/components/brand/BrandedLoader";
 import { ApiError } from "@/lib/http-error";
 import { toast } from "sonner";
 
@@ -19,6 +20,10 @@ interface TotpEnrollFormProps {
   startEnrollment: (token: string) => Promise<EnrollmentStart>;
   verifyEnrollment: (token: string, code: string) => Promise<{ recoveryCodes: string[] }>;
   onComplete: () => void;
+  /** Same org context AuthLayout renders for the logo above this form — reused here so the
+   * "starting enrollment" loading state matches, not a generic spinner. */
+  logoUrl?: string | null;
+  orgName?: string;
 }
 
 /**
@@ -26,7 +31,7 @@ interface TotpEnrollFormProps {
  * flows — mandatory TOTP enrollment is identical in shape for both, just against different stores/
  * endpoints (injected via props so this component has no auth-store dependency of its own).
  */
-export function TotpEnrollForm({ enrollmentToken, startEnrollment, verifyEnrollment, onComplete }: TotpEnrollFormProps) {
+export function TotpEnrollForm({ enrollmentToken, startEnrollment, verifyEnrollment, onComplete, logoUrl, orgName }: TotpEnrollFormProps) {
   const [enrollment, setEnrollment] = useState<EnrollmentStart | null>(null);
   const [code, setCode] = useState("");
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
@@ -111,7 +116,7 @@ export function TotpEnrollForm({ enrollmentToken, startEnrollment, verifyEnrollm
   if (isStarting) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        <BrandedLoader logoUrl={logoUrl} orgName={orgName} />
       </div>
     );
   }

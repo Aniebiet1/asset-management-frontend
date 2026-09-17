@@ -3,22 +3,37 @@ import { ArrowLeft, Pencil, ArrowLeftRight, Printer, MapPin, Building2, User as 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { StatusBadge, ConditionBadge } from "@/components/common/StatusBadge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatusBadge, ConditionBadge, MaintenanceStatusBadge } from "@/components/common/StatusBadge";
 import { hasPermission } from "@/lib/permissions";
-import { formatCurrency, formatDate } from "@/lib/format";
-import { mockAssets } from "@/lib/mock-data";
+import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
+import { useQrCodeDataUrl } from "@/lib/useQrCodeDataUrl";
+import { useAssetQuery, useAssetHistoryQuery, useAssetMaintenanceQuery } from "@/features/assets/api";
 import { useAuthStore } from "@/store/auth.store";
 
 export function AssetDetailPage() {
   const { id } = useParams();
   const currentUser = useAuthStore((s) => s.currentUser);
   const org = useAuthStore((s) => s.org);
-  const asset = mockAssets.find((a) => a.id === id);
+  const { data: asset, isLoading, isError } = useAssetQuery(id);
+  const history = useAssetHistoryQuery(id);
+  const maintenance = useAssetMaintenanceQuery(id);
   const canViewValuation = hasPermission(currentUser?.role, "canViewAssetValuation");
   const canEdit = hasPermission(currentUser?.role, "canEditAsset");
   const canCheckInOut = hasPermission(currentUser?.role, "canCheckInOut");
+  const qrDataUrl = useQrCodeDataUrl(asset?.assetTag ?? null);
 
-  if (!asset) {
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  if (isError || !asset) {
     return (
       <div className="py-24 text-center">
         <p className="text-sm text-muted-foreground">Asset not found.</p>
@@ -30,8 +45,8 @@ export function AssetDetailPage() {
   }
 
   const fields: { label: string; value: string | null; icon?: typeof MapPin }[] = [
-    { label: "Location", value: asset.locationName ?? null, icon: MapPin },
-    { label: "Department", value: asset.departmentName ?? null, icon: Building2 },
+    { label: "Location", value: asset.locationName ?? "-", icon: MapPin },
+    { label: "Department", value: asset.departmentName ?? "-", icon: Building2 },
     { label: "Custodian", value: asset.custodianName ?? "Unassigned", icon: UserIcon },
     { label: "Purchase Date", value: formatDate(asset.purchaseDate), icon: Calendar },
   ];
@@ -69,9 +84,11 @@ export function AssetDetailPage() {
             </Button>
           )}
           {canEdit && (
-            <Button size="sm" className="gap-1.5">
-              <Pencil className="size-3.5" />
-              Edit
+            <Button size="sm" className="gap-1.5" asChild>
+              <Link to={`/assets/${asset.id}/edit`}>
+                <Pencil className="size-3.5" />
+                Edit
+              </Link>
             </Button>
           )}
         </div>
@@ -98,8 +115,6 @@ export function AssetDetailPage() {
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="history">History</TabsTrigger>
                   <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
-                  <TabsTrigger value="files">Files</TabsTrigger>
-                  <TabsTrigger value="activity">Activity</TabsTrigger>
                 </TabsList>
                 <TabsContent value="overview" className="space-y-4 p-4">
                   <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
@@ -109,7 +124,7 @@ export function AssetDetailPage() {
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Category</p>
-                      <p className="mt-1 font-medium text-foreground">{asset.categoryName}</p>
+                      <p className="mt-1 font-medium text-foreground">{asset.categoryName ?? "-"}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Vendor</p>
@@ -136,17 +151,46 @@ export function AssetDetailPage() {
                     <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground">{asset.notes}</div>
                   )}
                 </TabsContent>
-                <TabsContent value="history" className="p-4 text-sm text-muted-foreground">
-                  Assignment history mock coming next pass.
+                <TabsContent value="history" className="p-4">
+                  {history.isLoading ? (
+                    <Skeleton className="h-24 w-full" />
+                  ) : history.data && history.data.length > 0 ? (
+                    <div className="space-y-2">
+                      {history.data.map((h) => (
+                        <div key={h.id} className="flex items-center justify-between rounded-lg border border-border p-3 text-sm">
+                          <div>
+                            <p className="font-medium text-foreground">{h.userName ?? "Unknown user"}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Checked out {formatDateTime(h.assignedAt)}
+                              {h.returnedAt ? ` · Returned ${formatDateTime(h.returnedAt)}` : " · Not yet returned"}
+                            </p>
+                          </div>
+                          <ConditionBadge condition={h.conditionOut} />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No check-out history for this asset yet.</p>
+                  )}
                 </TabsContent>
-                <TabsContent value="maintenance" className="p-4 text-sm text-muted-foreground">
-                  Maintenance records mock coming next pass.
-                </TabsContent>
-                <TabsContent value="files" className="p-4 text-sm text-muted-foreground">
-                  Attached files mock coming next pass.
-                </TabsContent>
-                <TabsContent value="activity" className="p-4 text-sm text-muted-foreground">
-                  Activity log mock coming next pass.
+                <TabsContent value="maintenance" className="p-4">
+                  {maintenance.isLoading ? (
+                    <Skeleton className="h-24 w-full" />
+                  ) : maintenance.data && maintenance.data.length > 0 ? (
+                    <div className="space-y-2">
+                      {maintenance.data.map((m) => (
+                        <div key={m.id} className="flex items-center justify-between rounded-lg border border-border p-3 text-sm">
+                          <div>
+                            <p className="font-medium text-foreground">{m.title}</p>
+                            <p className="text-xs text-muted-foreground">Scheduled {formatDate(m.scheduledDate)}</p>
+                          </div>
+                          <MaintenanceStatusBadge status={m.status} />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No maintenance records for this asset yet.</p>
+                  )}
                 </TabsContent>
               </Tabs>
             </CardContent>
@@ -156,9 +200,16 @@ export function AssetDetailPage() {
         <Card className="h-fit">
           <CardContent className="flex flex-col items-center gap-3 p-6 text-center">
             <div className="flex size-32 items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 text-xs text-muted-foreground">
-              QR / Barcode
+              {qrDataUrl && (
+                <img src={qrDataUrl} alt={`QR code for ${asset.assetTag}`} className="size-full object-contain" />
+              )}
             </div>
-            <p className="font-mono text-xs text-muted-foreground">{asset.barcodeData}</p>
+            <p className="font-mono text-xs text-muted-foreground">{asset.assetTag}</p>
+            {asset.imageUrl && (
+              <div className="flex size-32 items-center justify-center rounded-lg border border-border bg-muted/30">
+                <img src={asset.imageUrl} alt={asset.name} className="size-full rounded-lg object-cover" />
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

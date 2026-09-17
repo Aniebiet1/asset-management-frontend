@@ -37,6 +37,7 @@ const navigation = [
 
 export function Sidebar() {
   const currentUser = useAuthStore((s) => s.currentUser);
+  const org = useAuthStore((s) => s.org);
   const isCollapsed = useThemeStore((s) => s.isSidebarCollapsed);
   const toggleSidebar = useThemeStore((s) => s.toggleSidebar);
 
@@ -59,7 +60,7 @@ export function Sidebar() {
         )}
       >
         <NavLink to="/" className="flex items-center overflow-hidden">
-          <Logo variant={isCollapsed ? "icon" : "full"} size="md" />
+          <Logo variant={isCollapsed ? "icon" : "full"} size="md" logoUrl={org?.logoUrl} orgName={org?.name} />
         </NavLink>
         {!isCollapsed && (
           <button

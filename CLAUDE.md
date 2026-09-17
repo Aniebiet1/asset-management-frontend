@@ -6,6 +6,10 @@ order (start there — it's the current source of truth for "what's real vs. moc
 lives in the sibling repo `asset-management-backend`; its `CLAUDE.md` documents the API this app
 consumes.
 
+`BUILD_PLAN.md` opens with a **Status** table (Pending / Working on it / Done) covering every
+phase. Check it before picking up work so you don't duplicate someone else's in-progress phase, and
+flip the relevant row (and that phase's heading) when you start or finish one, per that doc's §4.
+
 ## Stack
 
 Vite + React 19 + TypeScript, React Router v7, TanStack Query (server state), Zustand (client/UI
@@ -59,9 +63,13 @@ call `documentElement.style.setProperty` on these — don't add per-component co
 org branding, route the color through these variables instead. This is what
 `solid_implementation_plan.md` §H's "live theme application" actually means in this codebase.
 
-Dark is the default theme (`index.html` sets `.dark` on `<html>` before paint via an inline script
-reading `localStorage.tecres_theme`, to avoid a light-mode flash). Both light and dark palettes are
-fully defined in `index.css` — don't assume dark-only when adding new tokens.
+The theme follows the device's OS-level light/dark setting until the user makes an explicit choice
+via the header toggle, at which point that choice is persisted to `localStorage.tecres_theme` and
+wins from then on (`index.html` applies `.dark` on `<html>` before paint to avoid a flash;
+`theme.store.ts` also live-updates if the OS setting changes while no explicit choice is stored).
+Both light and dark palettes are fully defined in `index.css` — don't assume dark-only when adding
+new tokens, and don't assume light-only either: auth/onboarding screens render in whichever mode
+the device is in, not a hardcoded one.
 
 ## Path alias & structure
 

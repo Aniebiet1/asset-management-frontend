@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Building2, Users2, Box, AlertTriangle, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/common/PageHeader";
+import { BrandedLoader } from "@/components/brand/BrandedLoader";
 import { useFleetStatsQuery, useAlertsQuery } from "./api";
 
 export function PlatformDashboardPage() {
@@ -49,7 +50,7 @@ export function PlatformDashboardPage() {
             </Link>
           </div>
           {alertsLoading ? (
-            <Loader2 className="size-4 animate-spin text-muted-foreground" />
+            <BrandedLoader size="sm" className="justify-start" />
           ) : openAlerts.length === 0 ? (
             <p className="text-sm text-muted-foreground">No open alerts.</p>
           ) : (

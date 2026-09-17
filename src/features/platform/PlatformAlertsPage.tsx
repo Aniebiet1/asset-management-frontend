@@ -1,8 +1,8 @@
-import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/common/PageHeader";
 import { AlertSeverityBadge } from "@/components/common/StatusBadge";
+import { BrandedLoader } from "@/components/brand/BrandedLoader";
 import { formatDateTime } from "@/lib/format";
 import { useAlertsQuery, useResolveAlertMutation } from "./api";
 import { ApiError } from "@/lib/http-error";
@@ -27,7 +27,7 @@ export function PlatformAlertsPage() {
 
       {isLoading ? (
         <div className="flex justify-center py-16">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          <BrandedLoader />
         </div>
       ) : !alerts?.length ? (
         <div className="rounded-xl border border-dashed border-border py-16 text-center text-sm text-muted-foreground">No alerts.</div>

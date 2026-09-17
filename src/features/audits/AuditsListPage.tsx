@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/common/PageHeader";
 import { AuditStatusBadge } from "@/components/common/StatusBadge";
 import { hasPermission } from "@/lib/permissions";
@@ -31,39 +31,41 @@ export function AuditsListPage() {
           )
         }
       />
-      <div className="space-y-3">
-        {mockAudits.map((audit) => (
-          <Link key={audit.id} to={`/audits/${audit.id}`}>
-            <Card className="transition-colors hover:border-input">
-              <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium text-foreground">{audit.name}</p>
-                    <AuditStatusBadge status={audit.status} />
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {audit.code} · Assigned to {audit.assignedToName ?? "-"} · {formatDate(audit.assignedAt)}
-                  </p>
+      <Card className="p-0">
+        <div className="divide-y divide-border">
+          {mockAudits.map((audit) => (
+            <Link
+              key={audit.id}
+              to={`/audits/${audit.id}`}
+              className="flex flex-col gap-3 p-4 transition-colors hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-foreground">{audit.name}</p>
+                  <AuditStatusBadge status={audit.status} />
                 </div>
-                <div className="flex items-center gap-4 text-xs sm:gap-6">
-                  <div className="text-center">
-                    <p className="font-semibold text-foreground">{audit.totalScanned}/{audit.totalExpected}</p>
-                    <p className="text-muted-foreground">Scanned</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="font-semibold text-emerald-400">{audit.totalMatched}</p>
-                    <p className="text-muted-foreground">Matched</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="font-semibold text-rose-400">{audit.totalMissing}</p>
-                    <p className="text-muted-foreground">Missing</p>
-                  </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {audit.code} · Assigned to {audit.assignedToName ?? "-"} · {formatDate(audit.assignedAt)}
+                </p>
+              </div>
+              <div className="flex items-center gap-4 text-xs sm:gap-6">
+                <div className="text-center">
+                  <p className="font-semibold text-foreground">{audit.totalScanned}/{audit.totalExpected}</p>
+                  <p className="text-muted-foreground">Scanned</p>
                 </div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
+                <div className="text-center">
+                  <p className="font-semibold text-emerald-400">{audit.totalMatched}</p>
+                  <p className="text-muted-foreground">Matched</p>
+                </div>
+                <div className="text-center">
+                  <p className="font-semibold text-rose-400">{audit.totalMissing}</p>
+                  <p className="text-muted-foreground">Missing</p>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </Card>
     </div>
   );
 }

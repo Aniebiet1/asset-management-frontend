@@ -2,8 +2,9 @@ import { create } from "zustand";
 import type { CurrentUser, Organization, UserRole } from "@/types";
 import { ApiError } from "@/lib/http-error";
 import { useThemeStore } from "@/store/theme.store";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import { persistLastOrgBranding } from "@/lib/lastOrg";
+import { TECRES_DEFAULT_LOGO_URL } from "@/lib/brand";
+import { API_BASE_URL } from "@/lib/env";
 
 /** Shared across all `refresh()` callers — see the de-duplication note inside `refresh()` below. */
 let refreshPromise: Promise<boolean> | null = null;
@@ -67,11 +68,11 @@ interface AuthState {
    * a guard until this leaves "booting", so a valid session doesn't flash a login screen. */
   status: "booting" | "signed-out" | "signed-in";
 
-  login: (orgSlug: string, email: string, password: string) => Promise<LoginResult>;
+  login: (email: string, password: string) => Promise<LoginResult>;
   startTotpEnrollment: (enrollmentToken: string) => Promise<EnrollmentStartResponse>;
   verifyTotpEnrollment: (enrollmentToken: string, code: string) => Promise<{ recoveryCodes: string[] }>;
   completeTotpChallenge: (preAuthToken: string, code: string) => Promise<void>;
-  requestPasswordReset: (orgSlug: string, email: string) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
   confirmPasswordReset: (token: string, newPassword: string) => Promise<void>;
 
   /** Called once on app mount: attempts a silent session restore from the httpOnly refresh cookie. */
@@ -85,6 +86,22 @@ interface AuthState {
   refetchOrg: () => Promise<void>;
 }
 
+/** The single place org branding gets written to the browser cache — called both right after
+ * login (hydrateFromToken) and whenever the org record changes post-login (refetchOrg, used by
+ * onboarding's Branding step and, later, Settings). Without this second call site, finishing
+ * onboarding would apply the new theme live but leave the cache stuck on whatever was true at
+ * login — a returning visit to /login would then show the pre-onboarding defaults for a beat
+ * before the email lookup corrected it, instead of the real branding being "already there". */
+function cacheOrgBranding(org: Organization): void {
+  persistLastOrgBranding({
+    slug: org.slug,
+    name: org.name,
+    logoUrl: org.logoUrl ?? TECRES_DEFAULT_LOGO_URL,
+    primaryColor: org.primaryColor,
+    accentColor: org.accentColor,
+  });
+}
+
 async function hydrateFromToken(accessToken: string): Promise<{ currentUser: CurrentUser; org: Organization }> {
   const [{ user }, { data: org }] = await Promise.all([
     rawFetch<{ user: Omit<CurrentUser, "orgName"> }>("/auth/me", {}, accessToken),
@@ -92,6 +109,7 @@ async function hydrateFromToken(accessToken: string): Promise<{ currentUser: Cur
   ]);
   const currentUser: CurrentUser = { ...user, orgName: org.name };
   useThemeStore.getState().applyOrgTheme(org);
+  cacheOrgBranding(org);
   return { currentUser, org };
 }
 
@@ -101,8 +119,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   org: null,
   status: "booting",
 
-  login: (orgSlug, email, password) =>
-    rawFetch<LoginResult>("/auth/login", { method: "POST", body: JSON.stringify({ orgSlug, email, password }) }),
+  login: (email, password) =>
+    rawFetch<LoginResult>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
 
   startTotpEnrollment: (enrollmentToken) =>
     rawFetch<EnrollmentStartResponse>("/auth/totp/enroll", { method: "POST", body: JSON.stringify({ enrollmentToken }) }),
@@ -126,8 +144,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ accessToken: session.accessToken, currentUser, org, status: "signed-in" });
   },
 
-  requestPasswordReset: (orgSlug, email) =>
-    rawFetch("/auth/password-reset/request", { method: "POST", body: JSON.stringify({ orgSlug, email }) }),
+  requestPasswordReset: (email) =>
+    rawFetch("/auth/password-reset/request", { method: "POST", body: JSON.stringify({ email }) }),
 
   confirmPasswordReset: (token, newPassword) =>
     rawFetch("/auth/password-reset/confirm", { method: "POST", body: JSON.stringify({ token, newPassword }) }),
@@ -181,6 +199,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!token) return;
     const { data: org } = await rawFetch<{ data: Organization }>("/organizations/me", {}, token);
     useThemeStore.getState().applyOrgTheme(org);
+    cacheOrgBranding(org);
     set({ org });
   },
 }));

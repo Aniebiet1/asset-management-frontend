@@ -21,7 +21,7 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
-import { mockAssets } from "@/lib/mock-data";
+import { useAssetsQuery } from "@/features/assets/api";
 
 const pages = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -38,6 +38,7 @@ const pages = [
 
 export function CommandPalette({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const navigate = useNavigate();
+  const assets = useAssetsQuery({ page: 1, pageSize: 6 }, { enabled: isOpen });
 
   const go = (href: string) => {
     navigate(href);
@@ -66,7 +67,7 @@ export function CommandPalette({ isOpen, onClose }: { isOpen: boolean; onClose: 
         </CommandGroup>
         <CommandSeparator />
         <CommandGroup heading="Assets">
-          {mockAssets.slice(0, 6).map((a) => (
+          {(assets.data?.data ?? []).map((a) => (
             <CommandItem key={a.id} onSelect={() => go(`/assets/${a.id}`)}>
               <Box className="mr-2 size-4" />
               <span className="truncate">{a.name}</span>

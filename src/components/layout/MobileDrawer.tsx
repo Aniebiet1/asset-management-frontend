@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Logo } from "@/components/brand/Logo";
+import { useAuthStore } from "@/store/auth.store";
 import { cn } from "cn";
 
 const navigation = [
@@ -29,12 +30,14 @@ const navigation = [
 ] as const;
 
 export function MobileDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const org = useAuthStore((s) => s.org);
+
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent side="left" className="w-72 p-0">
         <SheetHeader className="border-b border-border px-4 py-3">
           <SheetTitle asChild>
-            <Logo />
+            <Logo logoUrl={org?.logoUrl} orgName={org?.name} />
           </SheetTitle>
         </SheetHeader>
         <nav className="flex flex-col gap-0.5 p-2">

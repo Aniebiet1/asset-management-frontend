@@ -6,12 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tecres Asset Manager</title>
     <script>
-      // Applied before paint to avoid a light-mode flash — plan defaults the product
-      // to a dark-first theme; a user's explicit choice in localStorage wins.
+      // Applied before paint to avoid a theme flash. A user's explicit choice in localStorage
+      // wins; otherwise this follows the device's current light/dark setting.
       (function () {
         try {
           var stored = localStorage.getItem("tecres_theme");
-          var isDark = stored ? stored === "dark" : true;
+          var isDark = stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
           if (isDark) document.documentElement.classList.add("dark");
         } catch (e) {
           document.documentElement.classList.add("dark");

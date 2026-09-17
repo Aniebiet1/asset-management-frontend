@@ -25,6 +25,7 @@ interface HeaderProps {
 export function Header({ onOpenCommandPalette, onOpenMobileMenu }: HeaderProps) {
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.currentUser);
+  const org = useAuthStore((s) => s.org);
   const logout = useAuthStore((s) => s.logout);
   const isDark = useThemeStore((s) => s.isDark);
   const toggleDark = useThemeStore((s) => s.toggleDark);
@@ -66,7 +67,7 @@ export function Header({ onOpenCommandPalette, onOpenMobileMenu }: HeaderProps) 
         )}
 
         <div className="shrink-0 lg:hidden">
-          <Logo variant="icon" size="sm" />
+          <Logo variant="icon" size="sm" logoUrl={org?.logoUrl} orgName={org?.name} />
         </div>
 
         <button

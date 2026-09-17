@@ -80,6 +80,7 @@ export interface Organization {
   primaryColor: string;
   accentColor: string | null;
   sidebarColor: string | null;
+  labelFormat: "barcode_qr" | "barcode_only" | "qr_only" | null;
   onboardingCompletedAt: string | null;
   planStatus: PlanStatus;
   planExpiresAt: string | null;
@@ -87,6 +88,8 @@ export interface Organization {
   createdAt: string;
   updatedAt: string;
 }
+
+export type LabelFormat = NonNullable<Organization["labelFormat"]>;
 
 // ---------------------------------------------------------------------------
 // Catalog: departments / locations / categories / vendors
@@ -215,6 +218,8 @@ export interface AssetAssignment {
   receiptNo: string | null;
   signatureUrl: string | null;
   createdAt: string;
+
+  userName?: string;
 }
 
 export type MaintenanceType = "preventive" | "corrective" | "calibration" | "inspection" | "upgrade";

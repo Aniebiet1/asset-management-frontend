@@ -1,8 +1,7 @@
 import { create } from "zustand";
 import type { PlatformAdmin, PlatformAdminRole } from "@/types";
 import { ApiError } from "@/lib/http-error";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import { API_BASE_URL } from "@/lib/env";
 
 /**
  * Fully separate from `auth.store.ts` on purpose — mirrors the backend's separate identity space

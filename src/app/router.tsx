@@ -1,10 +1,11 @@
 import { useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { Loader2 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PlatformShell } from "@/components/layout/PlatformShell";
+import { BrandedLoader } from "@/components/brand/BrandedLoader";
 import { useAuthStore } from "@/store/auth.store";
 import { usePlatformAuthStore } from "@/store/platformAuth.store";
+import { readLastOrgBranding } from "@/lib/lastOrg";
 
 import { LoginPage } from "@/features/auth/LoginPage";
 import { TotpEnrollPage } from "@/features/auth/TotpEnrollPage";
@@ -16,6 +17,7 @@ import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { AssetsListPage } from "@/features/assets/AssetsListPage";
 import { AssetDetailPage } from "@/features/assets/AssetDetailPage";
 import { AssetCreatePage } from "@/features/assets/AssetCreatePage";
+import { AssetEditPage } from "@/features/assets/AssetEditPage";
 import { CheckInOutPage } from "@/features/check-in-out/CheckInOutPage";
 import { MaintenancePage } from "@/features/maintenance/MaintenancePage";
 import { AuditsListPage } from "@/features/audits/AuditsListPage";
@@ -35,9 +37,13 @@ import { PlatformAlertsPage } from "@/features/platform/PlatformAlertsPage";
 import { NotFoundPage } from "@/features/not-found/NotFoundPage";
 
 function FullScreenSpinner() {
+  // The silent-refresh boot attempt doesn't know the session yet, but the last org this browser
+  // signed into is already cached (see lastOrg.ts) — shows that org's own logo pulsing instead of
+  // a generic spinner or a flash of the Tecres mark for someone who's clearly already a customer.
+  const cached = readLastOrgBranding();
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
-      <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      <BrandedLoader size="xl" logoUrl={cached?.logoUrl} orgName={cached?.name} />
     </div>
   );
 }
@@ -99,6 +105,7 @@ export function AppRouter() {
           <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/assets" element={<ProtectedRoute><AssetsListPage /></ProtectedRoute>} />
           <Route path="/assets/new" element={<ProtectedRoute><AssetCreatePage /></ProtectedRoute>} />
+          <Route path="/assets/:id/edit" element={<ProtectedRoute><AssetEditPage /></ProtectedRoute>} />
           <Route path="/assets/:id" element={<ProtectedRoute><AssetDetailPage /></ProtectedRoute>} />
           <Route path="/check-in-out" element={<ProtectedRoute><CheckInOutPage /></ProtectedRoute>} />
           <Route path="/maintenance" element={<ProtectedRoute><MaintenancePage /></ProtectedRoute>} />

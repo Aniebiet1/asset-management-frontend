@@ -13,6 +13,36 @@ spec), and calls out the handful of backend gaps that block a clean Phase 1.
 
 ---
 
+## Status
+
+Three states: **Pending** (not started — still mock/stub), **Working on it** (someone has real
+wiring in progress, not all committed/mock-free yet), **Done** (`tsc -b` clean, `npm run build`
+succeeds, smoke-tested against a running backend, that feature's mock usage deleted per §4).
+
+Whoever picks up a phase flips its row to **Working on it** when they start and **Done** when it
+actually clears the bar above — don't mark a phase Done because the UI renders, and don't leave it
+on Working on it after it's merged. This table is the thing everyone checks before picking up work,
+so keep it honest; a stale table is worse than no table.
+
+| Phase | Status | Notes |
+|---|---|---|
+| 1 — Auth foundation, platform admin (minimal), onboarding | Done | Real login, TOTP enroll/challenge, onboarding wizard, and the minimal platform app are committed and wired. |
+| 2 — Dashboard (real data) | Done | Stats/charts/activity hit real endpoints (`features/dashboard/api.ts`); value-hiding confirmed for staff vs. admin; the Maintenance Due widget is still mock, which is expected, that's Phase 5's mock to remove, not this phase's. |
+| 3 — Assets + catalog dependencies | Working on it | Catalog CRUD (categories/locations/departments) lives under Settings > Catalog (`features/catalog/`); vendors stays read-only here (Phase 7 owns its write UI). `AssetsListPage`/`AssetDetailPage`/`AssetCreatePage`/new `AssetEditPage` are wired to real endpoints (`features/assets/api.ts`), including image upload and joined category/location/department/vendor/custodian names (added LEFT JOINs to `assets.service.ts`, which had none before). `tsc -b`/`npm run build` both clean. Not yet marked Done: got through login + TOTP enrollment in a live smoke test but hit the backend's 5/15min TOTP rate limiter before exercising the Catalog tab and Asset create/list/detail live; needs a manual pass (or a rerun after a backend restart) before flipping to Done. |
+| 4 — Check-Out / Return | Pending | `CheckInOutPage` is a `ComingSoon` stub. |
+| 5 — Maintenance | Pending | `MaintenancePage` is a `ComingSoon` stub. |
+| 6 — Audits | Pending | `AuditsListPage` renders mock audits; assigner/assignee/verifier workflow screens not built. |
+| 7 — People + Vendors | Pending | `PeoplePage` renders mock users; `VendorsPage` is a `ComingSoon` stub. |
+| 8 — Reports + Labels | Working on it | Labels' format picker is real and wired: `LabelsPage` renders 3 selectable previews (`features/labels/components/LabelPreview.tsx`) against real org/asset data, persists the org's choice via `PATCH /organizations/me/label-format`, and gates the Save action on `canManageOrg`. `ReportsPage` is still untouched, remains a `ComingSoon` stub. |
+| 9 — Settings | Done | Org profile, branding/theme (logo + colors, shared components with onboarding), catalog (categories/locations/departments CRUD) and a personal Appearance tab (light/dark/system, sidebar collapse) are real and wired; the whole page (not just individual tabs) is gated to `canManageSettings`/`canManageOrg` roles. |
+| 10 — Platform admin, full feature set | Pending | Base platform app (dashboard/orgs/suspend/quotas/alerts) landed in Phase 1; force-reset-password, impersonation, and the impersonation banner from this phase are not built. |
+| 11 — Polish / hardening | Pending | No route-level code-splitting yet (still a single bundle); no unified loading/empty/error states or tests yet. |
+
+Status last verified against the working tree on 2026-09-16 — re-check the actual code before
+trusting a row that looks old, the same caveat §4 applies to the phase descriptions themselves.
+
+---
+
 ## 0. What changed from the original plan
 
 **Only Tecres creates workspaces. There is no admin sign-up.**
@@ -106,7 +136,7 @@ Each phase below lists: the pages/routes it makes real, the exact backend endpoi
 has been smoke-tested against a locally running backend (`pnpm dev` in the backend repo) — not just
 against mock data.
 
-### Phase 1 — Auth foundation, platform admin (minimal), onboarding
+### Phase 1 — Auth foundation, platform admin (minimal), onboarding — Status: Done
 The gate every other phase sits behind. Nothing past `/login` is real until this lands.
 
 **Tenant auth**
@@ -159,14 +189,14 @@ removed — real role-based views come from actually logging in as different see
 
 ---
 
-### Phase 2 — Dashboard (real data)
+### Phase 2 — Dashboard (real data) — Status: Done
 - `GET /dashboard/stats`, `GET /dashboard/activity`, `GET /dashboard/charts` replace
   `buildMockDashboardStats`/`buildMockDashboardCharts`/`mockActivity` in `DashboardPage.tsx`. The
   component structure built in Phase 0 barely changes — only the data source.
 - Confirms value-hiding end to end: log in as a seeded `staff` user, verify the fleet-value card
   and value columns are simply absent (not zero/blank), matching plan §F.
 
-### Phase 3 — Assets + catalog dependencies
+### Phase 3 — Assets + catalog dependencies — Status: Working on it
 Assets can't exist without categories/locations/departments/vendors, so this phase does both:
 - Catalog CRUD pages (or a shared "Catalog" tab under Settings — decide layout when building):
   `GET/POST /categories`, `/locations`, `/departments`, `/vendors`, `PUT/DELETE /:id` each.
@@ -177,17 +207,17 @@ Assets can't exist without categories/locations/departments/vendors, so this pha
   `POST /assets`. Edit reuses the same form → `PUT /assets/:id`.
 - File/image upload on the asset form → `POST /files/upload`.
 
-### Phase 4 — Check-Out / Return
+### Phase 4 — Check-Out / Return — Status: Pending
 - `GET /assignments` (active + overdue), `POST /assignments/checkout`, `POST /assignments/checkin`,
   `GET /assignments/:id/receipt` (render client-side via `jspdf`, per backend's "no server-side PDF
   rendering" note).
 - Camera/barcode scan flow (`html5-qrcode`, already installed) wired to asset lookup by tag.
 
-### Phase 5 — Maintenance
+### Phase 5 — Maintenance — Status: Pending
 - `GET/POST /maintenance`, `PUT/DELETE /maintenance/:id`. Straightforward CRUD list/detail/modal,
   same pattern as Phase 3.
 
-### Phase 6 — Audits (the workflow, not just a list)
+### Phase 6 — Audits (the workflow, not just a list) — Status: Pending
 The highest-complexity phase — three distinct role-scoped screens, not one page:
 - **Assigner view** (`canAssignAudits`): create audit + scope (`POST /audits`), assign
   (`PATCH /audits/:id/assign`).
@@ -200,14 +230,14 @@ The highest-complexity phase — three distinct role-scoped screens, not one pag
   the post-verification report view.
 - `AuditsListPage` (already stubbed in Phase 0 with mock audits) switches to `GET /audits`.
 
-### Phase 7 — People + Vendors
+### Phase 7 — People + Vendors — Status: Pending
 - `PeoplePage` (already stubbed with mock users) → `GET /people`, edit/deactivate
   (`PUT/DELETE /people/:id`), invite (`POST /people/invite`) + a public
   `/invite/:token/accept` page (no auth — this is the "additional staff" onboarding path, distinct
   from the first-admin flow in Phase 1).
 - `VendorsPage` → real catalog CRUD, same pattern as Phase 3's catalog work.
 
-### Phase 8 — Reports + Labels
+### Phase 8 — Reports + Labels — Status: Pending
 
 #### Reports
 
@@ -276,13 +306,13 @@ right. Persist it per-org (reuse the existing `systemSettings` table — `key: "
 key/value config) so it's set once, not re-entered every print run. Render via
 `jspdf`/`jspdf-autotable`, same as the Reports PDF export.
 
-### Phase 9 — Settings
+### Phase 9 — Settings — Status: Pending
 - Org profile + branding re-edit (same endpoints as Phase 1's onboarding, different entry point —
   worth sharing the branding form component between onboarding and settings rather than duplicating
   it).
 - Catalog management consolidated here if not already split out in Phase 3.
 
-### Phase 10 — Platform admin, full feature set
+### Phase 10 — Platform admin, full feature set — Status: Pending
 - Force-reset-password (`POST /orgs/:id/users/:userId/force-reset`) and impersonation
   (`POST /orgs/:id/users/:userId/impersonate`) — both higher-blast-radius actions, deliberately
   sequenced after the read/create/suspend paths have been live and exercised.
@@ -290,7 +320,7 @@ key/value config) so it's set once, not re-entered every print run. Render via
   backend already stamps this into the JWT and every activity-log write during the session — the
   frontend just needs to surface it and offer an "end impersonation" action).
 
-### Phase 11 — Polish / hardening
+### Phase 11 — Polish / hardening — Status: Pending
 - Route-level code-splitting (`React.lazy` per feature) — flagged in Phase 0 as a known gap; the
   production bundle was a single ~965KB chunk with only Dashboard + Assets built, and it'll only
   grow.
@@ -317,3 +347,6 @@ key/value config) so it's set once, not re-entered every print run. Render via
 3. `tsc -b` clean and a production `npm run build` before calling a phase done, same bar as Phase 0.
 4. Smoke-test against a real running backend (`pnpm dev` in `asset-management-backend`, migrations
    + seed data applied) — a mock-passing UI is not evidence the wiring works.
+5. Update the **Status** table (and that phase's heading) at the top of this doc: flip to
+   "Working on it" when you start, "Done" only once steps 1-4 above actually pass. This is how
+   other people working in either repo know what's real right now without re-reading the code.

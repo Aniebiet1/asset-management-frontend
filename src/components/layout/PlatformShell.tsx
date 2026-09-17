@@ -1,10 +1,12 @@
 import type { ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Building2, AlertTriangle, LogOut, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Building2, AlertTriangle, LogOut } from "lucide-react";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/brand/Logo";
 import { usePlatformAuthStore } from "@/store/platformAuth.store";
 import { getInitials } from "@/lib/format";
+import { useTecresBrandTheme } from "@/features/platform/useTecresBrandTheme";
 
 const TABS = [
   { name: "Dashboard", href: "/platform", icon: LayoutDashboard, end: true },
@@ -21,6 +23,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const admin = usePlatformAuthStore((s) => s.admin);
   const clearSession = usePlatformAuthStore((s) => s.clearSession);
+  useTecresBrandTheme();
 
   if (!admin) return null;
 
@@ -34,9 +37,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
       <header className="border-b border-border">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
           <div className="flex items-center gap-2">
-            <div className="flex size-7 items-center justify-center rounded-md bg-foreground text-background">
-              <ShieldCheck className="size-4" />
-            </div>
+            <Logo variant="icon" size="sm" />
             <span className="text-sm font-semibold text-foreground">Tecres Platform</span>
           </div>
           <div className="flex items-center gap-3">
