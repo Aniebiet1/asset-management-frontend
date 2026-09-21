@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { platformApiFetch } from "@/lib/platform-api-client";
-import type { Organization, PlanStatus, PlatformAlert, PlatformOrgSummary } from "@/types";
+import type { ActivityLogEntry, FleetAnalytics, LoginRiskEntry, Organization, PlanStatus, PlatformAlert, PlatformOrgSummary, PlatformOrgUser } from "@/types";
 
 interface FleetStats {
   totalOrgs: number;
@@ -12,6 +12,13 @@ export function useFleetStatsQuery() {
   return useQuery({
     queryKey: ["platform", "stats"],
     queryFn: () => platformApiFetch<{ data: FleetStats }>("/platform/stats").then((r) => r.data),
+  });
+}
+
+export function useFleetAnalyticsQuery() {
+  return useQuery({
+    queryKey: ["platform", "analytics"],
+    queryFn: () => platformApiFetch<{ data: FleetAnalytics }>("/platform/analytics").then((r) => r.data),
   });
 }
 
@@ -80,6 +87,38 @@ export function useUpdateOrgQuotasMutation(orgId: string) {
       queryClient.invalidateQueries({ queryKey: ["platform", "orgs", "list"] });
       queryClient.invalidateQueries({ queryKey: ["platform", "orgs", "detail", orgId] });
     },
+  });
+}
+
+export function useOrgUsersQuery(orgId: string | undefined) {
+  return useQuery({
+    queryKey: ["platform", "orgs", "users", orgId],
+    queryFn: () => platformApiFetch<{ data: PlatformOrgUser[] }>(`/platform/orgs/${orgId}/users`).then((r) => r.data),
+    enabled: !!orgId,
+  });
+}
+
+export function useOrgActivityQuery(orgId: string | undefined) {
+  return useQuery({
+    queryKey: ["platform", "orgs", "activity", orgId],
+    queryFn: () => platformApiFetch<{ data: ActivityLogEntry[] }>(`/platform/orgs/${orgId}/activity`).then((r) => r.data),
+    enabled: !!orgId,
+  });
+}
+
+export function useForceResetPasswordMutation(orgId: string) {
+  return useMutation({
+    mutationFn: (userId: string) =>
+      platformApiFetch<{ message: string }>(`/platform/orgs/${orgId}/users/${userId}/force-reset`, { method: "POST" }),
+  });
+}
+
+export function useLoginRiskQuery() {
+  return useQuery({
+    queryKey: ["platform", "security", "login-risk"],
+    queryFn: () => platformApiFetch<{ data: LoginRiskEntry[] }>("/platform/security/login-risk").then((r) => r.data),
+    // Live risk state moves as attempts happen — refresh in the background while the dashboard's open.
+    refetchInterval: 60_000,
   });
 }
 

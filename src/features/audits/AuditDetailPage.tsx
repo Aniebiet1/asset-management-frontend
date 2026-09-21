@@ -1,8 +1,10 @@
 import { useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, ScanLine, ShieldCheck, UserCheck, XCircle } from "lucide-react";
+import { ArrowLeft, Camera, Download, Loader2, ScanLine, ShieldCheck, UserCheck, X, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,10 +13,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AuditItemStatusBadge, AuditStatusBadge, ConditionBadge } from "@/components/common/StatusBadge";
+import { BarcodeScanner } from "@/features/check-in-out/components/BarcodeScanner";
 import { hasPermission } from "@/lib/permissions";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { apiFetch } from "@/lib/api-client";
 import { ApiError } from "@/lib/http-error";
+import { resolveLogoDataUrl } from "@/lib/pdfLogo";
+import { useResolvedLogoSrc } from "@/lib/useResolvedLogoSrc";
 import {
   useAssignAuditMutation,
   useAuditHistoryQuery,
@@ -30,7 +35,7 @@ import {
 } from "@/features/audits/api";
 import { useCategoriesQuery, useDepartmentsQuery, useLocationsQuery } from "@/features/catalog/api";
 import { useAuthStore } from "@/store/auth.store";
-import type { AssetCondition, AuditItem, User } from "@/types";
+import type { AssetCondition, AuditItem, AuditReport, User } from "@/types";
 
 const NONE = "__none__";
 
@@ -57,6 +62,9 @@ function itemLabel(item: AuditItem): string {
 export function AuditDetailPage() {
   const { id } = useParams();
   const currentUser = useAuthStore((s) => s.currentUser);
+  const org = useAuthStore((s) => s.org);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const logoSrc = useResolvedLogoSrc(org?.logoUrl ?? null, accessToken);
 
   const { data, isLoading, isError } = useAuditQuery(id);
   const history = useAuditHistoryQuery(id);
@@ -170,13 +178,7 @@ export function AuditDetailPage() {
             <VerifyPanel auditId={audit.id} blockedBySelf={isSubmitter} />
           )}
           {audit.status === "verified" && (
-            <ReportPanel
-              isLoading={report.isLoading}
-              summary={report.data?.summary}
-              verifiedByName={audit.verifiedByName}
-              verifiedAt={audit.verifiedAt}
-              verifierRemark={audit.verifierRemark}
-            />
+            <ReportPanel isLoading={report.isLoading} report={report.data} orgName={org?.name} logoSrc={logoSrc} />
           )}
 
           <Card>
@@ -338,15 +340,14 @@ function ScanAndSubmitPanel({
   const [locationId, setLocationId] = useState(NONE);
   const [condition, setCondition] = useState(NONE);
   const [staffRemark, setStaffRemark] = useState("");
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scannerSessionKey, setScannerSessionKey] = useState(0);
   const tagInputRef = useRef<HTMLInputElement>(null);
 
   const scanAudit = useScanAuditMutation(auditId);
   const submitAudit = useSubmitAuditMutation(auditId);
 
-  async function handleScan(e: React.FormEvent) {
-    e.preventDefault();
-    const tag = scannedTag.trim();
-    if (!tag) return;
+  async function performScan(tag: string) {
     try {
       const result = await scanAudit.mutateAsync({
         scannedTag: tag,
@@ -354,11 +355,27 @@ function ScanAndSubmitPanel({
         condition: condition === NONE ? undefined : condition,
       });
       toast.success(`${result.asset.name}: ${result.status}`);
-      setScannedTag("");
-      tagInputRef.current?.focus();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Couldn't scan that asset tag.");
     }
+  }
+
+  async function handleScan(e: React.FormEvent) {
+    e.preventDefault();
+    const tag = scannedTag.trim();
+    if (!tag) return;
+    await performScan(tag);
+    setScannedTag("");
+    tagInputRef.current?.focus();
+  }
+
+  async function handleCameraDetected(text: string) {
+    const tag = text.trim();
+    if (!tag) return;
+    await performScan(tag);
+    // Re-mount the scanner so it keeps reading the next tag instead of stopping
+    // after one hit - audits are usually scanned item-by-item in one sitting.
+    setScannerSessionKey((k) => k + 1);
   }
 
   async function handleSubmit() {
@@ -379,7 +396,7 @@ function ScanAndSubmitPanel({
           <ScanLine className="size-4" />
           Scan assets
         </h2>
-        <form onSubmit={handleScan} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
+        <form onSubmit={handleScan} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_auto_auto_auto]">
           <Input
             ref={tagInputRef}
             autoFocus
@@ -413,11 +430,40 @@ function ScanAndSubmitPanel({
               ))}
             </SelectContent>
           </Select>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setScannerOpen((v) => !v)}
+          >
+            <Camera className="size-3.5" />
+            {scannerOpen ? "Close Camera" : "Use Camera"}
+          </Button>
           <Button type="submit" size="sm" className="gap-1.5" disabled={!scannedTag.trim() || scanAudit.isPending}>
             {scanAudit.isPending && <Loader2 className="size-3.5 animate-spin" />}
             Scan
           </Button>
         </form>
+
+        {scannerOpen && (
+          <div className="rounded-lg border border-dashed border-border p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-xs font-medium text-muted-foreground">Point the camera at a barcode or QR code</p>
+              <Button type="button" variant="ghost" size="icon-sm" onClick={() => setScannerOpen(false)}>
+                <X className="size-3.5" />
+              </Button>
+            </div>
+            <BarcodeScanner
+              key={scannerSessionKey}
+              onDetected={handleCameraDetected}
+              onError={(message) => {
+                toast.error(message);
+                setScannerOpen(false);
+              }}
+            />
+          </div>
+        )}
 
         <div className="border-t border-border pt-4">
           <p className="mb-1.5 text-xs font-medium text-muted-foreground">
@@ -551,34 +597,129 @@ function VerifyPanel({ auditId, blockedBySelf }: { auditId: string; blockedBySel
   );
 }
 
+const AUDIT_ITEM_STATUS_LABEL: Record<AuditItem["status"], string> = {
+  pending: "Pending",
+  matched: "Matched",
+  missing: "Missing",
+  relocated: "Relocated",
+  damaged: "Damaged",
+};
+
+/** Every verified audit gets a downloadable record: header facts, both required remarks, the
+ * summary tally and the full item roster, generated client-side (see CLAUDE.md's "no server-side
+ * PDF rendering" rule) the same way Check-Out/Return builds its receipt. Carries the org's own
+ * logo (not just its name) so a downloaded report is branded to whichever org produced it. */
+async function downloadAuditReportPdf(report: AuditReport, orgName: string | undefined, logoSrc: string | null) {
+  const { audit, items } = report;
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const logoDataUrl = await resolveLogoDataUrl(logoSrc);
+
+  const logoSize = 12;
+  let titleX = 14;
+  if (logoDataUrl) {
+    try {
+      doc.addImage(logoDataUrl, 14, 10, logoSize, logoSize);
+      titleX = 14 + logoSize + 4;
+    } catch {
+      // Unsupported image encoding for jsPDF - fall back to a text-only header.
+    }
+  }
+
+  doc.setFontSize(14);
+  doc.text(orgName ?? "TecresTrackIT AMS", titleX, 16);
+  doc.setFontSize(11);
+  doc.text("Physical Inventory Audit Report", titleX, 23);
+
+  doc.setFontSize(9);
+  const infoRows: [string, string][] = [
+    ["Audit Code", audit.code],
+    ["Audit Name", audit.name],
+    ["Scope", audit.scopeType === "all" ? "All assets" : audit.scopeType],
+    ["Assigned To", audit.assignedToName ?? "-"],
+    ["Assigned By", audit.assignedByName ?? "-"],
+    ["Submitted By", audit.submittedByName ?? "-"],
+    ["Submitted At", formatDateTime(audit.submittedAt)],
+    ["Verified By", audit.verifiedByName ?? "-"],
+    ["Verified At", formatDateTime(audit.verifiedAt)],
+    ["Staff Remark", audit.staffRemark ?? "-"],
+    ["Verifier Remark", audit.verifierRemark ?? "-"],
+  ];
+  let y = 31;
+  infoRows.forEach(([label, value]) => {
+    doc.setFont("helvetica", "bold");
+    doc.text(`${label}:`, 14, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(String(value), 55, y, { maxWidth: 140 });
+    y += 6;
+  });
+
+  y += 2;
+  autoTable(doc, {
+    startY: y,
+    head: [["Expected", "Scanned", "Matched", "Missing", "Discrepant"]],
+    body: [[audit.totalExpected, audit.totalScanned, audit.totalMatched, audit.totalMissing, audit.totalDiscrepant].map(String)],
+    styles: { fontSize: 9, halign: "center" },
+    headStyles: { fillColor: [38, 38, 38] },
+  });
+
+  autoTable(doc, {
+    startY: (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8,
+    head: [["Asset", "Tag", "Status", "Condition", "Scanned At"]],
+    body: items.map((item) => [
+      item.assetName ?? item.assetId,
+      item.assetTag ?? "-",
+      AUDIT_ITEM_STATUS_LABEL[item.status],
+      item.conditionFound ?? "-",
+      item.scannedAt ? formatDateTime(item.scannedAt) : "Not scanned",
+    ]),
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [38, 38, 38] },
+  });
+
+  doc.save(`audit-report-${audit.code}.pdf`);
+}
+
 function ReportPanel({
   isLoading,
-  summary,
-  verifiedByName,
-  verifiedAt,
-  verifierRemark,
+  report,
+  orgName,
+  logoSrc,
 }: {
   isLoading: boolean;
-  summary: { totalExpected: number; totalScanned: number; totalMatched: number; totalMissing: number; totalDiscrepant: number } | undefined;
-  verifiedByName: string | undefined;
-  verifiedAt: string | null;
-  verifierRemark: string | null;
+  report: AuditReport | undefined;
+  orgName: string | undefined;
+  logoSrc: string | null;
 }) {
+  const summary = report?.summary;
+
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
-        <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-          <ShieldCheck className="size-4" />
-          Audit report
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+            <ShieldCheck className="size-4" />
+            Audit report
+          </h2>
+          {report && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => void downloadAuditReportPdf(report, orgName, logoSrc)}
+            >
+              <Download className="size-3.5" />
+              Download report (PDF)
+            </Button>
+          )}
+        </div>
         <p className="text-xs text-muted-foreground">
-          Verified by {verifiedByName ?? "a verifier"} on {formatDate(verifiedAt)}
-          {verifierRemark ? `: "${verifierRemark}"` : "."}
+          Verified by {report?.audit.verifiedByName ?? "a verifier"} on {formatDate(report?.audit.verifiedAt ?? null)}
+          {report?.audit.verifierRemark ? `: "${report.audit.verifierRemark}"` : "."}
         </p>
         {isLoading ? (
           <Skeleton className="h-16 w-full" />
         ) : summary ? (
-          <div className="grid grid-cols-5 gap-3 rounded-lg border border-border bg-muted/30 p-3 text-center text-sm">
+          <div className="grid grid-cols-2 gap-3 rounded-lg border border-border bg-muted/30 p-3 text-center text-sm sm:grid-cols-5">
             <div>
               <p className="font-semibold text-foreground">{summary.totalExpected}</p>
               <p className="text-[11px] text-muted-foreground">Expected</p>

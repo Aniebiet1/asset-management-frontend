@@ -1,4 +1,4 @@
-# Tecres Asset Manager — Frontend Build Plan (Phased, Functionality-First)
+# TecresTrackIT AMS — Frontend Build Plan (Phased, Functionality-First)
 
 This supersedes the build-order thinking in `solid_implementation_plan.md` (kept for the full
 technical spec — schema, endpoints, security model) and the "mock UI first, wire it all up later"
@@ -28,32 +28,39 @@ so keep it honest; a stale table is worse than no table.
 |---|---|---|
 | 1 — Auth foundation, platform admin (minimal), onboarding | Done | Real login, TOTP enroll/challenge, onboarding wizard, and the minimal platform app are committed and wired. |
 | 2 — Dashboard (real data) | Done | Stats/charts/activity hit real endpoints (`features/dashboard/api.ts`); value-hiding confirmed for staff vs. admin; the Maintenance Due widget is still mock, which is expected, that's Phase 5's mock to remove, not this phase's. |
-| 3 — Assets + catalog dependencies | Working on it | Catalog CRUD (categories/locations/departments) lives under Settings > Catalog (`features/catalog/`); vendors stays read-only here (Phase 7 owns its write UI). `AssetsListPage`/`AssetDetailPage`/`AssetCreatePage`/new `AssetEditPage` are wired to real endpoints (`features/assets/api.ts`), including image upload and joined category/location/department/vendor/custodian names (added LEFT JOINs to `assets.service.ts`, which had none before). `tsc -b`/`npm run build` both clean. Not yet marked Done: got through login + TOTP enrollment in a live smoke test but hit the backend's 5/15min TOTP rate limiter before exercising the Catalog tab and Asset create/list/detail live; needs a manual pass (or a rerun after a backend restart) before flipping to Done. |
-| 4 — Check-Out / Return | Working on it | `CheckInOutPage` is wired to `features/check-in-out/api.ts`: search/scan (manual entry plus `html5-qrcode` camera scan) → checkout/checkin dialogs → active/overdue list with overdue highlighting → PDF receipt via `jspdf`. `tsc -b`/`npm run build` clean. Not yet Done: only the login/TOTP-challenge screens were click-through verified live, the actual checkout/checkin flow wasn't exercised against a running session (see the shared-account TOTP note below). |
+| 3 — Assets + catalog dependencies | Done | Catalog CRUD (categories/locations/departments) lives under Settings > Catalog (`features/catalog/`); vendors stays read-only here (Phase 7 owns its write UI). `AssetsListPage`/`AssetDetailPage`/`AssetCreatePage`/new `AssetEditPage` are wired to real endpoints (`features/assets/api.ts`), including image upload and joined category/location/department/vendor/custodian names (added LEFT JOINs to `assets.service.ts`, which had none before). `tsc -b`/`npm run build` both clean. **Live-verified 2026-09-18** against the k-cut org seeded with 80 real assets across 9 categories/6 locations: list (search/status/category/location filters, pagination), detail (tabs, QR label preview, joined names), edit and create forms all rendered correctly with no console errors. |
+| 4 — Check-Out / Return | Done | `CheckInOutPage` is wired to `features/check-in-out/api.ts`: search/scan (manual entry plus `html5-qrcode` camera scan) → checkout/checkin dialogs → active/overdue list with overdue highlighting → PDF receipt via `jspdf`. `tsc -b`/`npm run build` clean. **Live-verified 2026-09-18**: searched an asset by tag, checked it out to a custodian (toast + new row in Active check-outs), then checked in an existing overdue item (toast + row removed) — both real mutations against a running backend session on the k-cut org. |
 | 5 — Maintenance | Done | `MaintenancePage` wired to `features/maintenance/api.ts`, full CRUD with status filter, asset picker, overdue highlighting; Dashboard's Maintenance Due widget switched off `mockMaintenanceRecords` (now deleted from `mock-data.ts`) onto the same query. **Actually smoke-tested end to end against a live backend session**: create → status change → confirmed the asset's status and the Dashboard's "In Maintenance" KPI/chart both flip in response, not just the local UI. |
-| 6 — Audits | Working on it | Full assigner/assignee/verifier workflow built on a new `/audits/:id` (`AuditDetailPage`), ownership-checked assignee view, segregation-of-duties notice on the verifier view, history timeline, post-verification report panel. `mockAudits` deleted. `tsc -b`/`npm run build` clean. Not yet Done: only the login screen and the unauthenticated route-guard redirect were click-through verified live; the actual workflow wasn't exercised against a running session (see below). |
-| 7 — People + Vendors | Working on it | `PeoplePage` wired to `features/people/api.ts` (list/edit/deactivate/invite); new public `/invite/:token/accept` page; `VendorsPage` now reuses the existing `CatalogManager` component (categories/locations/departments' shared CRUD UI) with `canManageVendors`-gated fields matching the backend's `vendorCreateSchema`. `mockUsers` deleted. `tsc -b`/`npm run build` clean. Verified via a fully mocked Playwright pass (real `apiFetch`/TanStack Query code paths, stubbed network layer) rather than a live backend session, so it clears the bar below "Done": every People/Vendors/invite-accept flow rendered and functioned correctly against realistic fixtures, but not yet against the real API. |
-| 8 — Reports + Labels | Working on it | Labels is done (`LabelsPage`, real format picker, persists via `PATCH /organizations/me/label-format`). Reports is now built too: filter bar (category/location/custodian, purchase-date vs. depreciation-date mode matching the backend's real `dateField` param), server-side sort, client-side group-by (category/location/depreciation-bucket), CSV/Excel/PDF export, new shared `src/lib/depreciation.ts` (straight-line formula). The depreciation-range filter from this phase's original spec is deliberately **not built** since the backend doesn't support it yet (confirmed against `assetReportQuerySchema`/`buildAssetReportQuery`, only one `dateField` mode exists) — the UI has a visible notice explaining this instead of faking it client-side. `tsc -b`/`npm run build` clean. Not yet Done: build-verified and the depreciation formula was unit-verified standalone, but the live authenticated page wasn't click-through tested (see below). |
+| 6 — Audits | Working on it | Full assigner/assignee/verifier workflow built on a new `/audits/:id` (`AuditDetailPage`), ownership-checked assignee view, segregation-of-duties notice on the verifier view, history timeline, post-verification report panel. `mockAudits` deleted. `tsc -b`/`npm run build` clean. **Partially live-verified 2026-09-18**: list and detail pages (history timeline, verifier report panel, scoped items with joined asset names) render correctly against real seeded audits on k-cut, no console errors. Still not flipped to Done: the assign → start → submit → verify mutation sequence itself wasn't click-through exercised this pass (the seeded audits were inserted directly, not driven through the UI/API) — that's the remaining gap before this can close. |
+| 7 — People + Vendors | Working on it | `PeoplePage` wired to `features/people/api.ts` (list/edit/deactivate/invite); new public `/invite/:token/accept` page; `VendorsPage` now reuses the existing `CatalogManager` component (categories/locations/departments' shared CRUD UI) with `canManageVendors`-gated fields matching the backend's `vendorCreateSchema`. `mockUsers` deleted. `tsc -b`/`npm run build` clean. Verified via a fully mocked Playwright pass, and **the list views were additionally live-verified 2026-09-18** against k-cut's real 12 people (including an inactive user rendering correctly) and 5 vendors. Still not Done: invite/edit/deactivate and vendor create/edit mutations weren't exercised against the live backend this pass. |
+| 8 — Reports + Labels | Done | Labels is done (`LabelsPage`, real format picker, persists via `PATCH /organizations/me/label-format`). Reports is now built too: filter bar (category/location/custodian, purchase-date vs. depreciation-date mode matching the backend's real `dateField` param), server-side sort, client-side group-by (category/location/depreciation-bucket), CSV/Excel/PDF export, new shared `src/lib/depreciation.ts` (straight-line formula). The depreciation-range filter from this phase's original spec is deliberately **not built** since the backend doesn't support it yet (confirmed against `assetReportQuerySchema`/`buildAssetReportQuery`, only one `dateField` mode exists) — the UI has a visible notice explaining this instead of faking it client-side. `tsc -b`/`npm run build` clean. **Live-verified 2026-09-18** on k-cut's 80 seeded assets: Reports page rendered filtered/sorted real data with depreciation percentages; Labels format was selected and saved (real `PATCH` mutation), then a 22-asset selection generated correct barcode+QR label previews. |
 | 9 — Settings | Done | Org profile, branding/theme (logo + colors, shared components with onboarding), catalog (categories/locations/departments CRUD) and a personal Appearance tab (light/dark/system, sidebar collapse) are real and wired; the whole page (not just individual tabs) is gated to `canManageSettings`/`canManageOrg` roles. |
-| 10 — Platform admin, full feature set | Pending | Base platform app (dashboard/orgs/suspend/quotas/alerts) landed in Phase 1; force-reset-password, impersonation, and the impersonation banner from this phase are not built. |
+| 10 — Platform admin, full feature set | Done | Force-reset-password is wired end-to-end (`PlatformOrgDetailPage`'s new Users tab, gated to `platform_owner`). **Impersonation was built in this phase and removed again on 2026-09-19** at the product owner's call (legal exposure); see the Phase 10 section below for exactly what came out of each repo, and don't rebuild it. Dashboard rebuilt with real analytics (`GET /platform/analytics`): fleet growth chart, plan-status breakdown, a Risk & Health panel (suspended orgs, quota pressure, overdue maintenance, at-risk assets — each tile links into `/platform/orgs?risk=<filter>`), and a new "Detected login risk" panel (`GET /platform/security/login-risk`) showing which accounts are mid a failed-login spike, from where (IP, via a new per-attempt activity-log trail in `auth.service.ts`), and linking straight to that user in their org. New `GET /platform/orgs/:id/users` and `GET /platform/orgs/:id/activity` (already existed) back the Users/Activity tabs. `tsc -b`/`npm run build` both clean on the frontend, `tsc --noEmit` clean on the backend. **Live-verified 2026-09-18** via a throwaway `platform_owner` QA account (`platform.qa.tester@example.com`, seeded by the new `db/seedQaPlatformAdmin.ts`, same non-privileged-enrollment pattern as the k-cut tenant QA account): full click-through of login → TOTP enrollment → dashboard (all charts/panels rendering with real data, including a real 3-attempt login-risk entry generated against the k-cut QA tester) → org detail Users tab → Activity tab, platform session intact throughout. |
 | 11 — Polish / hardening | Pending | No route-level code-splitting yet (still a single bundle); no unified loading/empty/error states or tests yet. |
 
-**Why several rows above are "built, build-clean, not yet Done"**: Phases 4/6/8 were built and
-verified by `tsc -b`/`npm run build` but couldn't get a live click-through smoke test. The seeded
-demo tenant account already has TOTP enrolled from earlier phases' testing, and multiple agents
-building phases 4-8 in parallel were hitting it concurrently — nobody held a valid 6-digit code or
-recovery code for it, and correctly declined to read the secret out of the database or otherwise
-force past the wall to get one (that's exactly the kind of thing this repo's auth model is supposed
-to resist, see backend `CLAUDE.md`'s integration-test note). Two workarounds that stayed inside
-normal product flows *did* work when tried: Phase 5's agent registered its own throwaway org via
+**Why the remaining rows are "built, build-clean, not yet Done"**: Phases 6/7 were built and
+verified by `tsc -b`/`npm run build`, and now have live-verified read paths too (see table above),
+but their write/mutation flows (audit assign→submit→verify, people invite/edit/deactivate, vendor
+create/edit) still haven't been click-through exercised against a running backend session. The
+seeded demo tenant account already has TOTP enrolled from earlier phases' testing, and multiple
+agents building these phases in parallel were hitting it concurrently — nobody held a valid 6-digit
+code or recovery code for it, and correctly declined to read the secret out of the database or
+otherwise force past the wall to get one (that's exactly the kind of thing this repo's auth model is
+supposed to resist, see backend `CLAUDE.md`'s integration-test note). Workarounds that stayed inside
+normal product flows have worked when tried: Phase 5's agent registered its own throwaway org via
 the public signup endpoint and completed that org's own TOTP enrollment normally (the secret is
 shown on-screen during enrollment, that's not privileged); Phase 7's agent got equivalent coverage
 by mocking the network boundary in Playwright while exercising the real `apiFetch`/TanStack Query
-code paths. If you want full live verification across the rest, either path works, or seed a
-dedicated non-TOTP-enrolled test account for agent-driven smoke testing so this stops being
-one-shot-only per account.
+code paths; most recently (2026-09-18) an agent seeded the real k-cut org with a full realistic
+dataset (80 assets, 12 people, 5 vendors, 9 maintenance records, 4 audits, etc. — a barbershop-chain
+domain matching k-cut's existing categories/locations) and added a dedicated non-TOTP-enrolled
+`kcut.qa.tester@example.com` super_admin account *inside that org* (direct DB insert, same pattern
+as `db/seed.ts`) specifically so agents can log in and click through the real app without touching
+the actual admin's enrolled TOTP credential. That accomplished the "seed a dedicated non-TOTP-
+enrolled test account" suggestion below and is why Phases 3/4/8 could move to Done this round — use
+that same account for further live verification rather than re-deriving a workaround.
 
-Status last verified against the working tree on 2026-09-17 — re-check the actual code before
+Status last verified against the working tree on 2026-09-18 — re-check the actual code before
 trusting a row that looks old, the same caveat §4 applies to the phase descriptions themselves.
 
 ---
@@ -193,8 +200,8 @@ The gate every other phase sits behind. Nothing past `/login` is real until this
 - `/platform/orgs/:id` — detail: usage vs. quota, plan status, activity (`GET /platform/orgs/:id`,
   `GET /platform/orgs/:id/activity`), and the action buttons this phase wires:
   suspend/reactivate (`PATCH /orgs/:id/status`), adjust quotas (`PATCH /orgs/:id/quotas`).
-  Force-reset-password and impersonate are Phase 10 (lower urgency, higher blast radius — get the
-  read paths and org creation solid first).
+  Force-reset-password is Phase 10 (lower urgency, higher blast radius — get the read paths and
+  org creation solid first).
 - `/platform/alerts` — `GET /platform/alerts`, resolve via `PATCH /platform/alerts/:id/resolve`.
 
 **Mock data removed**: `mockCurrentUser`, `mockOrg` as static defaults for `auth.store` (the store
@@ -211,7 +218,7 @@ removed — real role-based views come from actually logging in as different see
 - Confirms value-hiding end to end: log in as a seeded `staff` user, verify the fleet-value card
   and value columns are simply absent (not zero/blank), matching plan §F.
 
-### Phase 3 — Assets + catalog dependencies — Status: Working on it
+### Phase 3 — Assets + catalog dependencies — Status: Done
 Assets can't exist without categories/locations/departments/vendors, so this phase does both:
 - Catalog CRUD pages (or a shared "Catalog" tab under Settings — decide layout when building):
   `GET/POST /categories`, `/locations`, `/departments`, `/vendors`, `PUT/DELETE /:id` each.
@@ -222,7 +229,7 @@ Assets can't exist without categories/locations/departments/vendors, so this pha
   `POST /assets`. Edit reuses the same form → `PUT /assets/:id`.
 - File/image upload on the asset form → `POST /files/upload`.
 
-### Phase 4 — Check-Out / Return — Status: Working on it
+### Phase 4 — Check-Out / Return — Status: Done
 - `GET /assignments` (active + overdue), `POST /assignments/checkout`, `POST /assignments/checkin`,
   `GET /assignments/:id/receipt` (render client-side via `jspdf`, per backend's "no server-side PDF
   rendering" note).
@@ -252,7 +259,7 @@ The highest-complexity phase — three distinct role-scoped screens, not one pag
   from the first-admin flow in Phase 1).
 - `VendorsPage` → real catalog CRUD, same pattern as Phase 3's catalog work.
 
-### Phase 8 — Reports + Labels — Status: Working on it
+### Phase 8 — Reports + Labels — Status: Done
 
 #### Reports
 
@@ -327,13 +334,34 @@ key/value config) so it's set once, not re-entered every print run. Render via
   it).
 - Catalog management consolidated here if not already split out in Phase 3.
 
-### Phase 10 — Platform admin, full feature set — Status: Pending
-- Force-reset-password (`POST /orgs/:id/users/:userId/force-reset`) and impersonation
-  (`POST /orgs/:id/users/:userId/impersonate`) — both higher-blast-radius actions, deliberately
-  sequenced after the read/create/suspend paths have been live and exercised.
-- Impersonation banner in the tenant `AppShell` when an access token carries `impersonatedBy` (the
-  backend already stamps this into the JWT and every activity-log write during the session — the
-  frontend just needs to surface it and offer an "end impersonation" action).
+### Phase 10 — Platform admin, full feature set — Status: Done
+- Force-reset-password (`POST /orgs/:id/users/:userId/force-reset`) is wired into a new Users tab
+  on `PlatformOrgDetailPage`, behind a confirmation dialog and gated to `platform_owner` in the
+  UI (the backend's `authorizePlatformAdmin` is still the real boundary).
+- **Impersonation was built in this phase and has since been removed entirely, at the product
+  owner's call, on the grounds that signing into a customer's account as them is a legal exposure
+  no support convenience justifies.** Removed from both repos: the tenant banner, the
+  `auth.store.ts` `impersonation` state and `startImpersonatedSession`, the org-detail action and
+  dialog, and on the backend `POST /platform/orgs/:id/users/:userId/impersonate`,
+  `impersonateOrgUser`, the `canImpersonate` permission and the `impersonatedBy` JWT claim. Don't
+  reintroduce any of it without that decision being revisited; force-reset-password is the
+  supported "get into a stuck account" path, because it's visible to the account's owner.
+- Fleet-wide analytics (`GET /platform/analytics`): 6-month org/asset growth, plan-status
+  breakdown, and a risk summary (suspended orgs, orgs near asset/user quota, fleet-wide overdue
+  maintenance, damaged/lost/retired assets) — all real queries in `platform.service.ts`, no mock
+  data. Each risk tile links into `/platform/orgs?risk=<filter>`; the two asset-level tiles are
+  answered by the `orgIdsWithOverdueMaintenance` / `orgIdsWithRiskyAssets` lists the analytics
+  payload carries for exactly that reason. The "plans expiring within 30 days" metric was dropped
+  from both the tile row and the backend payload.
+- Detected login risk (`GET /platform/security/login-risk`): surfaces which accounts are
+  currently mid a failed-login spike (`users.failedLoginAttempts > 0`), which org they're in, and
+  an IP trail — sourced from a new per-attempt `activityLogs` write in `auth.service.ts` (`login_failed`
+  / `login_failed_lockout` / `login_blocked_locked`) that didn't exist before this phase; previously
+  only the lockout *counter* existed, with no record of who attempted from where. Surfaced as its own
+  dashboard panel and cross-linked from the existing `failed_login_spike` alerts (which now also carry
+  `orgName`, via a join `listAlerts()` was missing).
+- `GET /platform/orgs/:id/users` is new (needed to populate the force-reset picker);
+  `GET /platform/orgs/:id/activity` already existed and is now surfaced in an Activity tab.
 
 ### Phase 11 — Polish / hardening — Status: Pending
 - Route-level code-splitting (`React.lazy` per feature) — flagged in Phase 0 as a known gap; the

@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Loader2, Mail, UserX } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "cn";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -162,96 +163,166 @@ export function PeoplePage() {
         }
       />
 
-      <Card className="overflow-hidden p-0">
-        {people.isLoading ? (
+      {people.isLoading ? (
+        <Card className="overflow-hidden p-0">
           <div className="space-y-2 p-4">
             <Skeleton className="h-12 w-full" />
             <Skeleton className="h-12 w-full" />
             <Skeleton className="h-12 w-full" />
           </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>Name</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Employee ID</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Status</TableHead>
-                {canManage && <TableHead className="text-right">Actions</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={canManage ? 7 : 6} className="py-10 text-center text-sm text-muted-foreground">
-                    No people yet.
-                  </TableCell>
+        </Card>
+      ) : rows.length === 0 ? (
+        <Card>
+          <CardContent className="py-16 text-center text-sm text-muted-foreground">No people yet.</CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Desktop table */}
+          <Card className="hidden overflow-hidden p-0 lg:block">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Name</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Employee ID</TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Department</TableHead>
+                  <TableHead>Status</TableHead>
+                  {canManage && <TableHead className="text-right">Actions</TableHead>}
                 </TableRow>
-              )}
-              {rows.map((u) => (
-                <TableRow key={u.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-foreground">
-                        {getInitials(u.name)}
-                      </div>
-                      <div>
-                        <p className="font-medium text-foreground">{u.name}</p>
-                        <p className="text-xs text-muted-foreground">{u.email}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{roleLabelMap[u.role]}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{u.employeeId}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{u.title ?? "-"}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {u.departmentId ? (departmentMap.get(u.departmentId) ?? "-") : "-"}
-                  </TableCell>
-                  <TableCell>
-                    <span className={"text-xs font-medium " + (u.isActive ? "text-emerald-400" : "text-muted-foreground")}>
-                      {u.isActive ? "Active" : "Inactive"}
-                    </span>
-                  </TableCell>
-                  {canManage && (
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button type="button" variant="outline" size="sm" onClick={() => openEdit(u)}>
-                          Edit
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          disabled={u.id === currentUser?.id || !u.isActive}
-                          title={u.id === currentUser?.id ? "You can't deactivate your own account." : undefined}
-                          className="gap-1 text-destructive hover:text-destructive"
-                          onClick={() => setDeactivateTarget(u)}
-                        >
-                          <UserX className="size-3.5" />
-                          Deactivate
-                        </Button>
+              </TableHeader>
+              <TableBody>
+                {rows.map((u) => (
+                  <TableRow key={u.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-foreground">
+                          {getInitials(u.name)}
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">{u.name}</p>
+                          <p className="text-xs text-muted-foreground">{u.email}</p>
+                        </div>
                       </div>
                     </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{roleLabelMap[u.role]}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{u.employeeId}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{u.title ?? "-"}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {u.departmentId ? (departmentMap.get(u.departmentId) ?? "-") : "-"}
+                    </TableCell>
+                    <TableCell>
+                      <span className={"text-xs font-medium " + (u.isActive ? "text-emerald-400" : "text-muted-foreground")}>
+                        {u.isActive ? "Active" : "Inactive"}
+                      </span>
+                    </TableCell>
+                    {canManage && (
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button type="button" variant="outline" size="sm" onClick={() => openEdit(u)}>
+                            Edit
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={u.id === currentUser?.id || !u.isActive}
+                            title={u.id === currentUser?.id ? "You can't deactivate your own account." : undefined}
+                            className="gap-1 text-destructive hover:text-destructive"
+                            onClick={() => setDeactivateTarget(u)}
+                          >
+                            <UserX className="size-3.5" />
+                            Deactivate
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+
+          {/* Mobile cards */}
+          <div className="space-y-3 lg:hidden">
+            {rows.map((u) => (
+              <Card key={u.id}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-semibold text-foreground">
+                        {getInitials(u.name)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-foreground">{u.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">{u.email}</p>
+                      </div>
+                    </div>
+                    <span
+                      className={cn(
+                        "shrink-0 text-xs font-medium",
+                        u.isActive ? "text-emerald-400" : "text-muted-foreground"
+                      )}
+                    >
+                      {u.isActive ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+                    <div>
+                      <p className="text-muted-foreground">Role</p>
+                      <p className="font-medium text-foreground">{roleLabelMap[u.role]}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Employee ID</p>
+                      <p className="font-medium text-foreground">{u.employeeId}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Title</p>
+                      <p className="truncate font-medium text-foreground">{u.title ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Department</p>
+                      <p className="truncate font-medium text-foreground">
+                        {u.departmentId ? (departmentMap.get(u.departmentId) ?? "-") : "-"}
+                      </p>
+                    </div>
+                  </div>
+                  {canManage && (
+                    <div className="mt-3 flex items-center gap-2">
+                      <Button type="button" variant="outline" size="sm" className="flex-1" onClick={() => openEdit(u)}>
+                        Edit
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={u.id === currentUser?.id || !u.isActive}
+                        title={u.id === currentUser?.id ? "You can't deactivate your own account." : undefined}
+                        className="flex-1 gap-1 text-destructive hover:text-destructive"
+                        onClick={() => setDeactivateTarget(u)}
+                      >
+                        <UserX className="size-3.5" />
+                        Deactivate
+                      </Button>
+                    </div>
                   )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </Card>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
 
       <Dialog open={!!editing} onOpenChange={(open) => !open && closeEdit()}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit {editing?.name}</DialogTitle>
             <DialogDescription>Update this person's role, title, department, or status.</DialogDescription>
           </DialogHeader>
           {editForm && (
             <form onSubmit={handleEditSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-x-3 gap-y-3">
-                <FormField label="Name" htmlFor="edit-name" required className="col-span-2">
+              <div className="grid grid-cols-1 gap-x-3 gap-y-3 sm:grid-cols-2">
+                <FormField label="Name" htmlFor="edit-name" required className="sm:col-span-2">
                   <Input
                     id="edit-name"
                     value={editForm.name}
@@ -308,7 +379,7 @@ export function PeoplePage() {
                     onChange={(e) => setEditForm((f) => f && { ...f, phone: e.target.value })}
                   />
                 </FormField>
-                <FormField label="Active" htmlFor="edit-active" className="col-span-2">
+                <FormField label="Active" htmlFor="edit-active" className="sm:col-span-2">
                   <div className="flex items-center gap-2">
                     <Switch
                       id="edit-active"

@@ -182,16 +182,18 @@ export function DashboardPage() {
               <CardSpinner />
             ) : (
               <>
-                <ResponsiveContainer width="55%" height="100%">
-                  <PieChart>
-                    <Pie data={charts?.byStatus ?? []} dataKey="count" nameKey="status" innerRadius={45} outerRadius={70} paddingAngle={2}>
-                      {(charts?.byStatus ?? []).map((entry, i) => (
-                        <Cell key={entry.status} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} />
-                  </PieChart>
-                </ResponsiveContainer>
+                <div className="h-full w-[55%] shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={charts?.byStatus ?? []} dataKey="count" nameKey="status" innerRadius={45} outerRadius={70} paddingAngle={2}>
+                        {(charts?.byStatus ?? []).map((entry, i) => (
+                          <Cell key={entry.status} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
                 <div className="flex flex-1 flex-col gap-1.5">
                   {(charts?.byStatus ?? []).map((entry) => (
                     <div key={entry.status} className="flex items-center justify-between text-xs">
@@ -211,7 +213,7 @@ export function DashboardPage() {
         <Card className="lg:col-span-3">
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle className="text-sm font-semibold">Recent Activity</CardTitle>
-            <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
+            <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
               <Link to="/reports">View all</Link>
             </Button>
           </CardHeader>
@@ -243,7 +245,7 @@ export function DashboardPage() {
         <Card className="lg:col-span-2">
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle className="text-sm font-semibold">Maintenance Due</CardTitle>
-            <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
+            <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
               <Link to="/maintenance">View all</Link>
             </Button>
           </CardHeader>

@@ -35,7 +35,11 @@ export function Logo({ variant = "full", size = "md", className, logoUrl, orgNam
         </div>
       );
     }
-    return <img src={logoUrl} alt={orgName ?? "Organization logo"} className={cn("w-auto select-none", className)} style={{ height: fullHeights[size] }} />;
+    return (
+      <div className={cn("flex max-w-full items-center select-none", className)} style={{ height: fullHeights[size] }}>
+        <img src={logoUrl} alt={orgName ?? "Organization logo"} className="h-full w-auto max-w-full object-contain" />
+      </div>
+    );
   }
 
   if (orgName) {
@@ -65,11 +69,8 @@ export function Logo({ variant = "full", size = "md", className, logoUrl, orgNam
   }
 
   return (
-    <img
-      src={TECRES_DEFAULT_LOGO_URL}
-      alt="Tecres Asset Manager"
-      className={cn("w-auto select-none", className)}
-      style={{ height: fullHeights[size] }}
-    />
+    <div className={cn("flex max-w-full items-center select-none", className)} style={{ height: fullHeights[size] }}>
+      <img src={TECRES_DEFAULT_LOGO_URL} alt="TecresTrackIT AMS" className="h-full w-auto max-w-full object-contain" />
+    </div>
   );
 }

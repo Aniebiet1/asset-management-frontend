@@ -2,6 +2,7 @@
 import { Camera, Loader2, Printer, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,6 +24,9 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { hasPermission } from "@/lib/permissions";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { ApiError } from "@/lib/http-error";
+import { resolveLogoDataUrl } from "@/lib/pdfLogo";
+import { hexToRgb, readableForeground } from "@/lib/color";
+import { useResolvedLogoSrc } from "@/lib/useResolvedLogoSrc";
 import { useAssetsQuery } from "@/features/assets/api";
 import {
   fetchReceipt,
@@ -52,6 +56,8 @@ function errorMessage(err: unknown, fallback: string): string {
 export function CheckInOutPage() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const org = useAuthStore((s) => s.org);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const logoSrc = useResolvedLogoSrc(org?.logoUrl ?? null, accessToken);
   const canCheckInOut = hasPermission(currentUser?.role, "canCheckInOut");
 
   const [inputValue, setInputValue] = useState("");
@@ -174,15 +180,68 @@ export function CheckInOutPage() {
       const asset = assetsById.get(receipt.assetId);
       const person = peopleById.get(receipt.userId);
       const doc = new jsPDF({ unit: "mm", format: "a5" });
+      const logoDataUrl = await resolveLogoDataUrl(logoSrc);
 
-      doc.setFontSize(14);
-      doc.text(org?.name ?? "Tecres Asset Manager", 12, 16);
-      doc.setFontSize(11);
-      doc.text("Asset Check-Out Receipt", 12, 24);
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const marginX = 12;
 
+      const primaryRgb = hexToRgb(org?.primaryColor ?? "") ?? [23, 23, 23];
+      const bandForeground = readableForeground(org?.primaryColor ?? "#171717");
+      const foregroundRgb = hexToRgb(bandForeground) ?? [250, 250, 250];
+      const isReturned = Boolean(receipt.returnedAt);
+      const statusLabel = isReturned ? "RETURNED" : "ACTIVE";
+      const statusRgb: [number, number, number] = isReturned ? [5, 150, 105] : [37, 99, 235];
+      const conditionRgb: Record<AssetCondition, [number, number, number]> = {
+        excellent: [5, 150, 105],
+        good: [37, 99, 235],
+        fair: [217, 119, 6],
+        poor: [234, 88, 12],
+        damaged: [220, 38, 38],
+      };
+
+      // Header band, tinted with the org's brand color so the receipt matches the app theme.
+      const bandHeight = 30;
+      doc.setFillColor(...(primaryRgb as [number, number, number]));
+      doc.rect(0, 0, pageWidth, bandHeight, "F");
+
+      let titleX = marginX;
+      if (logoDataUrl) {
+        try {
+          doc.addImage(logoDataUrl, marginX, 8, 13, 13);
+          titleX = marginX + 13 + 4;
+        } catch {
+          // Unsupported image encoding for jsPDF - fall back to a text-only header.
+        }
+      }
+
+      doc.setTextColor(...(foregroundRgb as [number, number, number]));
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.text(org?.name ?? "TecresTrackIT AMS", titleX, 15);
+      doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
+      doc.text("Asset Check-Out Receipt", titleX, 21.5);
+
+      // Status pill, top right of the band.
+      const pillLabel = statusLabel;
+      doc.setFontSize(7.5);
+      doc.setFont("helvetica", "bold");
+      const pillTextWidth = doc.getTextWidth(pillLabel);
+      const pillWidth = pillTextWidth + 8;
+      const pillX = pageWidth - marginX - pillWidth;
+      doc.setFillColor(...statusRgb);
+      doc.roundedRect(pillX, 8, pillWidth, 6.5, 1.5, 1.5, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.text(pillLabel, pillX + pillWidth / 2, 12.4, { align: "center" });
+
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...(foregroundRgb as [number, number, number]));
+      doc.text(`No. ${receipt.receiptNo ?? receipt.id}`, pageWidth - marginX, 20, { align: "right" });
+
+      // Info table.
       const rows: [string, string][] = [
-        ["Receipt No.", receipt.receiptNo ?? receipt.id],
         ["Asset", asset ? `${asset.name} (${asset.assetTag})` : receipt.assetId],
         ["Custodian", person?.name ?? receipt.userId],
         ["Checked Out", formatDateTime(receipt.assignedAt)],
@@ -192,12 +251,58 @@ export function CheckInOutPage() {
       ];
       if (receipt.notes) rows.push(["Notes", receipt.notes]);
 
-      let y = 34;
-      rows.forEach(([label, value]) => {
-        doc.text(`${label}:`, 12, y);
-        doc.text(String(value), 48, y, { maxWidth: 60 });
-        y += 8;
+      autoTable(doc, {
+        startY: bandHeight + 8,
+        margin: { left: marginX, right: marginX },
+        body: rows,
+        theme: "plain",
+        styles: { fontSize: 9.5, cellPadding: { top: 3.2, bottom: 3.2, left: 0, right: 2 }, lineColor: [230, 230, 230] },
+        columnStyles: {
+          0: { fontStyle: "bold", textColor: [115, 115, 115], cellWidth: 38 },
+          1: { textColor: [23, 23, 23] },
+        },
+        didParseCell: (data) => {
+          if (data.section !== "body" || data.column.index !== 1) return;
+          const label = rows[data.row.index]?.[0];
+          if (label === "Condition Out") {
+            data.cell.styles.textColor = conditionRgb[receipt.conditionOut as AssetCondition] ?? [23, 23, 23];
+            data.cell.styles.fontStyle = "bold";
+          }
+          if (label === "Returned") {
+            data.cell.styles.textColor = statusRgb;
+            data.cell.styles.fontStyle = "bold";
+          }
+        },
+        didDrawCell: (data) => {
+          if (data.section !== "body" || data.row.index === rows.length - 1) return;
+          doc.setDrawColor(230, 230, 230);
+          doc.line(marginX, data.cell.y + data.cell.height, pageWidth - marginX, data.cell.y + data.cell.height);
+        },
       });
+
+      const finalY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
+
+      // Signature line for physical custody handoff.
+      const sigY = Math.max(finalY + 24, pageHeight - 34);
+      doc.setDrawColor(180, 180, 180);
+      doc.line(marginX, sigY, marginX + 58, sigY);
+      doc.line(pageWidth - marginX - 40, sigY, pageWidth - marginX, sigY);
+      doc.setFontSize(7.5);
+      doc.setTextColor(115, 115, 115);
+      doc.text("Custodian signature", marginX, sigY + 4);
+      doc.text("Date", pageWidth - marginX - 40, sigY + 4);
+
+      // Footer.
+      doc.setDrawColor(230, 230, 230);
+      doc.line(marginX, pageHeight - 14, pageWidth - marginX, pageHeight - 14);
+      doc.setFontSize(7);
+      doc.setTextColor(150, 150, 150);
+      doc.text(
+        `Generated by ${org?.name ?? "TecresTrackIT AMS"} on ${formatDateTime(new Date().toISOString())}`,
+        pageWidth / 2,
+        pageHeight - 9,
+        { align: "center" }
+      );
 
       doc.save(`receipt-${receipt.receiptNo ?? receipt.id}.pdf`);
       toast.success("Receipt downloaded");

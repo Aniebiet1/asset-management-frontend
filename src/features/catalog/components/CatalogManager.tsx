@@ -55,6 +55,7 @@ function fieldValue(item: unknown, name: string): unknown {
 export function CatalogManager<T extends CatalogItem>({
   resourceLabel,
   description,
+  showHeading = true,
   items,
   isLoading,
   fields,
@@ -65,7 +66,9 @@ export function CatalogManager<T extends CatalogItem>({
   onDelete,
 }: {
   resourceLabel: string;
-  description: string;
+  description?: string;
+  /** Set false when the page's own title already names this resource, so it isn't repeated. */
+  showHeading?: boolean;
   items: T[] | undefined;
   isLoading: boolean;
   fields: CatalogFieldConfig[];
@@ -171,8 +174,8 @@ export function CatalogManager<T extends CatalogItem>({
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold text-foreground">{resourceLabel} list</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          {showHeading && <h2 className="text-base font-semibold text-foreground">{resourceLabel} list</h2>}
+          {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
         </div>
         {canManage && (
           <Button type="button" size="sm" className="shrink-0 gap-1.5" onClick={openCreate}>
@@ -223,15 +226,15 @@ export function CatalogManager<T extends CatalogItem>({
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
               {editing ? `Edit ${resourceLabel.toLowerCase()}` : `Add ${resourceLabel.toLowerCase()}`}
             </DialogTitle>
-            <DialogDescription>{description}</DialogDescription>
+            {description && <DialogDescription>{description}</DialogDescription>}
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-x-3 gap-y-3">
+            <div className="grid grid-cols-1 gap-x-3 gap-y-3 sm:grid-cols-2">
               {fields.map((f) => (
                 <FormField
                   key={f.name}
@@ -239,7 +242,7 @@ export function CatalogManager<T extends CatalogItem>({
                   htmlFor={f.name}
                   required={f.required}
                   hint={f.hint}
-                  className={cn(isFullWidthField(f) && "col-span-2")}
+                  className={cn(isFullWidthField(f) && "sm:col-span-2")}
                 >
                   {f.type === "textarea" ? (
                     <Textarea

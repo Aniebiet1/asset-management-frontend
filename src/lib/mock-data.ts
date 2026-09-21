@@ -1,4 +1,4 @@
-import type { CurrentUser, Organization, AppNotification } from "@/types";
+import type { CurrentUser, Organization } from "@/types";
 
 /**
  * Phase 1 mock data — shaped exactly to the real API's `{ data }` envelope and entity
@@ -47,10 +47,4 @@ export const mockCurrentUser: CurrentUser = {
   createdAt: "2026-01-10T09:00:00Z",
   updatedAt: "2026-01-10T09:00:00Z",
 };
-
-export const mockNotifications: AppNotification[] = [
-  { id: "ntf_1", orgId: "org_1", userId: "user_1", title: "Audit submitted for review", message: "Grace Okafor submitted \"Warehouse 2 Spot Check\" for your verification.", type: "info", isRead: false, link: "/audits", createdAt: "2026-01-08T15:05:00Z" },
-  { id: "ntf_2", orgId: "org_1", userId: "user_1", title: "Maintenance overdue", message: "\"Cisco Catalyst 9200 Switch\" firmware upgrade is due in 5 days.", type: "warning", isRead: false, link: "/maintenance", createdAt: "2026-01-13T08:00:00Z" },
-  { id: "ntf_3", orgId: "org_1", userId: "user_1", title: "Asset reported lost", message: "\"iPhone 15 Pro\" (ACME-AST-0007) was marked lost during a stock count.", type: "danger", isRead: true, link: "/assets/ast_7", createdAt: "2026-01-14T11:20:00Z" },
-];
 

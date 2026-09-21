@@ -6,7 +6,7 @@ import { AssetForm } from "@/features/assets/components/AssetForm";
 
 export function AssetCreatePage() {
   return (
-    <div>
+    <div className="mx-auto max-w-4xl">
       <Button variant="ghost" size="sm" className="mb-3 gap-1.5 text-xs" asChild>
         <Link to="/assets">
           <ArrowLeft className="size-3.5" />

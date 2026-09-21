@@ -91,6 +91,20 @@ export interface Organization {
 
 export type LabelFormat = NonNullable<Organization["labelFormat"]>;
 
+export interface LabelSheetLayout {
+  labelWidthMm: number;
+  labelHeightMm: number;
+  columns: number;
+  rows: number;
+  marginTopMm: number;
+  marginRightMm: number;
+  marginBottomMm: number;
+  marginLeftMm: number;
+  gapHorizontalMm: number;
+  gapVerticalMm: number;
+  pageSize: "a4" | "letter";
+}
+
 // ---------------------------------------------------------------------------
 // Catalog: departments / locations / categories / vendors
 // ---------------------------------------------------------------------------
@@ -299,6 +313,7 @@ export interface Audit {
 
   assignedToName?: string;
   assignedByName?: string;
+  submittedByName?: string;
   verifiedByName?: string;
 }
 
@@ -431,6 +446,46 @@ export interface PlatformOrgSummary {
   userCount: number;
   userQuota: number;
   lastActivityAt: string | null;
+}
+
+export interface FleetAnalytics {
+  growth: { month: string; newOrgs: number; newAssets: number }[];
+  planBreakdown: { active: number; suspended: number; expired: number };
+  risk: {
+    suspendedOrgs: number;
+    orgsNearAssetQuota: number;
+    orgsNearUserQuota: number;
+    overdueMaintenance: number;
+    riskyAssets: number;
+    /** Org ids behind the two asset-level counts above, so the dashboard's risk tiles can deep-link
+     * into a filtered organization list. */
+    orgIdsWithOverdueMaintenance: string[];
+    orgIdsWithRiskyAssets: string[];
+  };
+}
+
+export interface LoginRiskEntry {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  orgId: string;
+  orgName: string;
+  failedLoginAttempts: number;
+  isLocked: boolean;
+  lockedUntil: string | null;
+  lastIp: string | null;
+  lastAttemptAt: string | null;
+  distinctIpCount: number;
+}
+
+export interface PlatformOrgUser {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  isActive: boolean;
+  totpEnabled: boolean;
+  createdAt: string;
 }
 
 // ---------------------------------------------------------------------------

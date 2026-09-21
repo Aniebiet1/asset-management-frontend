@@ -44,7 +44,7 @@ export function VendorsPage() {
       />
       <CatalogManager<Vendor>
         resourceLabel="Vendor"
-        description="Vendors and suppliers your organization purchases assets or services from."
+        showHeading={false}
         items={vendors.data}
         isLoading={vendors.isLoading}
         fields={vendorFields}

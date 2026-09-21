@@ -1,4 +1,4 @@
-function hexToRgb(hex: string): [number, number, number] | null {
+export function hexToRgb(hex: string): [number, number, number] | null {
   const clean = hex.trim().replace("#", "");
   if (!/^[0-9a-fA-F]{6}$/.test(clean)) return null;
   return [parseInt(clean.slice(0, 2), 16), parseInt(clean.slice(2, 4), 16), parseInt(clean.slice(4, 6), 16)];

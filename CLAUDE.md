@@ -1,6 +1,6 @@
 # CLAUDE.md — asset-management-frontend
 
-Tecres Asset Manager's frontend: a Vite + React 19 SPA. See `BUILD_PLAN.md` for the phased build
+TecresTrackIT AMS's frontend: a Vite + React 19 SPA. See `BUILD_PLAN.md` for the phased build
 order (start there — it's the current source of truth for "what's real vs. mock right now") and
 `solid_implementation_plan.md` for the full technical spec it's sequenced against. The backend
 lives in the sibling repo `asset-management-backend`; its `CLAUDE.md` documents the API this app

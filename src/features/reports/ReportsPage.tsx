@@ -2,21 +2,23 @@ import { useMemo, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   Download,
   FileSpreadsheet,
   FileText,
-  Info,
   Lock,
   RotateCcw,
+  SlidersHorizontal,
 } from "lucide-react";
 import { cn } from "cn";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/components/ui/input-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -39,12 +41,14 @@ import { ApiError } from "@/lib/http-error";
 import { computeDepreciation } from "@/lib/depreciation";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { hasPermission } from "@/lib/permissions";
+import { resolveLogoDataUrl } from "@/lib/pdfLogo";
+import { useResolvedLogoSrc } from "@/lib/useResolvedLogoSrc";
 import { useAuthStore } from "@/store/auth.store";
 import type { Organization } from "@/types";
 
 type DateFieldMode = "purchaseDate" | "depreciationDate";
 type GroupByMode = "none" | "category" | "location" | "depreciationBucket";
-type SortByMode = "purchaseDate" | "currentValue" | "name" | "assetTag";
+type SortByMode = "purchaseDate" | "depreciationDate" | "currentValue" | "name" | "assetTag";
 
 const FLAT_PAGE_SIZE = 50;
 /** The backend's own `pageSize` cap (`assetReportQuerySchema.pageSize.max(500)`) - used when
@@ -89,6 +93,8 @@ export function ReportsPage() {
 }
 
 function ReportsPageContent({ org, canViewValuation }: { org: Organization; canViewValuation: boolean }) {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const logoSrc = useResolvedLogoSrc(org.logoUrl ?? null, accessToken);
   const [categoryId, setCategoryId] = useState("all");
   const [locationId, setLocationId] = useState("all");
   const [custodianId, setCustodianId] = useState("all");
@@ -99,6 +105,7 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
   const [sortBy, setSortBy] = useState<SortByMode>("purchaseDate");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const categories = useCategoriesQuery();
   const locations = useLocationsQuery();
@@ -120,6 +127,15 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
     page: effectivePage,
     pageSize,
   });
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (categoryId !== "all") count += 1;
+    if (locationId !== "all") count += 1;
+    if (custodianId !== "all") count += 1;
+    if (dateFrom || dateTo) count += 1;
+    return count;
+  }, [categoryId, locationId, custodianId, dateFrom, dateTo]);
 
   const categoryById = useMemo(() => new Map((categories.data ?? []).map((c) => [c.id, c] as const)), [categories.data]);
   const locationById = useMemo(() => new Map((locations.data ?? []).map((l) => [l.id, l] as const)), [locations.data]);
@@ -234,7 +250,10 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
   const exportFilenameBase = `asset-report-${new Date().toISOString().slice(0, 10)}`;
   const handleExportCsv = () => exportRowsToCsv(displayRows, exportColumns, `${exportFilenameBase}.csv`);
   const handleExportExcel = () => exportRowsToExcel(displayRows, exportColumns, `${exportFilenameBase}.xlsx`);
-  const handleExportPdf = () => exportRowsToPdf(displayRows, exportColumns, `${exportFilenameBase}.pdf`, "Asset Report");
+  const handleExportPdf = async () => {
+    const logoDataUrl = await resolveLogoDataUrl(logoSrc);
+    exportRowsToPdf(displayRows, exportColumns, `${exportFilenameBase}.pdf`, "Asset Report", { orgName: org.name, logoDataUrl });
+  };
 
   const handleResetFilters = () => {
     setCategoryId("all");
@@ -319,17 +338,54 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
         </div>
       )}
 
-      <div className="mb-4 flex items-start gap-2 rounded-lg border border-dashed border-border bg-card/50 p-3 text-xs text-muted-foreground">
-        <Info className="mt-0.5 size-3.5 shrink-0" />
-        <p>
-          Filtering by how depreciated an asset is (percent or remaining book value) is not available as a
-          standalone range filter yet, the backend currently supports one date-based filter at a time. Percent
-          depreciated is still shown as a column and can be combined with the "Depreciation bucket" group-by
-          option below.
-        </p>
-      </div>
+      <div className="mb-4 space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setFiltersOpen((v) => !v)}
+            aria-expanded={filtersOpen}
+            className="h-8 gap-1.5 text-xs sm:hidden"
+          >
+            <SlidersHorizontal className="size-3.5" />
+            Filters
+            {activeFilterCount > 0 && (
+              <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+                {activeFilterCount}
+              </Badge>
+            )}
+            {filtersOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+          </Button>
+          <p className="hidden text-xs font-medium uppercase tracking-wide text-muted-foreground sm:block">
+            Filter, group and sort
+          </p>
 
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" disabled={displayRows.length === 0}>
+                <Download className="size-3.5" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={handleExportCsv}>
+                <FileText className="size-3.5" />
+                CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleExportExcel}>
+                <FileSpreadsheet className="size-3.5" />
+                Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleExportPdf}>
+                <FileText className="size-3.5" />
+                PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        <div className={cn(!filtersOpen && "hidden", "space-y-3 sm:block")}>
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:flex-wrap sm:items-center">
         <Select
           value={categoryId}
           onValueChange={(v) => {
@@ -337,7 +393,7 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
             setPage(1);
           }}
         >
-          <SelectTrigger className="h-8 w-full text-xs sm:w-40">
+          <SelectTrigger className="order-1 h-8 w-full text-xs sm:order-none sm:w-40">
             <SelectValue placeholder="All categories" />
           </SelectTrigger>
           <SelectContent>
@@ -357,7 +413,7 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
             setPage(1);
           }}
         >
-          <SelectTrigger className="h-8 w-full text-xs sm:w-40">
+          <SelectTrigger className="order-2 h-8 w-full text-xs sm:order-none sm:w-40">
             <SelectValue placeholder="All locations" />
           </SelectTrigger>
           <SelectContent>
@@ -377,7 +433,7 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
             setPage(1);
           }}
         >
-          <SelectTrigger className="h-8 w-full text-xs sm:w-44">
+          <SelectTrigger className="order-3 h-8 w-full text-xs sm:order-none sm:w-44">
             <SelectValue placeholder="All custodians" />
           </SelectTrigger>
           <SelectContent>
@@ -390,7 +446,17 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
           </SelectContent>
         </Select>
 
-        <div className="flex items-center gap-1 rounded-lg border border-input p-0.5">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleResetFilters}
+          className="order-4 h-8 gap-1.5 text-xs sm:order-none sm:h-8 sm:w-auto"
+        >
+          <RotateCcw className="size-3.5" />
+          Reset
+        </Button>
+
+        <div className="order-5 col-span-2 flex items-center gap-1 rounded-lg border border-input p-0.5 sm:order-none sm:col-span-1 sm:w-fit">
           <button
             type="button"
             onClick={() => {
@@ -398,7 +464,7 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
               setPage(1);
             }}
             className={cn(
-              "rounded-md px-2 py-1.5 text-xs transition-colors",
+              "flex-1 rounded-md px-2 py-1.5 text-xs transition-colors sm:flex-none",
               dateField === "purchaseDate" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -411,7 +477,7 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
               setPage(1);
             }}
             className={cn(
-              "rounded-md px-2 py-1.5 text-xs transition-colors",
+              "flex-1 rounded-md px-2 py-1.5 text-xs transition-colors sm:flex-none",
               dateField === "depreciationDate" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -419,103 +485,93 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
           </button>
         </div>
 
-        <Input
-          type="date"
-          value={dateFrom}
-          onChange={(e) => {
-            setDateFrom(e.target.value);
-            setPage(1);
-          }}
-          className="h-8 w-full text-xs sm:w-36"
-          aria-label="Date from"
-        />
-        <span className="text-xs text-muted-foreground">to</span>
-        <Input
-          type="date"
-          value={dateTo}
-          onChange={(e) => {
-            setDateTo(e.target.value);
-            setPage(1);
-          }}
-          className="h-8 w-full text-xs sm:w-36"
-          aria-label="Date to"
-        />
+        {/* From/To stay in one wrapper so the range never gets split across two rows when the
+            filter bar wraps. */}
+        <div className="order-6 col-span-2 flex items-center gap-2 sm:order-none sm:col-span-1 sm:w-auto">
+          <InputGroup className="w-full sm:w-44">
+            <InputGroupAddon align="inline-start">
+              <InputGroupText className="text-xs">From</InputGroupText>
+            </InputGroupAddon>
+            <InputGroupInput
+              type="date"
+              value={dateFrom}
+              onChange={(e) => {
+                setDateFrom(e.target.value);
+                setPage(1);
+              }}
+              className="text-xs"
+              aria-label="Date from"
+            />
+          </InputGroup>
+          <InputGroup className="w-full sm:w-44">
+            <InputGroupAddon align="inline-start">
+              <InputGroupText className="text-xs">To</InputGroupText>
+            </InputGroupAddon>
+            <InputGroupInput
+              type="date"
+              value={dateTo}
+              onChange={(e) => {
+                setDateTo(e.target.value);
+                setPage(1);
+              }}
+              className="text-xs"
+              aria-label="Date to"
+            />
+          </InputGroup>
+        </div>
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        Purchase date and depreciation date can't be filtered together, pick one above. Depreciation still shows as
+        a column and can be grouped below.
+      </p>
 
-        <Button variant="ghost" size="sm" onClick={handleResetFilters} className="gap-1.5 text-xs">
-          <RotateCcw className="size-3.5" />
-          Reset
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:flex-wrap sm:items-center">
+        <Select
+          value={groupBy}
+          onValueChange={(v) => {
+            setGroupBy(v as GroupByMode);
+            setPage(1);
+          }}
+        >
+          <SelectTrigger className="h-8 w-full text-xs sm:w-52">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">No grouping</SelectItem>
+            <SelectItem value="category">Group by category</SelectItem>
+            <SelectItem value="location">Group by location</SelectItem>
+            <SelectItem value="depreciationBucket" disabled={!canViewValuation}>
+              Group by depreciation bucket
+            </SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortByMode)}>
+          <SelectTrigger className="h-8 w-full text-xs sm:w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="purchaseDate">Sort: Purchase date</SelectItem>
+            <SelectItem value="depreciationDate">Sort: Depreciation date</SelectItem>
+            <SelectItem value="name">Sort: Name</SelectItem>
+            <SelectItem value="assetTag">Sort: Asset tag</SelectItem>
+            <SelectItem value="currentValue" disabled={!canViewValuation}>
+              Sort: Current value
+            </SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+          className="h-8 w-full gap-1.5 text-xs sm:w-auto"
+        >
+          {sortDir === "asc" ? <ArrowUp className="size-3.5" /> : <ArrowDown className="size-3.5" />}
+          {sortDir === "asc" ? "Ascending" : "Descending"}
         </Button>
       </div>
-
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <Select
-            value={groupBy}
-            onValueChange={(v) => {
-              setGroupBy(v as GroupByMode);
-              setPage(1);
-            }}
-          >
-            <SelectTrigger className="h-8 w-full text-xs sm:w-52">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No grouping</SelectItem>
-              <SelectItem value="category">Group by category</SelectItem>
-              <SelectItem value="location">Group by location</SelectItem>
-              <SelectItem value="depreciationBucket" disabled={!canViewValuation}>
-                Group by depreciation bucket
-              </SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortByMode)}>
-            <SelectTrigger className="h-8 w-full text-xs sm:w-44">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="purchaseDate">Sort: Purchase date</SelectItem>
-              <SelectItem value="name">Sort: Name</SelectItem>
-              <SelectItem value="assetTag">Sort: Asset tag</SelectItem>
-              <SelectItem value="currentValue" disabled={!canViewValuation}>
-                Sort: Current value
-              </SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
-            className="h-8 gap-1.5 text-xs"
-          >
-            {sortDir === "asc" ? <ArrowUp className="size-3.5" /> : <ArrowDown className="size-3.5" />}
-            {sortDir === "asc" ? "Ascending" : "Descending"}
-          </Button>
         </div>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline" className="gap-1.5 text-xs" disabled={displayRows.length === 0}>
-              <Download className="size-3.5" />
-              Export
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={handleExportCsv}>
-              <FileText className="size-3.5" />
-              CSV
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={handleExportExcel}>
-              <FileSpreadsheet className="size-3.5" />
-              Excel
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={handleExportPdf}>
-              <FileText className="size-3.5" />
-              PDF
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
 
       {report.isError && (

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Logo } from "@/components/brand/Logo";
+import { hasPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/auth.store";
 import { cn } from "cn";
 
@@ -22,7 +23,7 @@ const navigation = [
   { name: "Check-Out / Return", href: "/check-in-out", icon: ArrowLeftRight },
   { name: "Maintenance", href: "/maintenance", icon: Wrench },
   { name: "Audits", href: "/audits", icon: ClipboardCheck },
-  { name: "People", href: "/people", icon: Users },
+  { name: "People", href: "/people", icon: Users, permission: "canManagePeople" },
   { name: "Vendors", href: "/vendors", icon: Building2 },
   { name: "Reports", href: "/reports", icon: BarChart3 },
   { name: "Labels", href: "/labels", icon: Tags },
@@ -31,6 +32,7 @@ const navigation = [
 
 export function MobileDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const org = useAuthStore((s) => s.org);
+  const currentUser = useAuthStore((s) => s.currentUser);
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -41,7 +43,9 @@ export function MobileDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: ()
           </SheetTitle>
         </SheetHeader>
         <nav className="flex flex-col gap-0.5 p-2">
-          {navigation.map((item) => {
+          {navigation
+            .filter((item) => !("permission" in item) || hasPermission(currentUser?.role, item.permission))
+            .map((item) => {
             const Icon = item.icon;
             return (
               <NavLink

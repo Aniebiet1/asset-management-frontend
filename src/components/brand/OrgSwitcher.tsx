@@ -12,7 +12,7 @@ import { PlanStatusBadge } from "@/components/common/StatusBadge";
 
 /**
  * Single-tenant workspace indicator. Plan §A/§I put multi-org switching entirely inside
- * the Tecres platform-admin surface (impersonation), not here — a tenant user belongs to
+ * the Tecres platform-admin surface, not here — a tenant user belongs to
  * exactly one org, so this is a status readout, not a real switcher.
  */
 export function OrgSwitcher() {

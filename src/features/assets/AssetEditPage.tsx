@@ -11,7 +11,7 @@ export function AssetEditPage() {
   const { data: asset, isLoading, isError } = useAssetQuery(id);
 
   return (
-    <div>
+    <div className="mx-auto max-w-4xl">
       <Button variant="ghost" size="sm" className="mb-3 gap-1.5 text-xs" asChild>
         <Link to={id ? `/assets/${id}` : "/assets"}>
           <ArrowLeft className="size-3.5" />

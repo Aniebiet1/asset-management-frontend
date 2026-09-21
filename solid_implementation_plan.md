@@ -1,8 +1,8 @@
-# Tecres Asset Manager — Frontend/Backend Split: Full Detailed Implementation Plan
+# TecresTrackIT AMS — Frontend/Backend Split: Full Detailed Implementation Plan
 
 ## Context
 
-The current codebase (`ink-asset-management`) is a single Next.js monolith. Two sibling repos already exist for the split — `asset_management_frontend` and `asset_management_backend` — but both are **completely empty** (`git init` only, no code). This is a from-scratch build guided by the monolith's feature set, not a mechanical file move, rebranded as **Tecres Asset Manager**.
+The current codebase (`ink-asset-management`) is a single Next.js monolith. Two sibling repos already exist for the split — `asset_management_frontend` and `asset_management_backend` — but both are **completely empty** (`git init` only, no code). This is a from-scratch build guided by the monolith's feature set, not a mechanical file move, rebranded as **TecresTrackIT AMS**.
 
 Verified problems in the monolith that this plan must not carry forward (confirmed by direct code read, not assumption):
 - **Real cross-org data leakage today**: `src/app/(dashboard)/settings/page.tsx:14` and `src/app/api/settings/route.ts:27` both run `db.select().from(organizations).limit(1)` — zero `orgId` filter, grabbing an arbitrary org. Dashboard/reports/audits queries follow the same unscoped pattern.
@@ -20,8 +20,8 @@ This plan is the complete technical specification for both new repos — full sc
 
 ## 0. Product Naming
 
-- **Product/platform name: "Tecres Asset Manager"** — used everywhere there is no tenant context yet: browser tab title, the platform-admin login and dashboard, transactional emails sent *from* the platform (invite emails, platform-level alerts), the marketing/landing page, and a small "Powered by Tecres Asset Manager" footer on tenant-facing PDF reports/labels.
-- **Per-organization branding** — once an organization completes onboarding, their own **name, logo, and brand colors** (set in the onboarding wizard, §H) drive everything inside their tenant instance: sidebar, header, in-app PDF/Excel export headers, browser tab favicon-adjacent title (`{Org Name} · Tecres Asset Manager`), login screen for that org's users (shown once an org slug/subdomain is resolved).
+- **Product/platform name: "TecresTrackIT AMS"** — used everywhere there is no tenant context yet: browser tab title, the platform-admin login and dashboard, transactional emails sent *from* the platform (invite emails, platform-level alerts), the marketing/landing page, and a small "Powered by TecresTrackIT AMS" footer on tenant-facing PDF reports/labels.
+- **Per-organization branding** — once an organization completes onboarding, their own **name, logo, and brand colors** (set in the onboarding wizard, §H) drive everything inside their tenant instance: sidebar, header, in-app PDF/Excel export headers, browser tab favicon-adjacent title (`{Org Name} · TecresTrackIT AMS`), login screen for that org's users (shown once an org slug/subdomain is resolved).
 - The internal operator team (what the earlier draft called "Aplify") is renamed **Tecres platform admin** / `platform_admins` — this is Tecres's own staff monitoring all customer organizations, not a customer-facing concept.
 - Default asset tag prefix at org creation defaults to a slug derived from the **org's own name** (e.g. "Acme Logistics" → `ACME-AST-0001`), not a Tecres-branded prefix — tenants own their asset-tag namespace.
 
@@ -186,7 +186,7 @@ Deliberately **not** part of `users`/the 4-role enum — no `orgId`, no shared t
 ### `[NEW]` platform_admin_activity_logs
 ```
 id, platformAdminId references platform_admins.id,
-action varchar(50),   -- org_suspended|org_reactivated|password_force_reset|quota_adjusted|impersonation_started|impersonation_ended|alert_resolved
+action varchar(50),   -- org_suspended|org_reactivated|password_force_reset|quota_adjusted|alert_resolved
 targetOrgId text, targetUserId text,
 details jsonb default {},
 ipAddress varchar(100),
@@ -279,7 +279,7 @@ Extends the monolith's `PermissionSet` (`permissions.ts`) — existing flags kep
 | **canPerformAssignedAudit** *(new, ownership check not a role flag)* | ✓ | ✓ | ✓ | ✓ — any role can act on an audit assigned to them |
 | **canViewAssetValuation** *(new)* | ✓ | ✓ | ✓ | ✗ — gates whether value fields are returned by the API at all |
 
-`platform_admin` sits **entirely outside this matrix** with its own set (`canSuspendOrg`, `canForceResetPassword`, `canAdjustQuota`, `canImpersonate`, `canResolveAlert`) behind a separate middleware — no special-casing needed inside the 4-role tenant matrix.
+`platform_admin` sits **entirely outside this matrix** with its own set (`canSuspendOrg`, `canForceResetPassword`, `canAdjustQuota`, `canResolveAlert`) behind a separate middleware — no special-casing needed inside the 4-role tenant matrix.
 
 `canAccessRoute()` (path-string gating) is kept only as a frontend nav convenience; it is **not** the security boundary — that's the backend's `authorize()` middleware, which doesn't exist at all in the monolith today.
 
@@ -332,7 +332,7 @@ Gated by `organizations.onboardingCompletedAt IS NULL`:
   - Failed-login spike: driven off `users.failedLoginAttempts`/`lockedUntil`, not log-scanning.
   - Plan expired: `planExpiresAt < now()` → flips `planStatus`, raises alert.
   - Stale org: `lastActivityAt` older than threshold → informational alert.
-- **Remediation actions** (each writes a `platform_admin_activity_logs` row atomically with the mutation): suspend/reactivate org (enforced by `loadOrgContext` rejecting tenant calls with `ORG_SUSPENDED`); force-reset an org admin's password (reuses the emailed reset-token flow — auditable, not a silent change — plus immediate refresh-token revocation); adjust quotas; view an org's activity trail (read-only, platform-route-only); impersonate an org admin (short-lived ~15 min, non-refreshable, specially-flagged token; every tenant activity-log entry written during impersonation records `impersonatedBy`; start/end separately logged).
+- **Remediation actions** (each writes a `platform_admin_activity_logs` row atomically with the mutation): suspend/reactivate org (enforced by `loadOrgContext` rejecting tenant calls with `ORG_SUSPENDED`); force-reset an org admin's password (reuses the emailed reset-token flow — auditable, not a silent change — plus immediate refresh-token revocation); adjust quotas; view an org's activity trail (read-only, platform-route-only). **Impersonating an org user is deliberately NOT one of these** — it was built and then removed on 2026-09-19 (signing into a customer account as them is a legal exposure no support convenience justifies). Force-reset-password is the supported way into a stuck account, precisely because the account owner sees it happen.
 
 ---
 
@@ -381,7 +381,7 @@ src/
 | **dashboard** | `GET /dashboard/stats` (role-stripped per §F), `GET /dashboard/activity`, `GET /dashboard/charts` |
 | **settings** | `GET /settings`, category/department/location CRUD (mirrors the resource modules above, aggregated view) |
 | **search** | `GET /search?q=` |
-| **platform** (Tecres, separate auth) | `POST /platform/auth/login`, `POST /platform/auth/login/totp`, `GET /platform/stats`, `GET /platform/orgs`, `POST /platform/orgs`, `GET /platform/orgs/:id`, `PATCH /platform/orgs/:id/status`, `PATCH /platform/orgs/:id/quotas`, `POST /platform/orgs/:id/users/:userId/force-reset`, `GET /platform/orgs/:id/activity`, `POST /platform/orgs/:id/users/:userId/impersonate`, `GET /platform/alerts`, `PATCH /platform/alerts/:id/resolve` |
+| **platform** (Tecres, separate auth) | `POST /platform/auth/login`, `POST /platform/auth/login/totp`, `GET /platform/stats`, `GET /platform/orgs`, `POST /platform/orgs`, `GET /platform/orgs/:id`, `PATCH /platform/orgs/:id/status`, `PATCH /platform/orgs/:id/quotas`, `POST /platform/orgs/:id/users/:userId/force-reset`, `GET /platform/orgs/:id/activity`, `GET /platform/alerts`, `PATCH /platform/alerts/:id/resolve` |
 
 ---
 
@@ -404,7 +404,7 @@ src/
     people/         PeoplePage, InvitePersonModal
     vendors/        VendorsPage
     settings/       SettingsPage (profile, categories/departments/locations, branding re-edit)
-    platform/       PlatformLoginPage, PlatformDashboard, OrganizationsPage, OrgDetailPage, AlertsPage, ImpersonationBanner
+    platform/       PlatformLoginPage, PlatformDashboard, OrganizationsPage, OrgDetailPage, AlertsPage
   components/
     ui/             button, input, select, dialog, table, tabs, combobox[new], date-range-picker[new], stepper[new]
     layout/         AppShell, Sidebar, Header, MobileNav, MobileDrawer, CommandPalette

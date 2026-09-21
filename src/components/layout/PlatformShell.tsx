@@ -35,12 +35,12 @@ export function PlatformShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-          <div className="flex items-center gap-2">
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-2 px-4">
+          <div className="flex min-w-0 items-center gap-2">
             <Logo variant="icon" size="sm" />
-            <span className="text-sm font-semibold text-foreground">Tecres Platform</span>
+            <span className="truncate text-sm font-semibold text-foreground">TecresTrackIT AMS Platform</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3">
             <div className="flex items-center gap-2">
               <div className="flex size-6 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-foreground">
                 {getInitials(admin.name)}
@@ -52,7 +52,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
             </Button>
           </div>
         </div>
-        <nav className="mx-auto flex max-w-5xl gap-1 px-4">
+        <nav className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-4 no-scrollbar">
           {TABS.map((tab) => (
             <NavLink
               key={tab.name}
@@ -60,7 +60,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
               end={"end" in tab ? tab.end : false}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
+                  "flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
                   isActive ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
                 )
               }

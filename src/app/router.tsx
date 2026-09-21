@@ -6,6 +6,8 @@ import { BrandedLoader } from "@/components/brand/BrandedLoader";
 import { useAuthStore } from "@/store/auth.store";
 import { usePlatformAuthStore } from "@/store/platformAuth.store";
 import { readLastOrgBranding } from "@/lib/lastOrg";
+import { hasPermission } from "@/lib/permissions";
+import type { PermissionSet } from "@/types";
 
 import { LoginPage } from "@/features/auth/LoginPage";
 import { TotpEnrollPage } from "@/features/auth/TotpEnrollPage";
@@ -63,6 +65,23 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <AppShell>{children}</AppShell>;
 }
 
+/** Same as ProtectedRoute, but also redirects home when the signed-in role lacks the given
+ * nav-convenience permission (see permissions.ts) — this is UX only, the backend's authorize()
+ * middleware is still the real boundary, but it keeps roles like staff from reaching pages their
+ * nav doesn't link to just by typing the URL. */
+function PermissionRoute({ permission, children }: { permission: keyof PermissionSet; children: React.ReactNode }) {
+  const status = useAuthStore((s) => s.status);
+  const org = useAuthStore((s) => s.org);
+  const currentUser = useAuthStore((s) => s.currentUser);
+
+  if (status === "booting") return <FullScreenSpinner />;
+  if (status === "signed-out") return <Navigate to="/login" replace />;
+  if (org && !org.onboardingCompletedAt) return <Navigate to="/onboarding" replace />;
+  if (!hasPermission(currentUser?.role, permission)) return <Navigate to="/" replace />;
+
+  return <AppShell>{children}</AppShell>;
+}
+
 /** The onboarding route itself must NOT redirect-to-onboarding-again — it only needs a session. */
 function OnboardingRoute({ children }: { children: React.ReactNode }) {
   const status = useAuthStore((s) => s.status);
@@ -114,7 +133,7 @@ export function AppRouter() {
           <Route path="/maintenance" element={<ProtectedRoute><MaintenancePage /></ProtectedRoute>} />
           <Route path="/audits" element={<ProtectedRoute><AuditsListPage /></ProtectedRoute>} />
           <Route path="/audits/:id" element={<ProtectedRoute><AuditDetailPage /></ProtectedRoute>} />
-          <Route path="/people" element={<ProtectedRoute><PeoplePage /></ProtectedRoute>} />
+          <Route path="/people" element={<PermissionRoute permission="canManagePeople"><PeoplePage /></PermissionRoute>} />
           <Route path="/vendors" element={<ProtectedRoute><VendorsPage /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
           <Route path="/labels" element={<ProtectedRoute><LabelsPage /></ProtectedRoute>} />

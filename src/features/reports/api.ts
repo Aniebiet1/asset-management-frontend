@@ -24,7 +24,7 @@ export interface AssetReportFilters {
   custodianId?: string;
   auditAssigneeId?: string;
   locationId?: string;
-  sortBy?: "purchaseDate" | "currentValue" | "name" | "assetTag";
+  sortBy?: "purchaseDate" | "depreciationDate" | "currentValue" | "name" | "assetTag";
   sortDir?: "asc" | "desc";
   page?: number;
   pageSize?: number;

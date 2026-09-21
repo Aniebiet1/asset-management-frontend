@@ -29,7 +29,7 @@ const navigation = [
   { name: "Check-Out / Return", href: "/check-in-out", icon: ArrowLeftRight },
   { name: "Maintenance", href: "/maintenance", icon: Wrench },
   { name: "Audits", href: "/audits", icon: ClipboardCheck },
-  { name: "People", href: "/people", icon: Users },
+  { name: "People", href: "/people", icon: Users, permission: "canManagePeople" },
   { name: "Vendors", href: "/vendors", icon: Building2 },
   { name: "Reports", href: "/reports", icon: BarChart3 },
   { name: "Labels", href: "/labels", icon: Tags },
@@ -102,7 +102,9 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className={cn("flex-1 space-y-0.5 overflow-y-auto no-scrollbar", isCollapsed ? "p-1.5" : "p-2")}>
-        {navigation.map((item) => {
+        {navigation
+          .filter((item) => !("permission" in item) || hasPermission(currentUser.role, item.permission))
+          .map((item) => {
           const Icon = item.icon;
           return (
             <NavLink

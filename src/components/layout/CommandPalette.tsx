@@ -22,6 +22,8 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { useAssetsQuery } from "@/features/assets/api";
+import { hasPermission } from "@/lib/permissions";
+import { useAuthStore } from "@/store/auth.store";
 
 const pages = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -29,16 +31,18 @@ const pages = [
   { name: "Check-Out / Return", href: "/check-in-out", icon: ArrowLeftRight },
   { name: "Maintenance", href: "/maintenance", icon: Wrench },
   { name: "Audits", href: "/audits", icon: ClipboardCheck },
-  { name: "People", href: "/people", icon: Users },
+  { name: "People", href: "/people", icon: Users, permission: "canManagePeople" },
   { name: "Vendors", href: "/vendors", icon: Building2 },
   { name: "Reports", href: "/reports", icon: BarChart3 },
   { name: "Labels", href: "/labels", icon: Tags },
   { name: "Settings", href: "/settings", icon: Settings },
-];
+] as const;
 
 export function CommandPalette({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const navigate = useNavigate();
+  const currentUser = useAuthStore((s) => s.currentUser);
   const assets = useAssetsQuery({ page: 1, pageSize: 6 }, { enabled: isOpen });
+  const visiblePages = pages.filter((p) => !("permission" in p) || hasPermission(currentUser?.role, p.permission));
 
   const go = (href: string) => {
     navigate(href);
@@ -58,7 +62,7 @@ export function CommandPalette({ isOpen, onClose }: { isOpen: boolean; onClose: 
         </CommandGroup>
         <CommandSeparator />
         <CommandGroup heading="Pages">
-          {pages.map((p) => (
+          {visiblePages.map((p) => (
             <CommandItem key={p.href} onSelect={() => go(p.href)}>
               <p.icon className="mr-2 size-4" />
               {p.name}

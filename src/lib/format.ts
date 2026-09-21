@@ -1,4 +1,4 @@
-import { format, parseISO } from "date-fns";
+import { format, formatDistanceToNowStrict, parseISO } from "date-fns";
 
 /**
  * Ported from ink-asset-management/src/lib/utils.ts (plan §M: "port with light adaptation").
@@ -43,6 +43,16 @@ export function formatDateTime(date: string | Date | null | undefined): string {
   try {
     const d = typeof date === "string" ? parseISO(date) : date;
     return format(d, "MMM dd, yyyy hh:mm a");
+  } catch {
+    return String(date);
+  }
+}
+
+export function formatRelativeTime(date: string | Date | null | undefined): string {
+  if (!date) return "-";
+  try {
+    const d = typeof date === "string" ? parseISO(date) : date;
+    return `${formatDistanceToNowStrict(d)} ago`;
   } catch {
     return String(date);
   }

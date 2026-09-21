@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import JsBarcode from "jsbarcode";
-import { cn } from "cn";
 import { useQrCodeDataUrl } from "@/lib/useQrCodeDataUrl";
 import type { LabelFormat } from "@/types";
 
@@ -31,52 +30,53 @@ export function LabelPreview({
       format: "CODE128",
       displayValue: false,
       margin: 0,
-      height: 32,
-      width: 1.4,
+      height: 40,
+      width: 1.6,
     });
   }, [showBarcode, assetTag]);
 
   const header = (
     <div className="flex items-center gap-1.5">
-      {logoSrc && <img src={logoSrc} alt="" className="size-6 shrink-0 object-contain" />}
-      <span className="truncate text-xs font-semibold">Property of {orgName}</span>
+      {logoSrc ? (
+        <img src={logoSrc} alt="" className="size-6 shrink-0 object-contain" />
+      ) : (
+        <div className="size-6 shrink-0 rounded bg-black/10" />
+      )}
+      <div className="min-w-0 leading-tight">
+        <p className="text-[7px] italic text-black/60">Property of</p>
+        <p className="truncate text-xs font-bold uppercase tracking-wide">{orgName}</p>
+      </div>
     </div>
   );
 
   const barcodeBlock = showBarcode && (
-    <div className="flex flex-col items-center">
-      <canvas ref={barcodeRef} />
-      <p className="mt-0.5 font-mono text-[10px] tracking-wide">{assetTag}</p>
+    <div className="mt-1 flex min-w-0 flex-col items-start gap-0.5">
+      {/* CSS-scaled, not just the canvas's native raster width, so a long asset tag never pushes the QR code out of view next to it. */}
+      <canvas ref={barcodeRef} className="h-8 w-full max-w-[200px]" />
+      <p className="truncate font-mono text-[9px] tracking-wide">{assetTag}</p>
     </div>
   );
 
-  const qrBlock = showQr && (
-    <div className="flex flex-col items-center">
+  const qrImage = showQr && (
+    <div className="flex aspect-square h-full shrink-0 items-center justify-center">
       {qrDataUrl ? (
-        <img src={qrDataUrl} alt={`QR code for ${assetTag}`} className="size-14 object-contain" />
+        <img src={qrDataUrl} alt={`QR code for ${assetTag}`} className="size-full object-contain" />
       ) : (
-        <div className="size-14 animate-pulse rounded bg-black/10" />
+        <div className="size-full animate-pulse rounded bg-black/10" />
       )}
-      {format === "qr_only" && <p className="mt-0.5 font-mono text-[10px] tracking-wide">{assetTag}</p>}
     </div>
   );
 
   return (
-    <div
-      className={cn(
-        "rounded-lg border border-black/20 bg-white p-3 text-black",
-        format === "barcode_only" ? "flex h-24 w-56 flex-col justify-between" : "flex w-full flex-col gap-2"
-      )}
-    >
-      {header}
-      {format === "barcode_qr" && (
-        <div className="flex items-center justify-between gap-3">
-          {barcodeBlock}
-          {qrBlock}
-        </div>
-      )}
-      {format === "barcode_only" && barcodeBlock}
-      {format === "qr_only" && <div className="flex justify-center">{qrBlock}</div>}
+    <div className="flex aspect-[63/25.4] w-80 max-w-full items-stretch gap-2.5 rounded-xl border border-black/20 bg-white p-2.5 text-black">
+      {/* Left zone: logo + org name, with the barcode (or, for QR-only, the tag) underneath - mirrors the
+          physical label stock this org actually prints on (63mm x 25.4mm, logo/barcode left, QR right). */}
+      <div className="flex min-w-0 flex-1 flex-col justify-center">
+        {header}
+        {showBarcode && barcodeBlock}
+        {!showBarcode && showQr && <p className="mt-1 font-mono text-[9px] tracking-wide">{assetTag}</p>}
+      </div>
+      {qrImage}
     </div>
   );
 }

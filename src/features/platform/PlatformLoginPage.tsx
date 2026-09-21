@@ -4,6 +4,7 @@ import { Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/common/PasswordInput";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { usePlatformAuthStore } from "@/store/platformAuth.store";
 import { ApiError } from "@/lib/http-error";
@@ -43,7 +44,7 @@ export function PlatformLoginPage() {
         <div className="mb-2 flex size-9 items-center justify-center rounded-full bg-muted">
           <ShieldCheck className="size-4 text-foreground" />
         </div>
-        <h1 className="text-lg font-semibold text-foreground">Tecres platform admin</h1>
+        <h1 className="text-lg font-semibold text-foreground">TecresTrackIT AMS platform admin</h1>
         <p className="mt-1 text-sm text-muted-foreground">Sign in with your Tecres staff account.</p>
       </div>
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -53,7 +54,7 @@ export function PlatformLoginPage() {
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="password">Password</Label>
-          <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
+          <PasswordInput id="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <Button type="submit" className="w-full" disabled={isLoading}>

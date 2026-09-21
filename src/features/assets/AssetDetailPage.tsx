@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Pencil, ArrowLeftRight, Printer, MapPin, Building2, User as UserIcon, Calendar } from "lucide-react";
+import { ArrowLeft, Pencil, ArrowLeftRight, Printer, Loader2, MapPin, Building2, User as UserIcon, Calendar } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,21 +9,28 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge, ConditionBadge, MaintenanceStatusBadge } from "@/components/common/StatusBadge";
 import { hasPermission } from "@/lib/permissions";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
-import { useQrCodeDataUrl } from "@/lib/useQrCodeDataUrl";
+import { useResolvedLogoSrc } from "@/lib/useResolvedLogoSrc";
 import { useAssetQuery, useAssetHistoryQuery, useAssetMaintenanceQuery } from "@/features/assets/api";
+import { LabelPreview } from "@/features/labels/components/LabelPreview";
+import { useLabelSheetLayoutQuery } from "@/features/labels/api";
+import { generateSingleLabelPdf } from "@/features/labels/lib/labelPdf";
 import { useAuthStore } from "@/store/auth.store";
 
 export function AssetDetailPage() {
   const { id } = useParams();
   const currentUser = useAuthStore((s) => s.currentUser);
   const org = useAuthStore((s) => s.org);
+  const accessToken = useAuthStore((s) => s.accessToken);
   const { data: asset, isLoading, isError } = useAssetQuery(id);
   const history = useAssetHistoryQuery(id);
   const maintenance = useAssetMaintenanceQuery(id);
   const canViewValuation = hasPermission(currentUser?.role, "canViewAssetValuation");
   const canEdit = hasPermission(currentUser?.role, "canEditAsset");
   const canCheckInOut = hasPermission(currentUser?.role, "canCheckInOut");
-  const qrDataUrl = useQrCodeDataUrl(asset?.assetTag ?? null);
+  const canPrintLabels = hasPermission(currentUser?.role, "canPrintLabels");
+  const logoSrc = useResolvedLogoSrc(org?.logoUrl ?? null, accessToken);
+  const sheetLayout = useLabelSheetLayoutQuery({ enabled: canPrintLabels });
+  const [isPrinting, setIsPrinting] = useState(false);
 
   if (isLoading) {
     return (
@@ -43,6 +52,24 @@ export function AssetDetailPage() {
       </div>
     );
   }
+
+  const handlePrintLabel = async () => {
+    if (!org?.labelFormat || !sheetLayout.data) return;
+    setIsPrinting(true);
+    try {
+      await generateSingleLabelPdf({
+        asset: { assetTag: asset.assetTag },
+        format: org.labelFormat,
+        orgName: org.name,
+        logoSrc,
+        layout: sheetLayout.data,
+      });
+    } catch {
+      toast.error("Couldn't generate the label PDF. Please try again.");
+    } finally {
+      setIsPrinting(false);
+    }
+  };
 
   const fields: { label: string; value: string | null; icon?: typeof MapPin }[] = [
     { label: "Location", value: asset.locationName ?? "-", icon: MapPin },
@@ -70,11 +97,20 @@ export function AssetDetailPage() {
             {asset.assetTag} {asset.brand && `· ${asset.brand} ${asset.model ?? ""}`} {asset.serialNumber && `· S/N ${asset.serialNumber}`}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5">
-            <Printer className="size-3.5" />
-            Label
-          </Button>
+        <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+          {canPrintLabels && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={handlePrintLabel}
+              disabled={!org?.labelFormat || !sheetLayout.data || isPrinting}
+              title={!org?.labelFormat ? "Choose a label format in Settings first" : undefined}
+            >
+              {isPrinting ? <Loader2 className="size-3.5 animate-spin" /> : <Printer className="size-3.5" />}
+              Label
+            </Button>
+          )}
           {canCheckInOut && (
             <Button variant="outline" size="sm" className="gap-1.5" asChild>
               <Link to="/check-in-out">
@@ -94,7 +130,7 @@ export function AssetDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
         <div className="grid grid-cols-2 gap-3 lg:col-span-2 lg:grid-cols-4">
           {fields.map((f) => (
             <Card key={f.label}>
@@ -197,21 +233,26 @@ export function AssetDetailPage() {
           </Card>
         </div>
 
-        <Card className="h-fit">
-          <CardContent className="flex flex-col items-center gap-3 p-6 text-center">
-            <div className="flex size-32 items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 text-xs text-muted-foreground">
-              {qrDataUrl && (
-                <img src={qrDataUrl} alt={`QR code for ${asset.assetTag}`} className="size-full object-contain" />
+        <div className="flex flex-col gap-4">
+          <Card className="h-fit">
+            <CardContent className="flex flex-col items-center gap-3 p-6">
+              <LabelPreview format={org?.labelFormat ?? "qr_only"} orgName={org?.name ?? ""} logoSrc={logoSrc} assetTag={asset.assetTag} />
+              {!org?.labelFormat && (
+                <p className="text-center text-[11px] text-muted-foreground">
+                  Showing a default QR preview. Choose a label format in Settings to match what prints.
+                </p>
               )}
-            </div>
-            <p className="font-mono text-xs text-muted-foreground">{asset.assetTag}</p>
-            {asset.imageUrl && (
-              <div className="flex size-32 items-center justify-center rounded-lg border border-border bg-muted/30">
-                <img src={asset.imageUrl} alt={asset.name} className="size-full rounded-lg object-cover" />
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          {asset.imageUrl && (
+            <Card className="h-fit overflow-hidden">
+              <CardContent className="p-0">
+                <img src={asset.imageUrl} alt={asset.name} className="aspect-square w-full object-cover" />
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   );

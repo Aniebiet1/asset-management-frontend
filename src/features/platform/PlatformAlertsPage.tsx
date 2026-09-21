@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -37,9 +38,21 @@ export function PlatformAlertsPage() {
             <Card key={alert.id}>
               <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <p className="font-medium text-foreground">{alert.title}</p>
                     <AlertSeverityBadge severity={alert.severity} />
+                    {alert.orgId && alert.orgName && (
+                      <Link
+                        to={
+                          alert.type === "failed_login_spike"
+                            ? `/platform/orgs/${alert.orgId}?tab=users`
+                            : `/platform/orgs/${alert.orgId}`
+                        }
+                        className="text-xs font-medium text-primary hover:underline"
+                      >
+                        {alert.orgName}
+                      </Link>
+                    )}
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">{alert.description}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{formatDateTime(alert.createdAt)}</p>
