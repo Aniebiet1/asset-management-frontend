@@ -1,19 +1,31 @@
-# Custom override of Railpack's default static-file Caddyfile.
+# Custom override of Railpack's default Caddyfile.
 #
-# Railpack still runs this file through its template engine (see
-# core/providers/staticfile/staticfile.go -> addCaddyfileToStep), so the
-# {{.StaticFileRoot}} and {{.IndexFallback}} placeholders below are filled in at
-# build time with whatever root Railway already resolves for this service. Leave
-# them as placeholders; hardcoding "dist" would break if the root ever changes.
+# IMPORTANT: base this on the *node* provider's template
+# (core/providers/node/Caddyfile.template), not the staticfile provider's. This
+# repo is a Node/Vite project, so Railpack routes it through the node SPA
+# provider (core/providers/node/spa.go), and that provider exposes a different
+# set of template variables: DIST_DIR (already prefixed with /app) and
+# IndexFallback. The staticfile provider's StaticFileRoot does NOT exist here,
+# and Go's text/template renders an unknown field as the literal string
+# "<no value>" rather than failing. That turns the `root` directive below into a
+# three-argument one, Caddy fails to adapt the config, and the container
+# crash-loops behind a 502 with no application logs at all. Leave the values as
+# template placeholders rather than hardcoding "/app/dist" so the root keeps
+# tracking Vite's configured outDir.
 #
-# The ONLY intentional difference from the upstream template is that the
-# site-level `log { format json }` block is gone. That block wrote one JSON
-# access-log line per HTTP request, which for this SPA is a dozen-plus lines per
-# cold page load (index.html, hashed JS/CSS chunks, five font files, icons) and
-# buried everything else in the Railway log pane. Caddy does not log access by
-# default, so omitting the directive is what disables it. Caddy's own runtime
-# logs (startup, config errors, TLS) still go to the global logger below, so
-# genuine server failures remain visible.
+# Intentional differences from the upstream node template:
+#
+#   1. The site-level access log block is gone. It wrote one JSON line per HTTP
+#      request, which for this SPA is a dozen-plus lines per cold page load
+#      (index.html, hashed JS/CSS chunks, five font files, icons) and buried
+#      everything else in the Railway log pane. Caddy does not log access by
+#      default, so omitting the directive is what disables it. Caddy's own
+#      runtime logs (startup, config errors, TLS) still go to the global logger
+#      below, so genuine server failures remain visible.
+#
+#   2. The header block carries the fuller security header set (CSP,
+#      X-XSS-Protection, Referrer-Policy) instead of the node template's
+#      nosniff-only default.
 
 {
 	admin off
@@ -25,10 +37,11 @@
 	}
 
 	servers {
-		trusted_proxies static private_ranges
+		trusted_proxies static private_ranges 100.0.0.0/8 # trust railway's proxy
 	}
 }
 
+# Listens on the $PORT environment variable, automatically assigned by Railway.
 :{$PORT:80} {
 	respond /health 200
 
@@ -46,7 +59,8 @@
 		-Server
 	}
 
-	root * {{.StaticFileRoot}}
+	# Serve from Vite's build output (Vite builds into 'dist').
+	root * {{.DIST_DIR}}
 
 	# Handle static files
 	file_server {
@@ -60,11 +74,7 @@
 		zstd
 	}
 
-	# Try files with HTML extension{{if .IndexFallback}} and handle SPA routing{{end}}
+	# Match direct HTML file matches, folder-level index.html, then fall back to
+	# the root index.html so client-side routes resolve.
 	try_files {path} {path}.html {path}/index.html{{if .IndexFallback}} /index.html{{end}}
-
-	handle_errors {
-		rewrite * /{err.status_code}.html
-		file_server
-	}
 }
