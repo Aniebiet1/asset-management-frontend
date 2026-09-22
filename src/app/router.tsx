@@ -38,6 +38,8 @@ import { PlatformOrgsListPage } from "@/features/platform/PlatformOrgsListPage";
 import { PlatformOrgCreatePage } from "@/features/platform/PlatformOrgCreatePage";
 import { PlatformOrgDetailPage } from "@/features/platform/PlatformOrgDetailPage";
 import { PlatformAlertsPage } from "@/features/platform/PlatformAlertsPage";
+import { PlatformAdminsPage } from "@/features/platform/PlatformAdminsPage";
+import { PlatformInviteAcceptPage } from "@/features/platform/PlatformInviteAcceptPage";
 import { NotFoundPage } from "@/features/not-found/NotFoundPage";
 
 function FullScreenSpinner() {
@@ -142,12 +144,14 @@ export function AppRouter() {
           {/* Tecres platform admin — fully separate auth/session, see BUILD_PLAN.md §1 */}
           <Route path="/platform/login" element={<PlatformLoginPage />} />
           <Route path="/platform/totp/enroll" element={<PlatformTotpEnrollPage />} />
+          <Route path="/platform/invite/:token/accept" element={<PlatformInviteAcceptPage />} />
           <Route path="/platform/totp/challenge" element={<PlatformTotpChallengePage />} />
           <Route path="/platform" element={<PlatformProtectedRoute><PlatformDashboardPage /></PlatformProtectedRoute>} />
           <Route path="/platform/orgs" element={<PlatformProtectedRoute><PlatformOrgsListPage /></PlatformProtectedRoute>} />
           <Route path="/platform/orgs/new" element={<PlatformProtectedRoute><PlatformOrgCreatePage /></PlatformProtectedRoute>} />
           <Route path="/platform/orgs/:id" element={<PlatformProtectedRoute><PlatformOrgDetailPage /></PlatformProtectedRoute>} />
           <Route path="/platform/alerts" element={<PlatformProtectedRoute><PlatformAlertsPage /></PlatformProtectedRoute>} />
+          <Route path="/platform/admins" element={<PlatformProtectedRoute><PlatformAdminsPage /></PlatformProtectedRoute>} />
 
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

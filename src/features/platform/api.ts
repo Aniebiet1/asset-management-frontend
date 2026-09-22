@@ -1,6 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { platformApiFetch } from "@/lib/platform-api-client";
-import type { ActivityLogEntry, FleetAnalytics, LoginRiskEntry, Organization, PlanStatus, PlatformAlert, PlatformOrgSummary, PlatformOrgUser } from "@/types";
+import type {
+  ActivityLogEntry,
+  FleetAnalytics,
+  LoginRiskEntry,
+  Organization,
+  PlanStatus,
+  PlatformAdmin,
+  PlatformAdminInvite,
+  PlatformAdminRole,
+  PlatformAlert,
+  PlatformOrgSummary,
+  PlatformOrgUser,
+} from "@/types";
 
 interface FleetStats {
   totalOrgs: number;
@@ -134,5 +146,44 @@ export function useResolveAlertMutation() {
   return useMutation({
     mutationFn: (alertId: string) => platformApiFetch<{ data: PlatformAlert }>(`/platform/alerts/${alertId}/resolve`, { method: "PATCH" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["platform", "alerts"] }),
+  });
+}
+
+// --- Platform admin management (platform_owner only) -----------------------
+
+interface PlatformAdminsResponse {
+  admins: PlatformAdmin[];
+  invites: PlatformAdminInvite[];
+}
+
+export function usePlatformAdminsQuery(enabled = true) {
+  return useQuery({
+    queryKey: ["platform", "admins"],
+    queryFn: () => platformApiFetch<{ data: PlatformAdminsResponse }>("/platform/admins").then((r) => r.data),
+    enabled,
+  });
+}
+
+export function useInvitePlatformAdminMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { name: string; email: string; role: PlatformAdminRole }) =>
+      platformApiFetch<{ data: PlatformAdminInvite }>("/platform/admins/invite", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }).then((r) => r.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["platform", "admins"] }),
+  });
+}
+
+export function useUpdatePlatformAdminRoleMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ adminId, role }: { adminId: string; role: PlatformAdminRole }) =>
+      platformApiFetch<{ data: PlatformAdmin }>(`/platform/admins/${adminId}/role`, {
+        method: "PATCH",
+        body: JSON.stringify({ role }),
+      }).then((r) => r.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["platform", "admins"] }),
   });
 }

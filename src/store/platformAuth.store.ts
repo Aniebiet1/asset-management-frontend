@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { PlatformAdmin, PlatformAdminRole } from "@/types";
+import type { PlatformAdmin, PlatformAdminInvitePreview, PlatformAdminRole } from "@/types";
 import { ApiError } from "@/lib/http-error";
 import { API_BASE_URL } from "@/lib/env";
 
@@ -62,6 +62,8 @@ interface PlatformAuthState {
   startTotpEnrollment: (enrollmentToken: string) => Promise<EnrollmentStartResponse>;
   verifyTotpEnrollment: (enrollmentToken: string, code: string) => Promise<{ recoveryCodes: string[] }>;
   completeTotpChallenge: (preAuthToken: string, code: string) => Promise<void>;
+  fetchInvite: (token: string) => Promise<PlatformAdminInvitePreview>;
+  acceptInvite: (token: string, password: string) => Promise<{ enrollmentToken: string }>;
   clearSession: () => void;
 }
 
@@ -105,6 +107,19 @@ export const usePlatformAuthStore = create<PlatformAuthState>((set) => ({
     });
     set({ accessToken: session.accessToken, admin: toAdmin(session.admin), status: "signed-in" });
   },
+
+  // Invite acceptance is unauthenticated (the URL token is the only credential), so it belongs on
+  // `rawFetch` here rather than `platformApiFetch` — the latter would treat a bad token as an
+  // expired session and report it that way.
+  fetchInvite: (token) => rawFetch<{ data: PlatformAdminInvitePreview }>(`/platform/admins/invite/${token}`).then((r) => r.data),
+
+  // Accepting doesn't sign anyone in: it returns an enrollment token, and the account only reaches
+  // a session once TOTP enrollment completes. Every platform account has an authenticator.
+  acceptInvite: (token, password) =>
+    rawFetch<{ enrollmentToken: string }>(`/platform/admins/invite/${token}/accept`, {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    }),
 
   clearSession: () => set({ accessToken: null, admin: null, status: "signed-out" }),
 }));

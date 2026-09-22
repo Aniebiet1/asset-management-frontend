@@ -416,6 +416,27 @@ export interface PlatformAdmin {
   updatedAt: string;
 }
 
+/** A platform-console invite that hasn't been accepted yet. Accepted ones become `PlatformAdmin`s. */
+export interface PlatformAdminInvite {
+  id: string;
+  name: string;
+  email: string;
+  role: PlatformAdminRole;
+  status: "pending" | "expired";
+  invitedByName: string | null;
+  expiresAt: string;
+  createdAt: string;
+}
+
+/** What the public accept page can see before the invitee sets a password. */
+export interface PlatformAdminInvitePreview {
+  name: string;
+  email: string;
+  role: PlatformAdminRole;
+  roleLabel: string;
+  expiresAt: string;
+}
+
 export type PlatformAlertType = "quota_breach" | "failed_login_spike" | "plan_expired" | "stale_org" | "security_incident";
 export type PlatformAlertSeverity = "info" | "warning" | "critical";
 export type PlatformAlertStatus = "open" | "acknowledged" | "resolved";

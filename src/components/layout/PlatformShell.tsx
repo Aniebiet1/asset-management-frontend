@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Building2, AlertTriangle, LogOut } from "lucide-react";
+import { LayoutDashboard, Building2, AlertTriangle, ShieldCheck, LogOut } from "lucide-react";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/brand/Logo";
@@ -12,6 +12,9 @@ const TABS = [
   { name: "Dashboard", href: "/platform", icon: LayoutDashboard, end: true },
   { name: "Organizations", href: "/platform/orgs", icon: Building2 },
   { name: "Alerts", href: "/platform/alerts", icon: AlertTriangle },
+  // Managing the Tecres admin roster is owner-only on the backend too (`canManagePlatformAdmins`);
+  // hiding the tab is a convenience, not the boundary.
+  { name: "Admins", href: "/platform/admins", icon: ShieldCheck, ownerOnly: true },
 ] as const;
 
 /**
@@ -53,7 +56,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
           </div>
         </div>
         <nav className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-4 no-scrollbar">
-          {TABS.map((tab) => (
+          {TABS.filter((tab) => !("ownerOnly" in tab && tab.ownerOnly) || admin.role === "platform_owner").map((tab) => (
             <NavLink
               key={tab.name}
               to={tab.href}
