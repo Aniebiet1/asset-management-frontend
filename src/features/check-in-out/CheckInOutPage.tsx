@@ -1,5 +1,6 @@
 ﻿import { useState } from "react";
-import { Camera, Loader2, Printer, Search, X } from "lucide-react";
+import { Box, Camera, ExternalLink, Loader2, Printer, Search, X } from "lucide-react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -20,9 +21,9 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormField } from "@/components/ui/form";
 import { PageHeader } from "@/components/common/PageHeader";
-import { StatusBadge } from "@/components/common/StatusBadge";
+import { ConditionBadge, StatusBadge } from "@/components/common/StatusBadge";
 import { hasPermission } from "@/lib/permissions";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
 import { ApiError } from "@/lib/http-error";
 import { resolveLogoDataUrl } from "@/lib/pdfLogo";
 import { hexToRgb, readableForeground } from "@/lib/color";
@@ -59,6 +60,7 @@ export function CheckInOutPage() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const logoSrc = useResolvedLogoSrc(org?.logoUrl ?? null, accessToken);
   const canCheckInOut = hasPermission(currentUser?.role, "canCheckInOut");
+  const canViewValuation = hasPermission(currentUser?.role, "canViewAssetValuation");
 
   const [inputValue, setInputValue] = useState("");
   const [activeQuery, setActiveQuery] = useState("");
@@ -377,55 +379,131 @@ export function CheckInOutPage() {
                       onClick={() => setSelectedAssetId(asset.id)}
                       className="flex w-full items-center justify-between rounded-lg border border-border p-3 text-left text-sm transition-colors hover:bg-muted/50"
                     >
-                      <span>
-                        <span className="font-medium text-foreground">{asset.name}</span>
-                        <span className="ml-2 font-mono text-xs text-muted-foreground">{asset.assetTag}</span>
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
+                          {asset.imageUrl ? (
+                            <img src={asset.imageUrl} alt={asset.name} className="size-full object-cover" />
+                          ) : (
+                            <Box className="size-4 text-muted-foreground" />
+                          )}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate font-medium text-foreground">{asset.name}</span>
+                          <span className="block font-mono text-xs text-muted-foreground">{asset.assetTag}</span>
+                        </span>
                       </span>
-                      <StatusBadge status={asset.status} />
+                      <span className="shrink-0">
+                        <StatusBadge status={asset.status} />
+                      </span>
                     </button>
                   ))}
                 </div>
               ) : selectedAsset ? (
                 <div className="rounded-lg border border-border p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
+                  <div className="flex gap-3">
+                    <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted sm:size-20">
+                      {selectedAsset.imageUrl ? (
+                        <img src={selectedAsset.imageUrl} alt={selectedAsset.name} className="size-full object-cover" />
+                      ) : (
+                        <Box className="size-6 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-semibold text-foreground">{selectedAsset.name}</p>
                         <StatusBadge status={selectedAsset.status} />
+                        <ConditionBadge condition={selectedAsset.condition} />
                       </div>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {selectedAsset.assetTag}
-                        {selectedAsset.brand && ` · ${selectedAsset.brand} ${selectedAsset.model ?? ""}`}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Custodian: {selectedAsset.custodianName ?? "Unassigned"}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      {selectedAsset.status === "available" && canCheckInOut && (
-                        <Button type="button" size="sm" onClick={openCheckoutDialog}>
-                          Check Out
-                        </Button>
-                      )}
-                      {selectedAsset.status === "in_use" && canCheckInOut && assignmentForSelected && (
-                        <Button type="button" size="sm" onClick={() => openCheckinDialog(assignmentForSelected)}>
-                          Check In
-                        </Button>
-                      )}
-                      {selectedAsset.status === "in_use" && !assignmentForSelected && (
-                        <p className="text-xs text-muted-foreground">
-                          Marked in use, but no matching open assignment was found.
+                      <p className="mt-1 font-mono text-xs text-muted-foreground">{selectedAsset.assetTag}</p>
+                      {(selectedAsset.brand || selectedAsset.model) && (
+                        <p className="mt-0.5 text-sm text-muted-foreground">
+                          {[selectedAsset.brand, selectedAsset.model].filter(Boolean).join(" ")}
                         </p>
                       )}
-                      {!["available", "in_use"].includes(selectedAsset.status) && (
-                        <p className="text-xs text-muted-foreground">
-                          This asset can't be checked out or in while {humanizeStatus(selectedAsset.status)}.
-                        </p>
-                      )}
-                      {!canCheckInOut && ["available", "in_use"].includes(selectedAsset.status) && (
-                        <p className="text-xs text-muted-foreground">You don't have permission to check assets in or out.</p>
+                      {selectedAsset.description && (
+                        <p className="mt-1 text-xs text-muted-foreground">{selectedAsset.description}</p>
                       )}
                     </div>
+                  </div>
+
+                  <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5 border-t border-border pt-3 sm:grid-cols-3">
+                    <AssetDetail label="Category" value={selectedAsset.categoryName} />
+                    <AssetDetail label="Location" value={selectedAsset.locationName} />
+                    <AssetDetail label="Department" value={selectedAsset.departmentName} />
+                    <AssetDetail label="Serial number" value={selectedAsset.serialNumber} mono />
+                    <AssetDetail label="Custodian" value={selectedAsset.custodianName ?? "Unassigned"} />
+                    <AssetDetail label="Vendor" value={selectedAsset.vendorName} />
+                    <AssetDetail
+                      label="Purchased"
+                      value={selectedAsset.purchaseDate ? formatDate(selectedAsset.purchaseDate) : null}
+                    />
+                    <AssetDetail
+                      label="Warranty ends"
+                      value={selectedAsset.warrantyExpiry ? formatDate(selectedAsset.warrantyExpiry) : null}
+                    />
+                    {canViewValuation && (
+                      <AssetDetail
+                        label="Current value"
+                        value={formatCurrency(selectedAsset.currentValue, org?.currency, org?.currencySymbol)}
+                      />
+                    )}
+                    {assignmentForSelected && (
+                      <>
+                        <AssetDetail label="Checked out" value={formatDateTime(assignmentForSelected.assignedAt)} />
+                        <AssetDetail
+                          label="Due back"
+                          value={
+                            assignmentForSelected.expectedReturnDate
+                              ? formatDate(assignmentForSelected.expectedReturnDate)
+                              : null
+                          }
+                        />
+                      </>
+                    )}
+                  </dl>
+
+                  {selectedAsset.notes && (
+                    <p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">Notes: </span>
+                      {selectedAsset.notes}
+                    </p>
+                  )}
+
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+                    {selectedAsset.status === "available" && canCheckInOut && (
+                      <Button type="button" size="sm" onClick={openCheckoutDialog}>
+                        Check Out
+                      </Button>
+                    )}
+                    {selectedAsset.status === "in_use" && canCheckInOut && assignmentForSelected && (
+                      <Button type="button" size="sm" onClick={() => openCheckinDialog(assignmentForSelected)}>
+                        Check In
+                      </Button>
+                    )}
+                    <Button type="button" variant="outline" size="sm" className="gap-1.5" asChild>
+                      <Link to={`/assets/${selectedAsset.id}`}>
+                        <ExternalLink className="size-3.5" />
+                        View full details
+                      </Link>
+                    </Button>
+                    {matches.length > 1 && (
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedAssetId(null)}>
+                        Back to results
+                      </Button>
+                    )}
+                    {selectedAsset.status === "in_use" && !assignmentForSelected && (
+                      <p className="text-xs text-muted-foreground">
+                        Marked in use, but no matching open assignment was found.
+                      </p>
+                    )}
+                    {!["available", "in_use"].includes(selectedAsset.status) && (
+                      <p className="text-xs text-muted-foreground">
+                        This asset can't be checked out or in while {humanizeStatus(selectedAsset.status)}.
+                      </p>
+                    )}
+                    {!canCheckInOut && ["available", "in_use"].includes(selectedAsset.status) && (
+                      <p className="text-xs text-muted-foreground">You don't have permission to check assets in or out.</p>
+                    )}
                   </div>
                 </div>
               ) : null}
@@ -605,6 +683,15 @@ export function CheckInOutPage() {
           </form>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function AssetDetail({ label, value, mono }: { label: string; value?: string | null; mono?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dd className={cn("truncate text-sm text-foreground", mono && "font-mono text-xs")}>{value || "-"}</dd>
     </div>
   );
 }

@@ -26,17 +26,17 @@ so keep it honest; a stale table is worse than no table.
 
 | Phase | Status | Notes |
 |---|---|---|
-| 1 — Auth foundation, platform admin (minimal), onboarding | Done | Real login, TOTP enroll/challenge, onboarding wizard, and the minimal platform app are committed and wired. |
+| 1 — Auth foundation, platform admin (minimal), onboarding | Done | Real login, TOTP enroll/challenge, onboarding wizard, and the minimal platform app are committed and wired. **Login has since changed shape**: the org-slug field is gone (2026-09-21), email alone identifies the workspace, and the slug field's job is now done by an email-driven public branding lookup. See §3a before touching auth. |
 | 2 — Dashboard (real data) | Done | Stats/charts/activity hit real endpoints (`features/dashboard/api.ts`); value-hiding confirmed for staff vs. admin; the Maintenance Due widget is still mock, which is expected, that's Phase 5's mock to remove, not this phase's. |
 | 3 — Assets + catalog dependencies | Done | Catalog CRUD (categories/locations/departments) lives under Settings > Catalog (`features/catalog/`); vendors stays read-only here (Phase 7 owns its write UI). `AssetsListPage`/`AssetDetailPage`/`AssetCreatePage`/new `AssetEditPage` are wired to real endpoints (`features/assets/api.ts`), including image upload and joined category/location/department/vendor/custodian names (added LEFT JOINs to `assets.service.ts`, which had none before). `tsc -b`/`npm run build` both clean. **Live-verified 2026-09-18** against the k-cut org seeded with 80 real assets across 9 categories/6 locations: list (search/status/category/location filters, pagination), detail (tabs, QR label preview, joined names), edit and create forms all rendered correctly with no console errors. |
 | 4 — Check-Out / Return | Done | `CheckInOutPage` is wired to `features/check-in-out/api.ts`: search/scan (manual entry plus `html5-qrcode` camera scan) → checkout/checkin dialogs → active/overdue list with overdue highlighting → PDF receipt via `jspdf`. `tsc -b`/`npm run build` clean. **Live-verified 2026-09-18**: searched an asset by tag, checked it out to a custodian (toast + new row in Active check-outs), then checked in an existing overdue item (toast + row removed) — both real mutations against a running backend session on the k-cut org. |
 | 5 — Maintenance | Done | `MaintenancePage` wired to `features/maintenance/api.ts`, full CRUD with status filter, asset picker, overdue highlighting; Dashboard's Maintenance Due widget switched off `mockMaintenanceRecords` (now deleted from `mock-data.ts`) onto the same query. **Actually smoke-tested end to end against a live backend session**: create → status change → confirmed the asset's status and the Dashboard's "In Maintenance" KPI/chart both flip in response, not just the local UI. |
 | 6 — Audits | Working on it | Full assigner/assignee/verifier workflow built on a new `/audits/:id` (`AuditDetailPage`), ownership-checked assignee view, segregation-of-duties notice on the verifier view, history timeline, post-verification report panel. `mockAudits` deleted. `tsc -b`/`npm run build` clean. **Partially live-verified 2026-09-18**: list and detail pages (history timeline, verifier report panel, scoped items with joined asset names) render correctly against real seeded audits on k-cut, no console errors. Still not flipped to Done: the assign → start → submit → verify mutation sequence itself wasn't click-through exercised this pass (the seeded audits were inserted directly, not driven through the UI/API) — that's the remaining gap before this can close. |
 | 7 — People + Vendors | Working on it | `PeoplePage` wired to `features/people/api.ts` (list/edit/deactivate/invite); new public `/invite/:token/accept` page; `VendorsPage` now reuses the existing `CatalogManager` component (categories/locations/departments' shared CRUD UI) with `canManageVendors`-gated fields matching the backend's `vendorCreateSchema`. `mockUsers` deleted. `tsc -b`/`npm run build` clean. Verified via a fully mocked Playwright pass, and **the list views were additionally live-verified 2026-09-18** against k-cut's real 12 people (including an inactive user rendering correctly) and 5 vendors. Still not Done: invite/edit/deactivate and vendor create/edit mutations weren't exercised against the live backend this pass. |
-| 8 — Reports + Labels | Done | Labels is done (`LabelsPage`, real format picker, persists via `PATCH /organizations/me/label-format`). Reports is now built too: filter bar (category/location/custodian, purchase-date vs. depreciation-date mode matching the backend's real `dateField` param), server-side sort, client-side group-by (category/location/depreciation-bucket), CSV/Excel/PDF export, new shared `src/lib/depreciation.ts` (straight-line formula). The depreciation-range filter from this phase's original spec is deliberately **not built** since the backend doesn't support it yet (confirmed against `assetReportQuerySchema`/`buildAssetReportQuery`, only one `dateField` mode exists) — the UI has a visible notice explaining this instead of faking it client-side. `tsc -b`/`npm run build` clean. **Live-verified 2026-09-18** on k-cut's 80 seeded assets: Reports page rendered filtered/sorted real data with depreciation percentages; Labels format was selected and saved (real `PATCH` mutation), then a 22-asset selection generated correct barcode+QR label previews. |
+| 8 — Reports + Labels | Done | Labels is done (`LabelsPage`, real format picker, persists via `PATCH /organizations/me/label-format`). Reports is now built too: filter bar (category/location/custodian, purchase-date vs. depreciation-date mode matching the backend's real `dateField` param), server-side sort, client-side group-by (category/location/depreciation-bucket), CSV/Excel/PDF export, new shared `src/lib/depreciation.ts` (straight-line formula). The depreciation-range filter from this phase's original spec is deliberately **not built** since the backend doesn't support it yet (confirmed against `assetReportQuerySchema`/`buildAssetReportQuery`, only one `dateField` mode exists) — the UI has a visible notice explaining this instead of faking it client-side. `tsc -b`/`npm run build` clean. **Live-verified 2026-09-18** on k-cut's 80 seeded assets: Reports page rendered filtered/sorted real data with depreciation percentages; Labels format was selected and saved (real `PATCH` mutation), then a 22-asset selection generated correct barcode+QR label previews. Since documented (2026-09-22): print-sheet calibration is **built**, not just specified, as a Settings > Labels form persisting to `/organizations/me/label-sheet-layout`, and the default label size moved from 45×40mm to 63×25.4mm to match the org's real stock. See the Phase 8 section below. |
 | 9 — Settings | Done | Org profile, branding/theme (logo + colors, shared components with onboarding), catalog (categories/locations/departments CRUD) and a personal Appearance tab (light/dark/system, sidebar collapse) are real and wired; the whole page (not just individual tabs) is gated to `canManageSettings`/`canManageOrg` roles. |
 | 10 — Platform admin, full feature set | Done | Force-reset-password is wired end-to-end (`PlatformOrgDetailPage`'s new Users tab, gated to `platform_owner`). **Impersonation was built in this phase and removed again on 2026-09-19** at the product owner's call (legal exposure); see the Phase 10 section below for exactly what came out of each repo, and don't rebuild it. Dashboard rebuilt with real analytics (`GET /platform/analytics`): fleet growth chart, plan-status breakdown, a Risk & Health panel (suspended orgs, quota pressure, overdue maintenance, at-risk assets — each tile links into `/platform/orgs?risk=<filter>`), and a new "Detected login risk" panel (`GET /platform/security/login-risk`) showing which accounts are mid a failed-login spike, from where (IP, via a new per-attempt activity-log trail in `auth.service.ts`), and linking straight to that user in their org. New `GET /platform/orgs/:id/users` and `GET /platform/orgs/:id/activity` (already existed) back the Users/Activity tabs. `tsc -b`/`npm run build` both clean on the frontend, `tsc --noEmit` clean on the backend. **Live-verified 2026-09-18** via a throwaway `platform_owner` QA account (`platform.qa.tester@example.com`, seeded by the new `db/seedQaPlatformAdmin.ts`, same non-privileged-enrollment pattern as the k-cut tenant QA account): full click-through of login → TOTP enrollment → dashboard (all charts/panels rendering with real data, including a real 3-attempt login-risk entry generated against the k-cut QA tester) → org detail Users tab → Activity tab, platform session intact throughout. |
-| 11 — Polish / hardening | Pending | No route-level code-splitting yet (still a single bundle); no unified loading/empty/error states or tests yet. |
+| 11 — Polish / hardening | Pending | No route-level code-splitting yet: the main chunk is now 2,644.87 kB (786 kB gzipped) as of 2026-09-22 and Vite warns on every build. No unified loading/empty/error states or tests yet. One free cleanup waiting here: `src/lib/mock-data.ts` is now imported by nothing at all and can simply be deleted (see §3a). |
 
 **Why the remaining rows are "built, build-clean, not yet Done"**: Phases 6/7 were built and
 verified by `tsc -b`/`npm run build`, and now have live-verified read paths too (see table above),
@@ -60,8 +60,16 @@ the actual admin's enrolled TOTP credential. That accomplished the "seed a dedic
 enrolled test account" suggestion below and is why Phases 3/4/8 could move to Done this round — use
 that same account for further live verification rather than re-deriving a workaround.
 
-Status last verified against the working tree on 2026-09-18 — re-check the actual code before
-trusting a row that looks old, the same caveat §4 applies to the phase descriptions themselves.
+Status last verified against the working tree on **2026-09-22**. That pass was a *code-level*
+audit (`npx tsc -b` clean, `npm run build` succeeds, every feature folder read against the row that
+claims it) plus a reconciliation of the two commits that landed after the previous 2026-09-18
+verify — `652f5c4` (a 52-file change that updated only the status rows, not the phase bodies) and
+`42f0b22`. It was **not** a fresh live-backend click-through, so no row moved to Done on the
+strength of it: Phases 6 and 7 still need the mutation flows exercised, exactly as described above.
+What that pass did surface is a pile of shipped-but-undocumented work, now written up in
+"Cross-phase work not owned by any phase" at the end of §3 and folded into the Phase 8 and Phase 11
+sections. Re-check the actual code before trusting a row that looks old, the same caveat §4 applies
+to the phase descriptions themselves.
 
 ---
 
@@ -158,11 +166,20 @@ Each phase below lists: the pages/routes it makes real, the exact backend endpoi
 has been smoke-tested against a locally running backend (`pnpm dev` in the backend repo) — not just
 against mock data.
 
+Work that turned out to belong to no phase (auth's move to email-only login, pre-auth org
+branding, notifications, branded PDF export, and a few shared utilities) is written up in **§3a**,
+after Phase 11. Read that before auth or branding work in particular, since it supersedes parts of
+Phase 1 below.
+
 ### Phase 1 — Auth foundation, platform admin (minimal), onboarding — Status: Done
 The gate every other phase sits behind. Nothing past `/login` is real until this lands.
 
 **Tenant auth**
-- `/login` — org slug + email + password → `POST /auth/login`. Branch on response `status`:
+- `/login` — **email + password only.** The org-slug field this phase originally specified was
+  removed on 2026-09-21 (backend `c0f5276`): `users.email` is globally unique, so the email alone
+  resolves the workspace. `POST /auth/login` no longer accepts `orgSlug`, and neither do the
+  password-reset schemas. See §3a's "Pre-auth org branding" for what replaced the slug field in
+  the UI. Branch on response `status`:
   - `totp_enrollment_required` → `/totp/enroll` (show QR from `POST /auth/totp/enroll`, verify via
     `POST /auth/totp/verify-enroll`, display the 10 recovery codes **once**).
   - `totp_challenge_required` → `/totp/challenge` (`POST /auth/login/totp`).
@@ -301,8 +318,13 @@ The highest-complexity phase — three distinct role-scoped screens, not one pag
 
 #### Labels
 
-Physical label size: **45mm × 40mm.** Three label format variants (choose per print run, not a
-global setting):
+Physical label size: **63mm × 25.4mm** (default), *changed from the 45×40mm this section
+originally specified.* The near-square 45×40mm was a placeholder; the org's actual pre-printed
+label stock is a short wide strip (logo + barcode left, QR right), and 63×25.4mm at 3 columns ×
+10 rows is what fits it on A4. The default lives in the backend's
+`DEFAULT_LABEL_SHEET_LAYOUT` (`organizations.service.ts`) and is editable per org via the
+calibration form below, so the number above is a default, not a constant to hardcode against.
+Three label format variants (choose per print run, not a global setting):
 
 1. **Barcode + QR, split layout** — two zones side by side: left zone carries the company logo
    above (or beside) a linear barcode (asset tag); right zone is the QR code alone.
@@ -327,6 +349,25 @@ right. Persist it per-org (reuse the existing `systemSettings` table — `key: "
 `value: jsonb` — rather than a new table; it already exists for exactly this kind of org-level
 key/value config) so it's set once, not re-entered every print run. Render via
 `jspdf`/`jspdf-autotable`, same as the Reports PDF export.
+
+**Built (undocumented until 2026-09-22, shipped in `652f5c4`).** All of the above exists:
+
+- `src/features/settings/components/LabelSettingsForm.tsx` — a new **Settings > Labels** section
+  holding both the org-wide default format picker and the full sheet-calibration form (label
+  width/height, columns, rows, four margins, both gaps, A4/Letter), with a live scaled preview of
+  the resulting grid that refuses to render a geometry overflowing the page.
+- Persisted via `GET`/`PATCH /organizations/me/label-sheet-layout`
+  (`organizations.router.ts`, validated by `labelSheetLayoutSchema`), stored in `systemSettings`
+  under `key: "label_sheet_layout"` exactly as specified above. Frontend hooks:
+  `useLabelSheetLayoutQuery`/`useSaveLabelSheetLayoutMutation` in `src/features/labels/api.ts`.
+- `src/features/labels/lib/labelPdf.ts` renders the actual multi-label print sheet from that
+  geometry, paginating across pages. It deliberately mirrors `LabelPreview.tsx`'s zone layout so
+  the on-screen preview and the printed sheet can't disagree.
+
+Also added to Reports in the same commit: `depreciationDate` as a sort option (alongside
+`purchaseDate`/`currentValue`/`name`/`assetTag`), and org branding (name + logo) on PDF exports
+via `exportRowsToPdf`'s new `branding` argument. The depreciation-*range* filter is still
+deliberately not built, for the backend reason given in the Status table.
 
 ### Phase 9 — Settings — Status: Done
 - Org profile + branding re-edit (same endpoints as Phase 1's onboarding, different entry point —
@@ -364,9 +405,14 @@ key/value config) so it's set once, not re-entered every print run. Render via
   `GET /platform/orgs/:id/activity` already existed and is now surfaced in an Activity tab.
 
 ### Phase 11 — Polish / hardening — Status: Pending
-- Route-level code-splitting (`React.lazy` per feature) — flagged in Phase 0 as a known gap; the
-  production bundle was a single ~965KB chunk with only Dashboard + Assets built, and it'll only
-  grow.
+- Route-level code-splitting (`React.lazy` per feature) — flagged in Phase 0 as a known gap, and
+  it did grow as predicted: `src/app/router.tsx` still imports all 22 page components eagerly, and
+  as of 2026-09-22 the production build emits a single **2,644.87 kB** main chunk (786 kB gzipped),
+  up from the ~965KB measured when only Dashboard + Assets existed. Vite warns about it on every
+  build. The heavy leaves are the obvious split candidates, since most sessions never open them:
+  `jspdf`/`jspdf-autotable` + `html2canvas` (199 kB, already its own chunk), `xlsx`,
+  `html5-qrcode`, and `recharts` — i.e. Reports, Labels, the audit/receipt PDF paths and the
+  scanner.
 - Consistent loading skeletons / empty states / error boundaries across all the CRUD pages built in
   Phases 3–9 (they'll have been built slightly differently phase to phase under time pressure —
   this is the pass that unifies them).
@@ -374,6 +420,118 @@ key/value config) so it's set once, not re-entered every print run. Render via
   bug is expensive: locking someone out, or corrupting an audit's state).
 - Accessibility pass on the shell (focus trapping in dialogs/sheets, landmark roles) — shadcn/Radix
   gives this mostly for free, but worth a deliberate check once the app is feature-complete.
+
+---
+
+## 3a. Cross-phase work not owned by any phase
+
+Everything below is **built, committed and build-clean**, but belongs to no phase in §3, so it was
+invisible in this doc until a 2026-09-22 audit reconciled the tree against it. Almost all of it
+landed in `652f5c4` (2026-09-21), a 52-file commit whose own BUILD_PLAN.md edit updated only the
+Status rows and Phase 10's body, leaving the rest unwritten. Recorded here so the next person
+doesn't rediscover it by grep, or worse, rebuild it.
+
+Same caveat as every row in the Status table: this is verified at the code level (`npx tsc -b`
+clean, `npm run build` succeeds), not by a live-backend click-through.
+
+### Login identity: email only, no org slug
+
+The single biggest drift from §1/Phase 1, and the reason to read this section before touching auth.
+Backend commit `c0f5276` (2026-09-21) **removed `orgSlug` from the login and password-reset
+schemas**; `users.email` is globally unique, so one email maps to exactly one workspace, forever.
+The frontend matches: `LoginPage` has an email field and a password field, nothing else.
+
+Consequences worth knowing before you change anything here:
+
+- The one-time "workspace created" handoff screen in Phase 1's `/platform/orgs/new` no longer needs
+  to communicate a slug for *login* purposes. The slug still exists on the org record and still
+  appears there; it just isn't a credential anymore.
+- There is no org-picker or org-disambiguation UI anywhere, by design. If the backend ever allows
+  one email across multiple orgs, this is the assumption that breaks first.
+
+### Pre-auth org branding (login, forgot-password)
+
+Replacing the slug field with something that still tells the user they're in the right place:
+
+- `GET /organizations/public/lookup?email=` — public, unauthenticated, returns `{ slug, name,
+  logoUrl, primaryColor, accentColor }`. Called directly with `fetch` in
+  `src/features/auth/api.ts`, deliberately not through `apiFetch`, since there's no session yet and
+  none of the bearer-token/refresh machinery applies.
+- `src/features/auth/useOrgBranding.ts` — shared by every pre-auth screen with an email field.
+  Debounces the lookup 400ms as the user types and routes the result through
+  `useThemeStore().applyOrgTheme`, so the login screen repaints in the customer's own colors and
+  logo. A 404 mid-typing is an expected outcome, not an error to surface. An unresolved email shows
+  **no** logo rather than falling back to the generic Tecres mark.
+- `src/lib/lastOrg.ts` — caches the last successfully-signed-into org's full branding in
+  `localStorage.tecres_last_org_branding` (written on every session hydration in `auth.store.ts`,
+  and deliberately **not** cleared on logout, since surviving logout is the entire point). Read
+  synchronously on first render so a returning user gets their own branding with no network round
+  trip and no flash of the generic mark. This is branding only, never a credential, which is why
+  it's allowed in `localStorage` at all under the token rule in `CLAUDE.md`.
+- `useOrgBranding` carries a deliberate three-layer autofill guard (native DOM listeners, a short
+  post-mount poll, and a `getSubmitEmail()` that reads the live DOM value at submit time). It looks
+  like belt-and-braces because it is: some mobile/WebView autofill paths set an input's value
+  without dispatching anything React's synthetic event system sees, which left both the branding
+  preview and the submitted value stuck on empty. Don't simplify it back to `onChange` alone.
+- `src/components/brand/BrandedLoader.tsx` + `router.tsx`'s `FullScreenSpinner` use the same cache,
+  so even the boot-time silent-refresh wait shows the customer's logo.
+
+### Org logo as the browser tab favicon
+
+`applyOrgTheme` in `src/store/theme.store.ts` now also swaps `<link rel="icon">` to the org's
+`logoUrl`, on top of the CSS custom properties it already set. This keeps the "one place sets
+per-tenant branding" rule in `CLAUDE.md` intact rather than adding a second branding path. It
+falls back to the bundled Tecres mark when the org has no logo, and also when the URL is one the
+browser can't fetch unaided (a `<link>` carries no auth header, unlike the `<img>` tags elsewhere
+that resolve `/files/:id` themselves). Commit `42f0b22` replaced `public/favicon.svg` with
+`public/favicon.png` for this.
+
+### Notifications
+
+A real, wired feature that appears in no phase of this plan. `src/features/notifications/api.ts`
+consumes `GET /notifications`, `PUT /notifications/:id/read` and `PUT /notifications/read-all`
+(which returns 204, so that mutation updates the cache locally rather than from a response body).
+It **polls on a 60s interval** because the backend has no websocket/SSE channel. Surfaced as the
+bell + unread badge + dropdown in `src/components/layout/Header.tsx`. The corresponding
+`mockNotifications` was deleted from `mock-data.ts` in the same commit.
+
+### Branded client-side PDFs, everywhere
+
+`src/lib/pdfLogo.ts`'s `resolveLogoDataUrl` is the shared piece: jsPDF's `addImage` won't take a
+Cloudinary http URL or a `blob:` object URL, so it fetches and re-reads as a data URL, which also
+sidesteps canvas CORS tainting. Every client-side PDF generator now goes through it, so a
+downloaded file carries the org's actual logo and not just its name in text:
+
+- Reports export (`features/reports/lib/export.ts`, new `branding` argument)
+- Label print sheets (`features/labels/lib/labelPdf.ts`)
+- Audit reports (`AuditDetailPage`'s `downloadAuditReportPdf`)
+- Check-out/return receipts (`CheckInOutPage`, whose header band is also tinted with the org's
+  brand color so the receipt matches the app)
+
+### Smaller cross-cutting additions
+
+- `src/lib/compressImage.ts` — downscales and re-encodes image uploads (1280px max, JPEG q0.72)
+  before they're sent, so asset photos don't land in storage at full camera resolution. Falls back
+  to the original file on any failure rather than blocking the upload, and skips SVGs.
+- `PermissionRoute` in `src/app/router.tsx` — gates a route on a `permissions.ts` key and bounces
+  to `/` otherwise, so a role can't reach a page just by typing its URL. Currently applied to
+  `/people` (`canManagePeople`). **UX only**, same caveat as the rest of `permissions.ts`: the
+  backend's `authorize()` is the real boundary.
+- `src/components/common/PasswordInput.tsx` — shared reveal-toggle password field, used across the
+  auth screens.
+- `src/lib/color.ts`'s `hexToRgb` (jsPDF needs RGB triples, not hex), `src/lib/format.ts`'s
+  `formatRelativeTime`, `src/lib/extractLogoColors.ts` (suggests brand colors from an uploaded
+  logo during onboarding/branding), and `src/features/not-found/NotFoundPage.tsx`.
+
+### `src/lib/mock-data.ts` is now dead code
+
+Nothing imports it. The phase-by-phase deletion described in the intro and §4.2 has run its course:
+all that's left in the file is `mockOrg` and `mockCurrentUser`, unreferenced by any component or
+store (the only remaining mention of "mock-data" anywhere in `src/` is a comment in
+`ComingSoon.tsx`). **Deleting the file is a free cleanup for whoever next touches this area** — it
+was left in place only because removing it wasn't any one phase's job. Note that `noUnusedLocals`
+doesn't catch this, since unused *exports* are not unused locals, so the build won't flag it for
+you.
 
 ---
 
