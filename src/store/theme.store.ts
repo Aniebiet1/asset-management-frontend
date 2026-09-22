@@ -68,13 +68,15 @@ function readStoredSidebar(): boolean {
   }
 }
 
-const DEFAULT_FAVICON_HREF = "/favicon.svg";
+/** Tecres's own mark — the tab icon before any org is known (login, onboarding, platform
+ * admin) and the reset target when an org has no usable logo of its own. */
+const DEFAULT_FAVICON_HREF = "/favicon.png";
 
 /** Swaps the browser tab icon for the current org's own logo, mirroring the generic-mark
  * fallback rule `Logo.tsx` uses: a real URL shows that logo, explicit `null` (or anything the
  * browser can't fetch on its own, like the relative `/files/:id` path `org.logoUrl` falls back to
  * against a local backend with no Cloudinary configured — a `<link>` fetch carries no auth header,
- * unlike the `<img>` tags that resolve it themselves) resets to the bundled default. */
+ * unlike the `<img>` tags that resolve it themselves) resets to the bundled Tecres mark. */
 function applyFavicon(logoUrl: string | null) {
   let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
   if (!link) {
@@ -86,7 +88,7 @@ function applyFavicon(logoUrl: string | null) {
     link.removeAttribute("type");
     link.href = logoUrl;
   } else {
-    link.type = "image/svg+xml";
+    link.type = "image/png";
     link.href = DEFAULT_FAVICON_HREF;
   }
 }
