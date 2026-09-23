@@ -10,12 +10,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormField } from "@/components/ui/form";
 import { ApiError } from "@/lib/http-error";
 import { Skeleton } from "@/components/ui/skeleton";
 
-type FieldType = "text" | "textarea" | "number" | "decimal" | "switch" | "select";
+type FieldType = "text" | "textarea" | "number" | "decimal" | "switch";
 
 export interface CatalogFieldConfig {
   name: string;
@@ -29,8 +28,6 @@ export interface CatalogFieldConfig {
   /** Spans both grid columns in the dialog form instead of sharing a row with the next field.
    * Textareas and switches always span full width regardless of this flag. */
   fullWidth?: boolean;
-  /** type: "select" only - the dropdown's options. */
-  options?: { value: string; label: string }[];
   /** Disables the field in the dialog form (create AND edit) when this returns true for the item
    * being edited (null while creating) - e.g. a branch's code once it's locked. */
   disabledWhen?: (item: unknown) => boolean;
@@ -271,23 +268,6 @@ export function CatalogManager<T extends CatalogItem>({
                           onCheckedChange={(checked) => setFormState((s) => ({ ...s, [f.name]: checked }))}
                         />
                       </div>
-                    ) : f.type === "select" ? (
-                      <Select
-                        value={(formState[f.name] as string) ?? ""}
-                        disabled={disabled}
-                        onValueChange={(value) => setFormState((s) => ({ ...s, [f.name]: value }))}
-                      >
-                        <SelectTrigger id={f.name}>
-                          <SelectValue placeholder={f.placeholder} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {f.options?.map((o) => (
-                            <SelectItem key={o.value} value={o.value}>
-                              {o.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
                     ) : (
                       <Input
                         id={f.name}

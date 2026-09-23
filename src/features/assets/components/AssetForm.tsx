@@ -224,7 +224,7 @@ export function AssetForm({ asset }: { asset?: Asset }) {
   const watchedCategoryId = useWatch({ control, name: "categoryId" });
   const watchedPurchaseDate = useWatch({ control, name: "purchaseDate" });
 
-  const branches = useBranchesQuery(watchedSubsidiaryId);
+  const branches = useBranchesQuery();
 
   // Structured flow activates once the org has configured at least one subsidiary; orgs that
   // haven't yet keep today's free-text tag input untouched (see BUILD_PLAN.md's Phase 3 note).
@@ -246,12 +246,6 @@ export function AssetForm({ asset }: { asset?: Asset }) {
     setDuplicateParent(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asset?.id]);
-
-  // Changing subsidiary invalidates whatever branch was picked under the old one.
-  useEffect(() => {
-    setValue("branchId", "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watchedSubsidiaryId]);
 
   // A picked duplicate-of target is scoped to one asset type - changing the type invalidates it.
   useEffect(() => {
@@ -402,9 +396,9 @@ export function AssetForm({ asset }: { asset?: Asset }) {
                         control={control}
                         name="branchId"
                         render={({ field }) => (
-                          <Select value={field.value} onValueChange={field.onChange} disabled={!watchedSubsidiaryId}>
+                          <Select value={field.value} onValueChange={field.onChange}>
                             <SelectTrigger id="branchId">
-                              <SelectValue placeholder={watchedSubsidiaryId ? "Select branch" : "Select a subsidiary first"} />
+                              <SelectValue placeholder="Select branch" />
                             </SelectTrigger>
                             <SelectContent>
                               {branches.data?.map((b) => (

@@ -1,6 +1,4 @@
-import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CatalogManager, type CatalogFieldConfig } from "@/features/catalog/components/CatalogManager";
 import {
   useCategoriesQuery,
@@ -58,75 +56,21 @@ const subsidiaryFields: CatalogFieldConfig[] = [
   { name: "code", label: "Code", type: "text", required: true, placeholder: "CCL", hint: "Short, uppercase - embedded in every asset tag for this subsidiary." },
 ];
 
-/**
- * Subsidiaries/branches drive the structured asset tag format (see AssetForm.tsx and the Asset
- * Tagging System proposal) - branch codes are scoped to a subsidiary (two subsidiaries can both
- * have a "09") and lock once a branch has been used to generate at least one tag.
- */
-function BranchesManager({ canManage }: { canManage: boolean }) {
-  const subsidiaries = useSubsidiariesQuery();
-  const [subsidiaryId, setSubsidiaryId] = useState<string | undefined>(undefined);
-  const effectiveSubsidiaryId = subsidiaryId ?? subsidiaries.data?.[0]?.id;
-
-  const branches = useBranchesQuery(effectiveSubsidiaryId);
-  const createBranch = useCreateBranchMutation();
-  const updateBranch = useUpdateBranchMutation();
-  const deleteBranch = useDeleteBranchMutation();
-
-  const branchFields: CatalogFieldConfig[] = [
-    { name: "subsidiaryId", label: "Subsidiary", type: "select", required: true, options: subsidiaries.data?.map((s) => ({ value: s.id, label: s.name })) ?? [] },
-    { name: "name", label: "Name", type: "text", required: true, placeholder: "Festac" },
-    {
-      name: "code",
-      label: "Code",
-      type: "text",
-      required: true,
-      placeholder: "09",
-      hint: "2 digits, e.g. 01-99. Locks once a tag has been generated for this branch.",
-      disabledWhen: (item) => !!(item as Branch | null)?.codeLocked,
-    },
-  ];
-
-  if (!subsidiaries.isLoading && subsidiaries.data?.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
-        Add a subsidiary first, then branches can be created under it.
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="max-w-xs">
-        <Select value={effectiveSubsidiaryId} onValueChange={setSubsidiaryId}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select subsidiary" />
-          </SelectTrigger>
-          <SelectContent>
-            {subsidiaries.data?.map((s) => (
-              <SelectItem key={s.id} value={s.id}>
-                {s.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <CatalogManager<Branch>
-        resourceLabel="Branch"
-        showHeading={false}
-        items={branches.data}
-        isLoading={branches.isLoading}
-        fields={branchFields}
-        canManage={canManage}
-        renderSubtitle={(b) => (b.codeLocked ? "Code locked" : null)}
-        onCreate={(input) => createBranch.mutateAsync(input)}
-        onUpdate={(id, input) => updateBranch.mutateAsync({ id, data: input })}
-        onDelete={(id) => deleteBranch.mutateAsync(id)}
-      />
-    </div>
-  );
-}
+// Branches are org-level, not owned by a subsidiary: any subsidiary can operate at any branch, so
+// codes are unique across the whole org. A code locks once it has been used to generate a tag.
+const branchFields: CatalogFieldConfig[] = [
+  { name: "name", label: "Name", type: "text", required: true, placeholder: "Festac" },
+  {
+    name: "code",
+    label: "Code",
+    type: "text",
+    required: true,
+    placeholder: "09",
+    maxLength: 2,
+    hint: "2 digits, e.g. 01-99. Locks once a tag has been generated for this branch.",
+    disabledWhen: (item) => !!(item as Branch | null)?.codeLocked,
+  },
+];
 
 /**
  * Categories/locations/departments/subsidiaries/branches management, per BUILD_PLAN.md Phase 3's
@@ -154,6 +98,11 @@ export function CatalogTab({ canManage }: { canManage: boolean }) {
   const createSubsidiary = useCreateSubsidiaryMutation();
   const updateSubsidiary = useUpdateSubsidiaryMutation();
   const deleteSubsidiary = useDeleteSubsidiaryMutation();
+
+  const branches = useBranchesQuery();
+  const createBranch = useCreateBranchMutation();
+  const updateBranch = useUpdateBranchMutation();
+  const deleteBranch = useDeleteBranchMutation();
 
   return (
     <Tabs defaultValue="categories">
@@ -225,7 +174,18 @@ export function CatalogTab({ canManage }: { canManage: boolean }) {
       </TabsContent>
 
       <TabsContent value="branches" className="pt-4">
-        <BranchesManager canManage={canManage} />
+        <CatalogManager<Branch>
+          resourceLabel="Branch"
+          description="Physical branches used in asset tags. Codes are unique across the organization."
+          items={branches.data}
+          isLoading={branches.isLoading}
+          fields={branchFields}
+          canManage={canManage}
+          renderSubtitle={(b) => (b.codeLocked ? "Code locked" : null)}
+          onCreate={(input) => createBranch.mutateAsync(input)}
+          onUpdate={(id, input) => updateBranch.mutateAsync({ id, data: input })}
+          onDelete={(id) => deleteBranch.mutateAsync(id)}
+        />
       </TabsContent>
     </Tabs>
   );

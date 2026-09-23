@@ -37,7 +37,7 @@ export function CorrectTagDialog({
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const branches = useBranchesQuery(subsidiaryId);
+  const branches = useBranchesQuery();
 
   useEffect(() => {
     if (!open) return;
@@ -78,13 +78,7 @@ export function CorrectTagDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <FormField label="Subsidiary" htmlFor="correct-subsidiaryId" required>
-              <Select
-                value={subsidiaryId}
-                onValueChange={(v) => {
-                  setSubsidiaryId(v);
-                  setBranchId("");
-                }}
-              >
+              <Select value={subsidiaryId} onValueChange={setSubsidiaryId}>
                 <SelectTrigger id="correct-subsidiaryId">
                   <SelectValue placeholder="Select subsidiary" />
                 </SelectTrigger>
@@ -99,7 +93,7 @@ export function CorrectTagDialog({
             </FormField>
 
             <FormField label="Branch" htmlFor="correct-branchId" required>
-              <Select value={branchId} onValueChange={setBranchId} disabled={!subsidiaryId}>
+              <Select value={branchId} onValueChange={setBranchId}>
                 <SelectTrigger id="correct-branchId">
                   <SelectValue placeholder="Select branch" />
                 </SelectTrigger>

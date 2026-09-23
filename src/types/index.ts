@@ -186,10 +186,10 @@ export interface Subsidiary {
   updatedAt: string;
 }
 
+/** Org-level, not owned by a subsidiary - any subsidiary can operate at any branch. */
 export interface Branch {
   id: string;
   orgId: string;
-  subsidiaryId: string;
   name: string;
   code: string;
   codeLocked: boolean;
