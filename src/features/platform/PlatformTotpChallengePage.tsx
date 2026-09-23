@@ -3,6 +3,7 @@ import { AuthLayout } from "@/components/auth/AuthLayout";
 import { TotpChallengeForm } from "@/components/auth/TotpChallengeForm";
 import { usePlatformAuthStore } from "@/store/platformAuth.store";
 import { useTecresBrandTheme } from "./useTecresBrandTheme";
+import { platformHero, PLATFORM_AUTH_FOOTER } from "./platformHero";
 
 export function PlatformTotpChallengePage() {
   const location = useLocation();
@@ -14,7 +15,7 @@ export function PlatformTotpChallengePage() {
   if (!preAuthToken) return <Navigate to="/platform/login" replace />;
 
   return (
-    <AuthLayout>
+    <AuthLayout hero={platformHero} footer={PLATFORM_AUTH_FOOTER}>
       <TotpChallengeForm
         preAuthToken={preAuthToken}
         completeChallenge={completeTotpChallenge}

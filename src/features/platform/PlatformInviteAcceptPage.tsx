@@ -10,6 +10,7 @@ import { BrandedLoader } from "@/components/brand/BrandedLoader";
 import { ApiError } from "@/lib/http-error";
 import { usePlatformAuthStore } from "@/store/platformAuth.store";
 import { useTecresBrandTheme } from "./useTecresBrandTheme";
+import { platformHero, PLATFORM_AUTH_FOOTER } from "./platformHero";
 
 /**
  * Public accept page for a Tecres platform-console invite, kept separate from the tenant staff
@@ -39,7 +40,7 @@ export function PlatformInviteAcceptPage() {
 
   if (!token || invite.isError) {
     return (
-      <AuthLayout>
+      <AuthLayout hero={platformHero} footer={PLATFORM_AUTH_FOOTER}>
         <div className="text-center">
           <h1 className="text-lg font-semibold text-foreground">This invitation isn't valid</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -55,7 +56,7 @@ export function PlatformInviteAcceptPage() {
 
   if (invite.isLoading || !invite.data) {
     return (
-      <AuthLayout>
+      <AuthLayout hero={platformHero} footer={PLATFORM_AUTH_FOOTER}>
         <div className="flex justify-center py-8">
           <BrandedLoader />
         </div>
@@ -85,7 +86,7 @@ export function PlatformInviteAcceptPage() {
   }
 
   return (
-    <AuthLayout>
+    <AuthLayout hero={platformHero} footer={PLATFORM_AUTH_FOOTER}>
       <div className="mb-5 text-center">
         <h1 className="text-lg font-semibold text-foreground">Set up your platform account</h1>
         <p className="mt-1 text-sm text-muted-foreground">

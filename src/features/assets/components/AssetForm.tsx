@@ -23,6 +23,7 @@ import { generateRandomCode } from "@/lib/format";
 import { useAuthStore } from "@/store/auth.store";
 import { useCategoriesQuery, useLocationsQuery, useDepartmentsQuery, useVendorsQuery, useSubsidiariesQuery, useBranchesQuery } from "@/features/catalog/api";
 import { useCreateAssetMutation, useUpdateAssetMutation, useUploadFileMutation, useAssetTagPreviewQuery } from "@/features/assets/api";
+import { DuplicateAssetPicker } from "@/features/assets/components/DuplicateAssetPicker";
 import type { Asset, User } from "@/types";
 
 const NONE = "__none__";
@@ -89,7 +90,6 @@ const assetFormSchema = z.object({
 
   subsidiaryId: z.string().optional(),
   branchId: z.string().optional(),
-  isBatch: z.boolean().optional(),
 });
 
 type AssetFormValues = z.infer<typeof assetFormSchema>;
@@ -120,7 +120,6 @@ function defaultsFromAsset(asset: Asset | undefined, generatedTag: string): Asse
     notes: asset?.notes ?? "",
     subsidiaryId: asset?.subsidiaryId ?? "",
     branchId: asset?.branchId ?? "",
-    isBatch: false,
   };
 }
 
@@ -155,7 +154,7 @@ function buildPayload(values: AssetFormValues, structured: boolean, batchIndex: 
       ...base,
       subsidiaryId: values.subsidiaryId,
       branchId: values.branchId,
-      isBatch: values.isBatch || undefined,
+      isBatch: batchIndex !== undefined || undefined,
       batchIndex,
     };
   }
@@ -179,15 +178,6 @@ const conditionOptions = [
   { value: "poor", label: "Poor" },
   { value: "damaged", label: "Damaged" },
 ];
-
-interface BatchContext {
-  subsidiaryId: string;
-  branchId: string;
-  categoryId: string;
-  purchaseDate: string;
-  tagIndex: number;
-  lastTag: string;
-}
 
 export function AssetForm({ asset }: { asset?: Asset }) {
   const navigate = useNavigate();
@@ -213,7 +203,8 @@ export function AssetForm({ asset }: { asset?: Asset }) {
   const [formError, setFormError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [generatedTag] = useState(() => generateAssetTag(orgSlug));
-  const [batchContext, setBatchContext] = useState<BatchContext | null>(null);
+  const [isDuplicate, setIsDuplicate] = useState(false);
+  const [duplicateParent, setDuplicateParent] = useState<Asset | null>(null);
 
   const {
     register,
@@ -232,28 +223,27 @@ export function AssetForm({ asset }: { asset?: Asset }) {
   const watchedBranchId = useWatch({ control, name: "branchId" });
   const watchedCategoryId = useWatch({ control, name: "categoryId" });
   const watchedPurchaseDate = useWatch({ control, name: "purchaseDate" });
-  const watchedIsBatch = useWatch({ control, name: "isBatch" });
 
   const branches = useBranchesQuery(watchedSubsidiaryId);
 
   // Structured flow activates once the org has configured at least one subsidiary; orgs that
   // haven't yet keep today's free-text tag input untouched (see BUILD_PLAN.md's Phase 3 note).
   const hasStructuredFlow = !subsidiaries.isLoading && (subsidiaries.data?.length ?? 0) > 0;
-  const inBatch = !!batchContext;
 
   const preview = useAssetTagPreviewQuery({
     subsidiaryId: watchedSubsidiaryId,
     branchId: watchedBranchId,
     categoryId: watchedCategoryId,
     purchaseDate: watchedPurchaseDate,
-    isBatch: watchedIsBatch,
-    batchIndex: batchContext?.tagIndex,
+    isBatch: !!duplicateParent,
+    batchIndex: duplicateParent?.tagIndex ?? undefined,
   });
 
   useEffect(() => {
     reset(defaultsFromAsset(asset, generatedTag));
     setImageUrl(asset?.imageUrl ?? null);
-    setBatchContext(null);
+    setIsDuplicate(false);
+    setDuplicateParent(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asset?.id]);
 
@@ -263,14 +253,23 @@ export function AssetForm({ asset }: { asset?: Asset }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [watchedSubsidiaryId]);
 
+  // A picked duplicate-of target is scoped to one asset type - changing the type invalidates it.
+  useEffect(() => {
+    setDuplicateParent(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedCategoryId]);
+
   function handleRegenerateTag() {
     setValue("assetTag", generateAssetTag(orgSlug), { shouldValidate: true, shouldDirty: true });
   }
 
-  function handleEndBatch() {
-    setBatchContext(null);
-    reset(defaultsFromAsset(undefined, generatedTag));
-    setImageUrl(null);
+  function handleSelectDuplicateParent(parent: Asset) {
+    setDuplicateParent(parent);
+    // Convenience default for the new item's own purchase date - "same invoice" duplicates
+    // typically share it, but it stays fully editable; subsidiary/branch are left for the user to
+    // pick themselves since setting them here would race the "reset branch on subsidiary change"
+    // effect below.
+    if (!watchedPurchaseDate && parent.purchaseDate) setValue("purchaseDate", parent.purchaseDate.slice(0, 10));
   }
 
   async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -300,8 +299,14 @@ export function AssetForm({ asset }: { asset?: Asset }) {
     }
 
     try {
+      const batchIndex = isDuplicate ? (duplicateParent?.tagIndex ?? undefined) : undefined;
+      if (isDuplicate && batchIndex === undefined) {
+        setFormError("Search for and select the existing item this is a duplicate of.");
+        return;
+      }
+
       const payload = {
-        ...buildPayload(values, hasStructuredFlow && !isEdit, values.isBatch ? batchContext?.tagIndex : undefined),
+        ...buildPayload(values, hasStructuredFlow && !isEdit, batchIndex),
         imageUrl: imageUrl ?? undefined,
       };
       if (isEdit && asset) {
@@ -312,35 +317,6 @@ export function AssetForm({ asset }: { asset?: Asset }) {
       }
 
       const created = await createAsset.mutateAsync(payload);
-
-      if (hasStructuredFlow && values.isBatch) {
-        setBatchContext({
-          subsidiaryId: values.subsidiaryId!,
-          branchId: values.branchId!,
-          categoryId: values.categoryId,
-          purchaseDate: values.purchaseDate!,
-          tagIndex: created.tagIndex!,
-          lastTag: created.assetTag,
-        });
-        toast.success(`Created as ${created.assetTag} - add the next item in this batch below.`);
-        reset({
-          ...defaultsFromAsset(undefined, generatedTag),
-          subsidiaryId: values.subsidiaryId,
-          branchId: values.branchId,
-          categoryId: values.categoryId,
-          purchaseDate: values.purchaseDate,
-          locationId: values.locationId,
-          departmentId: values.departmentId,
-          vendorId: values.vendorId,
-          custodianId: values.custodianId,
-          status: values.status,
-          condition: values.condition,
-          isBatch: true,
-        });
-        setImageUrl(null);
-        return;
-      }
-
       toast.success("Asset created");
       navigate(`/assets/${created.id}`);
     } catch (err) {
@@ -399,24 +375,13 @@ export function AssetForm({ asset }: { asset?: Asset }) {
                     <p className="text-xs font-semibold text-foreground">Asset tag</p>
                   </div>
 
-                  {inBatch && (
-                    <div className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                      <span>
-                        Continuing batch from <span className="font-mono text-foreground">{batchContext.lastTag}</span>
-                      </span>
-                      <button type="button" onClick={handleEndBatch} className="font-medium text-primary hover:underline">
-                        End batch
-                      </button>
-                    </div>
-                  )}
-
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <FormField label="Subsidiary" htmlFor="subsidiaryId" required>
                       <Controller
                         control={control}
                         name="subsidiaryId"
                         render={({ field }) => (
-                          <Select value={field.value} onValueChange={field.onChange} disabled={inBatch}>
+                          <Select value={field.value} onValueChange={field.onChange}>
                             <SelectTrigger id="subsidiaryId">
                               <SelectValue placeholder="Select subsidiary" />
                             </SelectTrigger>
@@ -437,7 +402,7 @@ export function AssetForm({ asset }: { asset?: Asset }) {
                         control={control}
                         name="branchId"
                         render={({ field }) => (
-                          <Select value={field.value} onValueChange={field.onChange} disabled={inBatch || !watchedSubsidiaryId}>
+                          <Select value={field.value} onValueChange={field.onChange} disabled={!watchedSubsidiaryId}>
                             <SelectTrigger id="branchId">
                               <SelectValue placeholder={watchedSubsidiaryId ? "Select branch" : "Select a subsidiary first"} />
                             </SelectTrigger>
@@ -453,22 +418,55 @@ export function AssetForm({ asset }: { asset?: Asset }) {
                       />
                     </FormField>
 
-                    <FormField label="Purchase date" htmlFor="purchaseDate" required>
-                      <Input id="purchaseDate" type="date" disabled={inBatch} {...register("purchaseDate")} />
-                    </FormField>
-
-                    <div className="flex items-end pb-2">
+                    <FormField label="Asset Type" htmlFor="categoryId" required error={errors.categoryId?.message} hint="Also determines the tag's type code.">
                       <Controller
                         control={control}
-                        name="isBatch"
+                        name="categoryId"
                         render={({ field }) => (
-                          <label className="flex items-center gap-2 text-sm text-foreground">
-                            <Checkbox checked={!!field.value} disabled={inBatch} onCheckedChange={(c) => field.onChange(!!c)} />
-                            Part of a batch of identical items
-                          </label>
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <SelectTrigger id="categoryId">
+                              <SelectValue placeholder="Select asset type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {categories.data?.map((c) => (
+                                <SelectItem key={c.id} value={c.id}>
+                                  {c.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         )}
                       />
-                    </div>
+                    </FormField>
+
+                    <FormField label="Purchase date" htmlFor="purchaseDate" required>
+                      <Input id="purchaseDate" type="date" {...register("purchaseDate")} />
+                    </FormField>
+                  </div>
+
+                  <div className="space-y-2 border-t border-border pt-3">
+                    <label className="flex items-center gap-2 text-sm text-foreground">
+                      <Checkbox
+                        checked={isDuplicate}
+                        onCheckedChange={(c) => {
+                          setIsDuplicate(!!c);
+                          if (!c) setDuplicateParent(null);
+                        }}
+                      />
+                      This is one of several identical items bought on the same invoice
+                    </label>
+                    {isDuplicate && (
+                      <div className="space-y-1">
+                        {watchedCategoryId ? (
+                          <DuplicateAssetPicker categoryId={watchedCategoryId} value={duplicateParent} onSelect={handleSelectDuplicateParent} />
+                        ) : (
+                          <p className="text-xs text-muted-foreground">Select an asset type above first, then search for the existing item.</p>
+                        )}
+                        <p className="text-[11px] text-muted-foreground">
+                          Search for the item already registered for this purchase - this one will get the next letter added to its index (e.g. 001 becomes 001-A).
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-1.5">
@@ -478,7 +476,7 @@ export function AssetForm({ asset }: { asset?: Asset }) {
                     <div className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 font-mono text-sm text-foreground">
                       {preview.isFetching
                         ? "Calculating..."
-                        : preview.data?.previewTag ?? "Select subsidiary, branch, category, and date"}
+                        : preview.data?.previewTag ?? "Select subsidiary, branch, asset type, and date"}
                     </div>
                   </div>
 
@@ -491,26 +489,28 @@ export function AssetForm({ asset }: { asset?: Asset }) {
                   <Input id="name" placeholder="MacBook Pro 16&quot;" {...register("name")} />
                 </FormField>
 
-                <FormField label="Asset Type" htmlFor="categoryId" required error={errors.categoryId?.message} hint={hasStructuredFlow ? "Also determines the tag's type code." : undefined}>
-                  <Controller
-                    control={control}
-                    name="categoryId"
-                    render={({ field }) => (
-                      <Select value={field.value} onValueChange={field.onChange} disabled={inBatch}>
-                        <SelectTrigger id="categoryId">
-                          <SelectValue placeholder="Select asset type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.data?.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
-                              {c.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                </FormField>
+                {!(hasStructuredFlow && !isEdit) && (
+                  <FormField label="Asset Type" htmlFor="categoryId" required error={errors.categoryId?.message}>
+                    <Controller
+                      control={control}
+                      name="categoryId"
+                      render={({ field }) => (
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger id="categoryId">
+                            <SelectValue placeholder="Select asset type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categories.data?.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </FormField>
+                )}
 
                 <FormField label="Location" htmlFor="locationId" required error={errors.locationId?.message}>
                   <Controller
@@ -722,16 +722,12 @@ export function AssetForm({ asset }: { asset?: Asset }) {
       {formError && <p className="text-sm text-destructive">{formError}</p>}
 
       <div className="flex justify-end gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => (inBatch ? handleEndBatch() : navigate(isEdit && asset ? `/assets/${asset.id}` : "/assets"))}
-        >
-          {inBatch ? "End batch" : "Cancel"}
+        <Button type="button" variant="outline" onClick={() => navigate(isEdit && asset ? `/assets/${asset.id}` : "/assets")}>
+          Cancel
         </Button>
         <Button type="submit" disabled={isSubmitting} className="gap-1.5">
           {isSubmitting && <Loader2 className="size-3.5 animate-spin" />}
-          {isEdit ? "Save changes" : inBatch ? "Add next item" : "Create asset"}
+          {isEdit ? "Save changes" : "Create asset"}
         </Button>
       </div>
     </form>
