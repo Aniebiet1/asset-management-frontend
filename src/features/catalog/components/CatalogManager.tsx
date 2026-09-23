@@ -10,11 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormField } from "@/components/ui/form";
 import { ApiError } from "@/lib/http-error";
 import { Skeleton } from "@/components/ui/skeleton";
 
-type FieldType = "text" | "textarea" | "number" | "decimal" | "switch";
+type FieldType = "text" | "textarea" | "number" | "decimal" | "switch" | "select";
 
 export interface CatalogFieldConfig {
   name: string;
@@ -26,6 +27,11 @@ export interface CatalogFieldConfig {
   /** Spans both grid columns in the dialog form instead of sharing a row with the next field.
    * Textareas and switches always span full width regardless of this flag. */
   fullWidth?: boolean;
+  /** type: "select" only - the dropdown's options. */
+  options?: { value: string; label: string }[];
+  /** Disables the field in the dialog form (create AND edit) when this returns true for the item
+   * being edited (null while creating) - e.g. a branch's code once it's locked. */
+  disabledWhen?: (item: unknown) => boolean;
 }
 
 function isFullWidthField(field: CatalogFieldConfig): boolean {
@@ -235,43 +241,66 @@ export function CatalogManager<T extends CatalogItem>({
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 gap-x-3 gap-y-3 sm:grid-cols-2">
-              {fields.map((f) => (
-                <FormField
-                  key={f.name}
-                  label={f.label}
-                  htmlFor={f.name}
-                  required={f.required}
-                  hint={f.hint}
-                  className={cn(isFullWidthField(f) && "sm:col-span-2")}
-                >
-                  {f.type === "textarea" ? (
-                    <Textarea
-                      id={f.name}
-                      value={(formState[f.name] as string) ?? ""}
-                      placeholder={f.placeholder}
-                      onChange={(e) => setFormState((s) => ({ ...s, [f.name]: e.target.value }))}
-                    />
-                  ) : f.type === "switch" ? (
-                    <div className="flex items-center gap-2">
-                      <Switch
+              {fields.map((f) => {
+                const disabled = f.disabledWhen ? f.disabledWhen(editing) : false;
+                return (
+                  <FormField
+                    key={f.name}
+                    label={f.label}
+                    htmlFor={f.name}
+                    required={f.required}
+                    hint={disabled ? "Locked - already in use, can't be changed." : f.hint}
+                    className={cn(isFullWidthField(f) && "sm:col-span-2")}
+                  >
+                    {f.type === "textarea" ? (
+                      <Textarea
                         id={f.name}
-                        checked={Boolean(formState[f.name])}
-                        onCheckedChange={(checked) => setFormState((s) => ({ ...s, [f.name]: checked }))}
+                        value={(formState[f.name] as string) ?? ""}
+                        placeholder={f.placeholder}
+                        disabled={disabled}
+                        onChange={(e) => setFormState((s) => ({ ...s, [f.name]: e.target.value }))}
                       />
-                    </div>
-                  ) : (
-                    <Input
-                      id={f.name}
-                      type={f.type === "number" || f.type === "decimal" ? "number" : "text"}
-                      step={f.type === "decimal" ? "0.01" : undefined}
-                      value={(formState[f.name] as string | number) ?? ""}
-                      placeholder={f.placeholder}
-                      required={f.required}
-                      onChange={(e) => setFormState((s) => ({ ...s, [f.name]: e.target.value }))}
-                    />
-                  )}
-                </FormField>
-              ))}
+                    ) : f.type === "switch" ? (
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id={f.name}
+                          checked={Boolean(formState[f.name])}
+                          disabled={disabled}
+                          onCheckedChange={(checked) => setFormState((s) => ({ ...s, [f.name]: checked }))}
+                        />
+                      </div>
+                    ) : f.type === "select" ? (
+                      <Select
+                        value={(formState[f.name] as string) ?? ""}
+                        disabled={disabled}
+                        onValueChange={(value) => setFormState((s) => ({ ...s, [f.name]: value }))}
+                      >
+                        <SelectTrigger id={f.name}>
+                          <SelectValue placeholder={f.placeholder} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {f.options?.map((o) => (
+                            <SelectItem key={o.value} value={o.value}>
+                              {o.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        id={f.name}
+                        type={f.type === "number" || f.type === "decimal" ? "number" : "text"}
+                        step={f.type === "decimal" ? "0.01" : undefined}
+                        value={(formState[f.name] as string | number) ?? ""}
+                        placeholder={f.placeholder}
+                        required={f.required}
+                        disabled={disabled}
+                        onChange={(e) => setFormState((s) => ({ ...s, [f.name]: e.target.value }))}
+                      />
+                    )}
+                  </FormField>
+                );
+              })}
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <DialogFooter>

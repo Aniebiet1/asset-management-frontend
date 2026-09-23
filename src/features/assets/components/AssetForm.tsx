@@ -4,7 +4,7 @@ import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Sparkles, Upload } from "lucide-react";
+import { Loader2, Sparkles, Upload, Layers } from "lucide-react";
 import JsBarcode from "jsbarcode";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FormField } from "@/components/ui/form";
@@ -20,8 +21,8 @@ import { ApiError } from "@/lib/http-error";
 import { compressImage } from "@/lib/compressImage";
 import { generateRandomCode } from "@/lib/format";
 import { useAuthStore } from "@/store/auth.store";
-import { useCategoriesQuery, useLocationsQuery, useDepartmentsQuery, useVendorsQuery } from "@/features/catalog/api";
-import { useCreateAssetMutation, useUpdateAssetMutation, useUploadFileMutation } from "@/features/assets/api";
+import { useCategoriesQuery, useLocationsQuery, useDepartmentsQuery, useVendorsQuery, useSubsidiariesQuery, useBranchesQuery } from "@/features/catalog/api";
+import { useCreateAssetMutation, useUpdateAssetMutation, useUploadFileMutation, useAssetTagPreviewQuery } from "@/features/assets/api";
 import type { Asset, User } from "@/types";
 
 const NONE = "__none__";
@@ -61,6 +62,8 @@ function AssetTagBarcode({ value }: { value: string }) {
 }
 
 const assetFormSchema = z.object({
+  // Required when the legacy free-text flow is showing this field; in the structured flow it
+  // stays populated with an unused default (the field isn't rendered there), see buildPayload.
   assetTag: z.string().trim().min(1, "Asset tag is required").max(100),
   name: z.string().trim().min(1, "Name is required").max(255),
   description: z.string().trim().optional(),
@@ -83,6 +86,10 @@ const assetFormSchema = z.object({
   warrantyExpiry: z.string().optional(),
   warrantyNotes: z.string().trim().optional(),
   notes: z.string().trim().optional(),
+
+  subsidiaryId: z.string().optional(),
+  branchId: z.string().optional(),
+  isBatch: z.boolean().optional(),
 });
 
 type AssetFormValues = z.infer<typeof assetFormSchema>;
@@ -111,12 +118,14 @@ function defaultsFromAsset(asset: Asset | undefined, generatedTag: string): Asse
     warrantyExpiry: asset?.warrantyExpiry ? asset.warrantyExpiry.slice(0, 10) : "",
     warrantyNotes: asset?.warrantyNotes ?? "",
     notes: asset?.notes ?? "",
+    subsidiaryId: asset?.subsidiaryId ?? "",
+    branchId: asset?.branchId ?? "",
+    isBatch: false,
   };
 }
 
-function buildPayload(values: AssetFormValues): Record<string, unknown> {
-  return {
-    assetTag: values.assetTag,
+function buildPayload(values: AssetFormValues, structured: boolean, batchIndex: number | undefined): Record<string, unknown> {
+  const base: Record<string, unknown> = {
     name: values.name,
     description: values.description || undefined,
     categoryId: values.categoryId,
@@ -139,6 +148,19 @@ function buildPayload(values: AssetFormValues): Record<string, unknown> {
     warrantyNotes: values.warrantyNotes || undefined,
     notes: values.notes || undefined,
   };
+
+  if (structured) {
+    // The backend assembles and assigns the tag - assetTag is intentionally omitted here.
+    return {
+      ...base,
+      subsidiaryId: values.subsidiaryId,
+      branchId: values.branchId,
+      isBatch: values.isBatch || undefined,
+      batchIndex,
+    };
+  }
+
+  return { ...base, assetTag: values.assetTag };
 }
 
 const statusOptions = [
@@ -158,6 +180,15 @@ const conditionOptions = [
   { value: "damaged", label: "Damaged" },
 ];
 
+interface BatchContext {
+  subsidiaryId: string;
+  branchId: string;
+  categoryId: string;
+  purchaseDate: string;
+  tagIndex: number;
+  lastTag: string;
+}
+
 export function AssetForm({ asset }: { asset?: Asset }) {
   const navigate = useNavigate();
   const isEdit = !!asset;
@@ -167,6 +198,7 @@ export function AssetForm({ asset }: { asset?: Asset }) {
   const locations = useLocationsQuery();
   const departments = useDepartmentsQuery();
   const vendors = useVendorsQuery();
+  const subsidiaries = useSubsidiariesQuery();
   const people = useQuery({
     queryKey: ["people", "list"],
     queryFn: () => apiFetch<{ data: User[] }>("/people").then((r) => r.data),
@@ -181,6 +213,7 @@ export function AssetForm({ asset }: { asset?: Asset }) {
   const [formError, setFormError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [generatedTag] = useState(() => generateAssetTag(orgSlug));
+  const [batchContext, setBatchContext] = useState<BatchContext | null>(null);
 
   const {
     register,
@@ -195,15 +228,49 @@ export function AssetForm({ asset }: { asset?: Asset }) {
   });
 
   const watchedTag = useWatch({ control, name: "assetTag" });
+  const watchedSubsidiaryId = useWatch({ control, name: "subsidiaryId" });
+  const watchedBranchId = useWatch({ control, name: "branchId" });
+  const watchedCategoryId = useWatch({ control, name: "categoryId" });
+  const watchedPurchaseDate = useWatch({ control, name: "purchaseDate" });
+  const watchedIsBatch = useWatch({ control, name: "isBatch" });
+
+  const branches = useBranchesQuery(watchedSubsidiaryId);
+
+  // Structured flow activates once the org has configured at least one subsidiary; orgs that
+  // haven't yet keep today's free-text tag input untouched (see BUILD_PLAN.md's Phase 3 note).
+  const hasStructuredFlow = !subsidiaries.isLoading && (subsidiaries.data?.length ?? 0) > 0;
+  const inBatch = !!batchContext;
+
+  const preview = useAssetTagPreviewQuery({
+    subsidiaryId: watchedSubsidiaryId,
+    branchId: watchedBranchId,
+    categoryId: watchedCategoryId,
+    purchaseDate: watchedPurchaseDate,
+    isBatch: watchedIsBatch,
+    batchIndex: batchContext?.tagIndex,
+  });
 
   useEffect(() => {
     reset(defaultsFromAsset(asset, generatedTag));
     setImageUrl(asset?.imageUrl ?? null);
+    setBatchContext(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asset?.id]);
 
+  // Changing subsidiary invalidates whatever branch was picked under the old one.
+  useEffect(() => {
+    setValue("branchId", "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedSubsidiaryId]);
+
   function handleRegenerateTag() {
     setValue("assetTag", generateAssetTag(orgSlug), { shouldValidate: true, shouldDirty: true });
+  }
+
+  function handleEndBatch() {
+    setBatchContext(null);
+    reset(defaultsFromAsset(undefined, generatedTag));
+    setImageUrl(null);
   }
 
   async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -224,17 +291,58 @@ export function AssetForm({ asset }: { asset?: Asset }) {
 
   const onSubmit = async (values: AssetFormValues) => {
     setFormError(null);
+
+    if (hasStructuredFlow && !isEdit) {
+      if (!values.subsidiaryId || !values.branchId || !values.categoryId || !values.purchaseDate) {
+        setFormError("Subsidiary, branch, asset type, and purchase date are all required to generate a tag.");
+        return;
+      }
+    }
+
     try {
-      const payload = { ...buildPayload(values), imageUrl: imageUrl ?? undefined };
+      const payload = {
+        ...buildPayload(values, hasStructuredFlow && !isEdit, values.isBatch ? batchContext?.tagIndex : undefined),
+        imageUrl: imageUrl ?? undefined,
+      };
       if (isEdit && asset) {
         await updateAsset.mutateAsync(payload);
         toast.success("Asset updated");
         navigate(`/assets/${asset.id}`);
-      } else {
-        const created = await createAsset.mutateAsync(payload);
-        toast.success("Asset created");
-        navigate(`/assets/${created.id}`);
+        return;
       }
+
+      const created = await createAsset.mutateAsync(payload);
+
+      if (hasStructuredFlow && values.isBatch) {
+        setBatchContext({
+          subsidiaryId: values.subsidiaryId!,
+          branchId: values.branchId!,
+          categoryId: values.categoryId,
+          purchaseDate: values.purchaseDate!,
+          tagIndex: created.tagIndex!,
+          lastTag: created.assetTag,
+        });
+        toast.success(`Created as ${created.assetTag} - add the next item in this batch below.`);
+        reset({
+          ...defaultsFromAsset(undefined, generatedTag),
+          subsidiaryId: values.subsidiaryId,
+          branchId: values.branchId,
+          categoryId: values.categoryId,
+          purchaseDate: values.purchaseDate,
+          locationId: values.locationId,
+          departmentId: values.departmentId,
+          vendorId: values.vendorId,
+          custodianId: values.custodianId,
+          status: values.status,
+          condition: values.condition,
+          isBatch: true,
+        });
+        setImageUrl(null);
+        return;
+      }
+
+      toast.success("Asset created");
+      navigate(`/assets/${created.id}`);
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : "Couldn't save this asset. Please try again.");
     }
@@ -261,7 +369,7 @@ export function AssetForm({ asset }: { asset?: Asset }) {
             </TabsList>
 
             <TabsContent value="general" className="space-y-4 p-4">
-              {!isEdit && (
+              {!isEdit && !hasStructuredFlow && (
                 <div className="space-y-3">
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
@@ -280,7 +388,101 @@ export function AssetForm({ asset }: { asset?: Asset }) {
                     <Input id="assetTag" className="font-mono uppercase" {...register("assetTag")} />
                     {errors.assetTag && <p className="text-xs text-destructive">{errors.assetTag.message}</p>}
                   </div>
-                  <AssetTagBarcode value={watchedTag} />
+                  <AssetTagBarcode value={watchedTag ?? ""} />
+                </div>
+              )}
+
+              {!isEdit && hasStructuredFlow && (
+                <div className="space-y-3 rounded-lg border border-border p-3.5">
+                  <div className="flex items-center gap-1.5">
+                    <Layers className="size-3.5 text-muted-foreground" />
+                    <p className="text-xs font-semibold text-foreground">Asset tag</p>
+                  </div>
+
+                  {inBatch && (
+                    <div className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                      <span>
+                        Continuing batch from <span className="font-mono text-foreground">{batchContext.lastTag}</span>
+                      </span>
+                      <button type="button" onClick={handleEndBatch} className="font-medium text-primary hover:underline">
+                        End batch
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <FormField label="Subsidiary" htmlFor="subsidiaryId" required>
+                      <Controller
+                        control={control}
+                        name="subsidiaryId"
+                        render={({ field }) => (
+                          <Select value={field.value} onValueChange={field.onChange} disabled={inBatch}>
+                            <SelectTrigger id="subsidiaryId">
+                              <SelectValue placeholder="Select subsidiary" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {subsidiaries.data?.map((s) => (
+                                <SelectItem key={s.id} value={s.id}>
+                                  {s.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    </FormField>
+
+                    <FormField label="Branch" htmlFor="branchId" required>
+                      <Controller
+                        control={control}
+                        name="branchId"
+                        render={({ field }) => (
+                          <Select value={field.value} onValueChange={field.onChange} disabled={inBatch || !watchedSubsidiaryId}>
+                            <SelectTrigger id="branchId">
+                              <SelectValue placeholder={watchedSubsidiaryId ? "Select branch" : "Select a subsidiary first"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {branches.data?.map((b) => (
+                                <SelectItem key={b.id} value={b.id}>
+                                  {b.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    </FormField>
+
+                    <FormField label="Purchase date" htmlFor="purchaseDate" required>
+                      <Input id="purchaseDate" type="date" disabled={inBatch} {...register("purchaseDate")} />
+                    </FormField>
+
+                    <div className="flex items-end pb-2">
+                      <Controller
+                        control={control}
+                        name="isBatch"
+                        render={({ field }) => (
+                          <label className="flex items-center gap-2 text-sm text-foreground">
+                            <Checkbox checked={!!field.value} disabled={inBatch} onCheckedChange={(c) => field.onChange(!!c)} />
+                            Part of a batch of identical items
+                          </label>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] font-medium text-muted-foreground">
+                      {preview.data?.isAdvisory ? "Preview, confirmed when you save" : "Tag preview"}
+                    </p>
+                    <div className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 font-mono text-sm text-foreground">
+                      {preview.isFetching
+                        ? "Calculating..."
+                        : preview.data?.previewTag ?? "Select subsidiary, branch, category, and date"}
+                    </div>
+                  </div>
+
+                  {preview.data?.previewTag && <AssetTagBarcode value={preview.data.previewTag} />}
                 </div>
               )}
 
@@ -289,12 +491,12 @@ export function AssetForm({ asset }: { asset?: Asset }) {
                   <Input id="name" placeholder="MacBook Pro 16&quot;" {...register("name")} />
                 </FormField>
 
-                <FormField label="Category" htmlFor="categoryId" required error={errors.categoryId?.message}>
+                <FormField label="Category" htmlFor="categoryId" required error={errors.categoryId?.message} hint={hasStructuredFlow ? "Also determines the tag's type code." : undefined}>
                   <Controller
                     control={control}
                     name="categoryId"
                     render={({ field }) => (
-                      <Select value={field.value} onValueChange={field.onChange}>
+                      <Select value={field.value} onValueChange={field.onChange} disabled={inBatch}>
                         <SelectTrigger id="categoryId">
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
@@ -467,9 +669,11 @@ export function AssetForm({ asset }: { asset?: Asset }) {
 
             <TabsContent value="purchase" className="space-y-4 p-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <FormField label="Purchase date" htmlFor="purchaseDate">
-                  <Input id="purchaseDate" type="date" {...register("purchaseDate")} />
-                </FormField>
+                {!(hasStructuredFlow && !isEdit) && (
+                  <FormField label="Purchase date" htmlFor="purchaseDate">
+                    <Input id="purchaseDate" type="date" {...register("purchaseDate")} />
+                  </FormField>
+                )}
                 <FormField label="Purchase price" htmlFor="purchasePrice">
                   <Input id="purchasePrice" type="number" step="0.01" {...register("purchasePrice")} />
                 </FormField>
@@ -518,12 +722,16 @@ export function AssetForm({ asset }: { asset?: Asset }) {
       {formError && <p className="text-sm text-destructive">{formError}</p>}
 
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={() => navigate(isEdit && asset ? `/assets/${asset.id}` : "/assets")}>
-          Cancel
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => (inBatch ? handleEndBatch() : navigate(isEdit && asset ? `/assets/${asset.id}` : "/assets"))}
+        >
+          {inBatch ? "End batch" : "Cancel"}
         </Button>
         <Button type="submit" disabled={isSubmitting} className="gap-1.5">
           {isSubmitting && <Loader2 className="size-3.5 animate-spin" />}
-          {isEdit ? "Save changes" : "Create asset"}
+          {isEdit ? "Save changes" : inBatch ? "Add next item" : "Create asset"}
         </Button>
       </div>
     </form>

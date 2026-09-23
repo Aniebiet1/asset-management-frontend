@@ -140,20 +140,46 @@
     }
 }
 
+/* Brand gradient utilities — built from --org-primary/--org-accent only, per the theming rules
+   above, so they stay on-brand for every tenant instead of hardcoding Tecres's own blue. */
+.bg-brand-hero {
+  background-color: #05070d;
+  background-image:
+    radial-gradient(120% 120% at 12% -10%, color-mix(in oklab, var(--org-primary) 55%, transparent) 0%, transparent 55%),
+    radial-gradient(90% 90% at 100% 100%, color-mix(in oklab, var(--org-accent) 38%, transparent) 0%, transparent 50%),
+    linear-gradient(180deg, #0b1220 0%, #05070d 100%);
+}
+.text-gradient-brand {
+  background-image: linear-gradient(90deg, var(--org-primary), var(--org-accent));
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+.bg-gradient-brand {
+  background-image: linear-gradient(135deg, var(--org-primary), var(--org-accent));
+}
+
 /* Custom scrollbar — ported from ink-asset-management/src/app/globals.css */
+* {
+  scrollbar-width: auto;
+  scrollbar-color: var(--muted-foreground) transparent;
+}
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 14px;
+  height: 14px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: oklch(1 0 0 / 15%);
+  background: color-mix(in oklch, var(--muted-foreground) 55%, transparent);
   border-radius: 9999px;
+  border: 3px solid var(--background);
+  background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: oklch(1 0 0 / 25%);
+  background: color-mix(in oklch, var(--muted-foreground) 80%, transparent);
+  background-clip: padding-box;
 }
 
 .no-scrollbar::-webkit-scrollbar {

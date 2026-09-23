@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
-import type { Asset, AssetAssignment, AssetStatus, MaintenanceRecord } from "@/types";
+import type { Asset, AssetAssignment, AssetStatus, AssetTagPreview, MaintenanceRecord } from "@/types";
 
 export interface AssetListFilters {
   status?: AssetStatus;
@@ -70,6 +70,49 @@ export function useCreateAssetMutation() {
     mutationFn: (input: Record<string, unknown>) =>
       apiFetch<{ data: Asset }>("/assets", { method: "POST", body: JSON.stringify(input) }).then((r) => r.data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["assets"] }),
+  });
+}
+
+interface TagPreviewParams {
+  subsidiaryId?: string;
+  branchId?: string;
+  categoryId?: string;
+  purchaseDate?: string;
+  isBatch?: boolean;
+  batchIndex?: number;
+}
+
+/** Advisory only - the real tag is only assigned inside createAsset, see assets.service.ts on the backend. */
+export function useAssetTagPreviewQuery(params: TagPreviewParams) {
+  const ready = !!params.subsidiaryId && !!params.branchId && !!params.categoryId && !!params.purchaseDate;
+  return useQuery({
+    queryKey: ["assets", "tag-preview", params],
+    queryFn: () => {
+      const q = new URLSearchParams({
+        subsidiaryId: params.subsidiaryId!,
+        branchId: params.branchId!,
+        categoryId: params.categoryId!,
+        purchaseDate: params.purchaseDate!,
+      });
+      if (params.isBatch) q.set("batch", "true");
+      if (params.batchIndex !== undefined) q.set("batchIndex", String(params.batchIndex));
+      return apiFetch<{ data: AssetTagPreview }>(`/asset-tags/preview?${q.toString()}`).then((r) => r.data);
+    },
+    enabled: ready,
+    staleTime: 0,
+  });
+}
+
+/** Admin-only correction of an already-locked structured tag's identity fields - see PATCH /assets/:id/identity. */
+export function useUpdateAssetIdentityMutation(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { subsidiaryId?: string; branchId?: string; categoryId?: string; purchaseDate?: string; reason: string }) =>
+      apiFetch<{ data: Asset }>(`/assets/${id}/identity`, { method: "PATCH", body: JSON.stringify(input) }).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["assets", "list"] });
+      queryClient.invalidateQueries({ queryKey: ["assets", "detail", id] });
+    },
   });
 }
 

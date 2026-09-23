@@ -165,7 +165,7 @@ export function Sidebar() {
             to="/assets/new"
             title={isCollapsed ? "New Asset" : undefined}
             className={cn(
-              "flex items-center justify-center gap-1.5 rounded-lg bg-primary font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90",
+              "flex items-center justify-center gap-1.5 rounded-full bg-gradient-brand font-semibold text-primary-foreground shadow-sm shadow-primary/20 transition-opacity hover:opacity-90",
               isCollapsed ? "h-10 w-full px-0" : "w-full px-3 py-2 text-xs"
             )}
           >

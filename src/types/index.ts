@@ -65,6 +65,8 @@ export interface PermissionSet {
   canCreateAsset: boolean;
   canEditAsset: boolean;
   canDeleteAsset: boolean;
+  /** Correcting an already-locked structured tag's subsidiary/branch/type/purchase date via PATCH /assets/:id/identity. */
+  canEditAssetIdentity: boolean;
   canCheckInOut: boolean;
   canScheduleMaintenance: boolean;
   canCompleteMaintenance: boolean;
@@ -170,6 +172,31 @@ export interface Category {
   updatedAt: string;
 }
 
+// ---------------------------------------------------------------------------
+// Subsidiaries / branches - drive structured asset tag generation, see
+// AssetTagPreview below and features/assets/components/AssetForm.tsx.
+// ---------------------------------------------------------------------------
+
+export interface Subsidiary {
+  id: string;
+  orgId: string;
+  name: string;
+  code: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Branch {
+  id: string;
+  orgId: string;
+  subsidiaryId: string;
+  name: string;
+  code: string;
+  codeLocked: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Vendor {
   id: string;
   orgId: string;
@@ -227,12 +254,29 @@ export interface Asset {
   createdAt: string;
   updatedAt: string;
 
+  // Structured tag generation - null on legacy free-text-tagged assets and on assets created
+  // by orgs still on the legacy flow (no subsidiaries configured). See AssetForm.tsx.
+  subsidiaryId: string | null;
+  branchId: string | null;
+  tagIndex: number | null;
+  batchSuffix: string | null;
+
   // Convenience denormalizations the list/detail endpoints join in for display.
   categoryName?: string;
   departmentName?: string;
   locationName?: string;
   vendorName?: string;
   custodianName?: string;
+  subsidiaryName?: string;
+  branchName?: string;
+}
+
+/** `GET /asset-tags/preview` response - advisory only, the real tag is only assigned at create time. */
+export interface AssetTagPreview {
+  previewTag: string;
+  index: number;
+  proposedSuffix?: string;
+  isAdvisory: true;
 }
 
 export interface AssetAssignment {

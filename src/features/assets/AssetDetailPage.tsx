@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Pencil, ArrowLeftRight, Printer, Loader2, MapPin, Building2, User as UserIcon, Calendar } from "lucide-react";
+import { ArrowLeft, Pencil, ArrowLeftRight, Printer, Loader2, MapPin, Building2, User as UserIcon, Calendar, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,6 +15,7 @@ import { LabelPreview } from "@/features/labels/components/LabelPreview";
 import { useLabelSheetLayoutQuery } from "@/features/labels/api";
 import { generateSingleLabelPdf } from "@/features/labels/lib/labelPdf";
 import { useAuthStore } from "@/store/auth.store";
+import { CorrectTagDialog } from "@/features/assets/components/CorrectTagDialog";
 
 export function AssetDetailPage() {
   const { id } = useParams();
@@ -26,11 +27,13 @@ export function AssetDetailPage() {
   const maintenance = useAssetMaintenanceQuery(id);
   const canViewValuation = hasPermission(currentUser?.role, "canViewAssetValuation");
   const canEdit = hasPermission(currentUser?.role, "canEditAsset");
+  const canEditIdentity = hasPermission(currentUser?.role, "canEditAssetIdentity");
   const canCheckInOut = hasPermission(currentUser?.role, "canCheckInOut");
   const canPrintLabels = hasPermission(currentUser?.role, "canPrintLabels");
   const logoSrc = useResolvedLogoSrc(org?.logoUrl ?? null, accessToken);
   const sheetLayout = useLabelSheetLayoutQuery({ enabled: canPrintLabels });
   const [isPrinting, setIsPrinting] = useState(false);
+  const [correctTagOpen, setCorrectTagOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -117,6 +120,12 @@ export function AssetDetailPage() {
                 <ArrowLeftRight className="size-3.5" />
                 Check Out
               </Link>
+            </Button>
+          )}
+          {canEditIdentity && asset.subsidiaryId && (
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setCorrectTagOpen(true)}>
+              <ShieldAlert className="size-3.5" />
+              Correct tag
             </Button>
           )}
           {canEdit && (
@@ -254,6 +263,10 @@ export function AssetDetailPage() {
           )}
         </div>
       </div>
+
+      {canEditIdentity && (
+        <CorrectTagDialog asset={asset} open={correctTagOpen} onOpenChange={setCorrectTagOpen} />
+      )}
     </div>
   );
 }
