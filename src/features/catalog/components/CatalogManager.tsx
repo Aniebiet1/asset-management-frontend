@@ -24,6 +24,8 @@ export interface CatalogFieldConfig {
   required?: boolean;
   placeholder?: string;
   hint?: string;
+  /** type: "text" only - enforced via the input's maxLength attribute. */
+  maxLength?: number;
   /** Spans both grid columns in the dialog form instead of sharing a row with the next field.
    * Textareas and switches always span full width regardless of this flag. */
   fullWidth?: boolean;
@@ -294,6 +296,7 @@ export function CatalogManager<T extends CatalogItem>({
                         value={(formState[f.name] as string | number) ?? ""}
                         placeholder={f.placeholder}
                         required={f.required}
+                        maxLength={f.maxLength}
                         disabled={disabled}
                         onChange={(e) => setFormState((s) => ({ ...s, [f.name]: e.target.value }))}
                       />

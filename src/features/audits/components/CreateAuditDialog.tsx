@@ -20,7 +20,7 @@ const scopeOptions: { value: AuditScopeType; label: string }[] = [
   { value: "all", label: "All assets" },
   { value: "location", label: "By location" },
   { value: "department", label: "By department" },
-  { value: "category", label: "By category" },
+  { value: "category", label: "By asset type" },
 ];
 
 const createAuditSchema = z
@@ -94,7 +94,7 @@ export function CreateAuditDialog() {
 
   const scopeTargets =
     scopeType === "location" ? locations.data : scopeType === "department" ? departments.data : scopeType === "category" ? categories.data : undefined;
-  const scopeLabel = scopeType === "location" ? "Location" : scopeType === "department" ? "Department" : "Category";
+  const scopeLabel = scopeType === "location" ? "Location" : scopeType === "department" ? "Department" : "Asset Type";
 
   return (
     <>

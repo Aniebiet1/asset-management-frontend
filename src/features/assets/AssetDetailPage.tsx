@@ -168,7 +168,7 @@ export function AssetDetailPage() {
                       <ConditionBadge condition={asset.condition} className="mt-1" />
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Category</p>
+                      <p className="text-xs text-muted-foreground">Asset Type</p>
                       <p className="mt-1 font-medium text-foreground">{asset.categoryName ?? "-"}</p>
                     </div>
                     <div>

@@ -113,10 +113,10 @@ export function AssetsListPage() {
           }}
         >
           <SelectTrigger className="h-8 w-full text-xs sm:w-40">
-            <SelectValue placeholder="All categories" />
+            <SelectValue placeholder="All asset types" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
+            <SelectItem value="all">All asset types</SelectItem>
             {categories.data?.map((c) => (
               <SelectItem key={c.id} value={c.id}>
                 {c.name}

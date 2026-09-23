@@ -60,17 +60,23 @@ export function Logo({ variant = "full", size = "md", className, logoUrl, orgNam
     );
   }
 
+  // The Cloudinary asset is a flat PNG with an opaque white backdrop baked in, so on a dark
+  // surface it reads as a stray rectangle rather than a logo. Giving it its own rounded, shadowed
+  // chip owns that edge instead of hiding it, and keeps the mark in its real brand colors.
   if (variant === "icon") {
     return (
-      <div className={cn("flex shrink-0 items-center justify-center", className)} style={{ width: iconSizes[size], height: iconSizes[size] }}>
+      <div
+        className={cn("flex shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-sm ring-1 ring-black/5", className)}
+        style={{ width: iconSizes[size], height: iconSizes[size] }}
+      >
         <img src={TECRES_DEFAULT_LOGO_URL} alt="Tecres" className="size-full object-contain" />
       </div>
     );
   }
 
   return (
-    <div className={cn("flex max-w-full items-center select-none", className)} style={{ height: fullHeights[size] }}>
-      <img src={TECRES_DEFAULT_LOGO_URL} alt="TecresTrackIT AMS" className="h-full w-auto max-w-full object-contain" />
+    <div className={cn("flex w-fit max-w-full items-center rounded-lg bg-white px-3 py-2 shadow-sm ring-1 ring-black/5 select-none", className)}>
+      <img src={TECRES_DEFAULT_LOGO_URL} alt="TecresTrackIT AMS" className="w-auto max-w-full object-contain" style={{ height: fullHeights[size] }} />
     </div>
   );
 }

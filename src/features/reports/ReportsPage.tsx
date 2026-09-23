@@ -226,7 +226,7 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
     const columns: ExportColumn<DisplayRow>[] = [
       { header: "Asset Tag", accessor: (r) => r.asset.assetTag },
       { header: "Name", accessor: (r) => r.asset.name },
-      { header: "Category", accessor: (r) => r.categoryName },
+      { header: "Asset Type", accessor: (r) => r.categoryName },
       { header: "Location", accessor: (r) => r.locationName },
       { header: "Custodian", accessor: (r) => r.custodianName },
       { header: "Purchase Date", accessor: (r) => formatDate(r.asset.purchaseDate) },
@@ -394,10 +394,10 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
           }}
         >
           <SelectTrigger className="order-1 h-8 w-full text-xs sm:order-none sm:w-40">
-            <SelectValue placeholder="All categories" />
+            <SelectValue placeholder="All asset types" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
+            <SelectItem value="all">All asset types</SelectItem>
             {(categories.data ?? []).map((c) => (
               <SelectItem key={c.id} value={c.id}>
                 {c.name}
@@ -538,7 +538,7 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="none">No grouping</SelectItem>
-            <SelectItem value="category">Group by category</SelectItem>
+            <SelectItem value="category">Group by asset type</SelectItem>
             <SelectItem value="location">Group by location</SelectItem>
             <SelectItem value="depreciationBucket" disabled={!canViewValuation}>
               Group by depreciation bucket
@@ -594,7 +594,7 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
                     <TableHead>Asset</TableHead>
-                    <TableHead>Category</TableHead>
+                    <TableHead>Asset Type</TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead>Custodian</TableHead>
                     <TableHead>Purchase Date</TableHead>

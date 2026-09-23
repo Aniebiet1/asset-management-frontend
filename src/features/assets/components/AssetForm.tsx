@@ -67,7 +67,7 @@ const assetFormSchema = z.object({
   assetTag: z.string().trim().min(1, "Asset tag is required").max(100),
   name: z.string().trim().min(1, "Name is required").max(255),
   description: z.string().trim().optional(),
-  categoryId: z.string().min(1, "Category is required"),
+  categoryId: z.string().min(1, "Asset type is required"),
   departmentId: z.string(),
   locationId: z.string().min(1, "Location is required"),
   vendorId: z.string(),
@@ -491,14 +491,14 @@ export function AssetForm({ asset }: { asset?: Asset }) {
                   <Input id="name" placeholder="MacBook Pro 16&quot;" {...register("name")} />
                 </FormField>
 
-                <FormField label="Category" htmlFor="categoryId" required error={errors.categoryId?.message} hint={hasStructuredFlow ? "Also determines the tag's type code." : undefined}>
+                <FormField label="Asset Type" htmlFor="categoryId" required error={errors.categoryId?.message} hint={hasStructuredFlow ? "Also determines the tag's type code." : undefined}>
                   <Controller
                     control={control}
                     name="categoryId"
                     render={({ field }) => (
                       <Select value={field.value} onValueChange={field.onChange} disabled={inBatch}>
                         <SelectTrigger id="categoryId">
-                          <SelectValue placeholder="Select category" />
+                          <SelectValue placeholder="Select asset type" />
                         </SelectTrigger>
                         <SelectContent>
                           {categories.data?.map((c) => (

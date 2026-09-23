@@ -13,7 +13,7 @@ export function AssetCreatePage() {
           Back to Assets
         </Link>
       </Button>
-      <PageHeader title="New Asset" description="Register a new asset with its category, location and purchase details." />
+      <PageHeader title="New Asset" description="Register a new asset with its asset type, location and purchase details." />
       <AssetForm />
     </div>
   );

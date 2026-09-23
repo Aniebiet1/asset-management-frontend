@@ -28,7 +28,7 @@ import type { Branch, Category, Department, Location, Subsidiary } from "@/types
 
 const categoryFields: CatalogFieldConfig[] = [
   { name: "name", label: "Name", type: "text", required: true, placeholder: "Laptops" },
-  { name: "code", label: "Code", type: "text", required: true, placeholder: "LAP" },
+  { name: "code", label: "Code", type: "text", required: true, placeholder: "LP", maxLength: 2, hint: "2 characters max, e.g. LP." },
   { name: "description", label: "Description", type: "textarea" },
   { name: "usefulLifeMonths", label: "Useful life (months)", type: "number", hint: "Used for straight-line depreciation." },
   { name: "depreciationRate", label: "Depreciation rate (%)", type: "decimal" },
@@ -158,7 +158,7 @@ export function CatalogTab({ canManage }: { canManage: boolean }) {
   return (
     <Tabs defaultValue="categories">
       <TabsList>
-        <TabsTrigger value="categories">Categories</TabsTrigger>
+        <TabsTrigger value="categories">Asset Types</TabsTrigger>
         <TabsTrigger value="locations">Locations</TabsTrigger>
         <TabsTrigger value="departments">Departments</TabsTrigger>
         <TabsTrigger value="subsidiaries">Subsidiaries</TabsTrigger>
@@ -167,7 +167,7 @@ export function CatalogTab({ canManage }: { canManage: boolean }) {
 
       <TabsContent value="categories" className="pt-4">
         <CatalogManager<Category>
-          resourceLabel="Category"
+          resourceLabel="Asset Type"
           description="Groups assets for reporting and drives default depreciation assumptions."
           items={categories.data}
           isLoading={categories.isLoading}

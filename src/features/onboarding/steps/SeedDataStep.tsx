@@ -44,7 +44,7 @@ export function SeedDataStep({ onNext, onBack }: { onNext: () => void; onBack: (
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-base font-semibold text-foreground">Add your first location, category and department</h2>
+        <h2 className="text-base font-semibold text-foreground">Add your first location, asset type and department</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Optional. Skip this and add them later from Settings if you'd rather set them up as a team.
         </p>
@@ -65,7 +65,7 @@ export function SeedDataStep({ onNext, onBack }: { onNext: () => void; onBack: (
       </div>
 
       <div className="space-y-2 rounded-lg border border-border p-3">
-        <p className="text-xs font-medium text-foreground">Category</p>
+        <p className="text-xs font-medium text-foreground">Asset Type</p>
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1">
             <Label className="text-xs">Name</Label>
@@ -73,7 +73,7 @@ export function SeedDataStep({ onNext, onBack }: { onNext: () => void; onBack: (
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Code</Label>
-            <Input placeholder="LAP" value={categoryCode} onChange={(e) => setCategoryCode(e.target.value)} />
+            <Input placeholder="LP" maxLength={2} value={categoryCode} onChange={(e) => setCategoryCode(e.target.value)} />
           </div>
         </div>
       </div>

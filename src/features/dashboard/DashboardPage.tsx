@@ -151,7 +151,7 @@ export function DashboardPage() {
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-5">
         <Card className="lg:col-span-3">
           <CardHeader>
-            <CardTitle className="text-sm font-semibold">Assets by Category</CardTitle>
+            <CardTitle className="text-sm font-semibold">Assets by Asset Type</CardTitle>
           </CardHeader>
           <CardContent className="h-64 pl-0">
             {chartsLoading ? (

@@ -427,7 +427,7 @@ export function CheckInOutPage() {
                   </div>
 
                   <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5 border-t border-border pt-3 sm:grid-cols-3">
-                    <AssetDetail label="Category" value={selectedAsset.categoryName} />
+                    <AssetDetail label="Asset Type" value={selectedAsset.categoryName} />
                     <AssetDetail label="Location" value={selectedAsset.locationName} />
                     <AssetDetail label="Department" value={selectedAsset.departmentName} />
                     <AssetDetail label="Serial number" value={selectedAsset.serialNumber} mono />
