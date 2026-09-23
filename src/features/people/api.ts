@@ -1,6 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
-import type { User } from "@/types";
+import type { ActivityLogEntry, PersonInvite, User } from "@/types";
+
+/** Actions logged around a login attempt (`auth.service.ts`) - what the login-activity panel shows. */
+export const LOGIN_ACTIVITY_ACTIONS = [
+  "login_success",
+  "login_failed",
+  "login_failed_lockout",
+  "login_blocked_locked",
+  "totp_challenge_failed",
+] as const;
 
 /**
  * People (`/people`) TanStack Query hooks, following the same shape as `features/assets/api.ts`.
@@ -54,5 +63,41 @@ export function useAcceptInviteMutation() {
         method: "POST",
         body: JSON.stringify({ name, password }),
       }).then((r) => r.data),
+  });
+}
+
+export function usePendingInvitesQuery() {
+  return useQuery({
+    queryKey: ["people", "invites"],
+    queryFn: () => apiFetch<{ data: PersonInvite[] }>("/people/invites").then((r) => r.data),
+  });
+}
+
+export function useResendInviteMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (inviteId: string) =>
+      apiFetch<{ data: PersonInvite }>(`/people/invites/${inviteId}/resend`, { method: "POST" }).then((r) => r.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["people", "invites"] }),
+  });
+}
+
+export function useRevokeInviteMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (inviteId: string) => apiFetch<void>(`/people/invites/${inviteId}`, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["people", "invites"] }),
+  });
+}
+
+/** A person's own login history (successes, failures, lockouts) - fetched on demand per row. */
+export function useLoginActivityQuery(userId: string | undefined) {
+  return useQuery({
+    queryKey: ["people", "login-activity", userId],
+    queryFn: () =>
+      apiFetch<{ data: ActivityLogEntry[] }>(
+        `/activity?userId=${encodeURIComponent(userId!)}&actions=${LOGIN_ACTIVITY_ACTIONS.join(",")}`
+      ).then((r) => r.data),
+    enabled: !!userId,
   });
 }

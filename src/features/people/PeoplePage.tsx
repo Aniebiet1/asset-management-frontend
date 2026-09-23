@@ -1,9 +1,19 @@
 import { useState } from "react";
-import { Loader2, Mail, UserX } from "lucide-react";
+import {
+  Loader2,
+  Mail,
+  UserX,
+  CheckCircle2,
+  XCircle,
+  Lock,
+  ShieldAlert,
+  RotateCw,
+  Ban,
+} from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -20,7 +30,7 @@ import { Switch } from "@/components/ui/switch";
 import { FormField } from "@/components/ui/form";
 import { PageHeader } from "@/components/common/PageHeader";
 import { hasPermission } from "@/lib/permissions";
-import { getInitials } from "@/lib/format";
+import { formatDateTime, formatRelativeTime, getInitials } from "@/lib/format";
 import { roleLabelMap } from "@/lib/status";
 import { ApiError } from "@/lib/http-error";
 import { useAuthStore } from "@/store/auth.store";
@@ -30,8 +40,54 @@ import {
   useUpdatePersonMutation,
   useDeactivatePersonMutation,
   useInvitePersonMutation,
+  usePendingInvitesQuery,
+  useResendInviteMutation,
+  useRevokeInviteMutation,
+  useLoginActivityQuery,
 } from "@/features/people/api";
-import type { User, UserRole } from "@/types";
+import type { ActivityLogEntry, PersonInvite, User, UserRole } from "@/types";
+
+const LOGIN_ACTIVITY_VISUALS: Record<string, { label: string; icon: typeof CheckCircle2; className: string }> = {
+  login_success: { label: "Signed in successfully", icon: CheckCircle2, className: "text-emerald-400" },
+  login_failed: { label: "Failed sign-in attempt", icon: XCircle, className: "text-amber-400" },
+  login_failed_lockout: { label: "Failed sign-in, account locked", icon: Lock, className: "text-rose-400" },
+  login_blocked_locked: { label: "Sign-in blocked, account was locked", icon: Lock, className: "text-rose-400" },
+  totp_challenge_failed: { label: "Incorrect authentication code", icon: ShieldAlert, className: "text-amber-400" },
+};
+
+function LastSignIn({ person, onView }: { person: User; onView?: () => void }) {
+  const isLocked = !!person.lockedUntil && new Date(person.lockedUntil).getTime() > Date.now();
+
+  const content = (
+    <>
+      {isLocked ? (
+        <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/20 bg-rose-500/10 px-2 py-0.5 text-[11px] font-medium text-rose-400">
+          <Lock className="size-3" />
+          Locked
+        </span>
+      ) : person.lastLoginAt ? (
+        <span className={cn("text-sm text-foreground", onView && "group-hover:underline")}>
+          {formatRelativeTime(person.lastLoginAt)}
+        </span>
+      ) : (
+        <span className={cn("text-sm text-muted-foreground", onView && "group-hover:underline")}>Never signed in</span>
+      )}
+      {!isLocked && person.failedLoginAttempts > 0 && (
+        <span className="text-[11px] font-medium text-amber-400">{person.failedLoginAttempts} recent failed attempt(s)</span>
+      )}
+    </>
+  );
+
+  if (!onView) {
+    return <div className="flex flex-col items-start gap-0.5">{content}</div>;
+  }
+
+  return (
+    <button type="button" onClick={onView} className="group flex flex-col items-start gap-0.5 text-left" title="View sign-in activity">
+      {content}
+    </button>
+  );
+}
 
 const roleOptions: UserRole[] = ["super_admin", "admin", "asset_manager", "staff"];
 
@@ -53,6 +109,9 @@ export function PeoplePage() {
   const updatePerson = useUpdatePersonMutation();
   const deactivatePerson = useDeactivatePersonMutation();
   const invitePerson = useInvitePersonMutation();
+  const pendingInvites = usePendingInvitesQuery();
+  const resendInvite = useResendInviteMutation();
+  const revokeInvite = useRevokeInviteMutation();
 
   const [editing, setEditing] = useState<User | null>(null);
   const [editForm, setEditForm] = useState<EditFormState | null>(null);
@@ -67,6 +126,13 @@ export function PeoplePage() {
   const [inviteRole, setInviteRole] = useState<UserRole>("staff");
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [isInviting, setIsInviting] = useState(false);
+
+  const [activityTarget, setActivityTarget] = useState<User | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<PersonInvite | null>(null);
+  const [isRevoking, setIsRevoking] = useState(false);
+
+  const loginActivity = useLoginActivityQuery(activityTarget?.id);
 
   const rows = people.data ?? [];
   const departmentMap = new Map((departments.data ?? []).map((d) => [d.id, d.name]));
@@ -146,6 +212,32 @@ export function PeoplePage() {
     }
   }
 
+  async function handleResendInvite(invite: PersonInvite) {
+    setResendingId(invite.id);
+    try {
+      await resendInvite.mutateAsync(invite.id);
+      toast.success("Invitation resent to " + invite.email);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't resend this invitation.");
+    } finally {
+      setResendingId(null);
+    }
+  }
+
+  async function handleRevokeInvite() {
+    if (!revokeTarget) return;
+    setIsRevoking(true);
+    try {
+      await revokeInvite.mutateAsync(revokeTarget.id);
+      toast.success("Invitation to " + revokeTarget.email + " revoked");
+      setRevokeTarget(null);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't revoke this invitation.");
+    } finally {
+      setIsRevoking(false);
+    }
+  }
+
   return (
     <div>
       <PageHeader
@@ -188,6 +280,7 @@ export function PeoplePage() {
                   <TableHead>Title</TableHead>
                   <TableHead>Department</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Last sign-in</TableHead>
                   {canManage && <TableHead className="text-right">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
@@ -215,6 +308,9 @@ export function PeoplePage() {
                       <span className={"text-xs font-medium " + (u.isActive ? "text-emerald-400" : "text-muted-foreground")}>
                         {u.isActive ? "Active" : "Inactive"}
                       </span>
+                    </TableCell>
+                    <TableCell>
+                      <LastSignIn person={u} onView={canManage ? () => setActivityTarget(u) : undefined} />
                     </TableCell>
                     {canManage && (
                       <TableCell className="text-right">
@@ -286,6 +382,10 @@ export function PeoplePage() {
                         {u.departmentId ? (departmentMap.get(u.departmentId) ?? "-") : "-"}
                       </p>
                     </div>
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground">Last sign-in</p>
+                      <LastSignIn person={u} onView={canManage ? () => setActivityTarget(u) : undefined} />
+                    </div>
                   </div>
                   {canManage && (
                     <div className="mt-3 flex items-center gap-2">
@@ -311,6 +411,92 @@ export function PeoplePage() {
             ))}
           </div>
         </>
+      )}
+
+      {canManage && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-sm">Pending invitations</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Invites that haven't been accepted yet. Resend if the email didn't arrive or the link expired.
+            </p>
+          </CardHeader>
+          <CardContent className="px-0">
+            {pendingInvites.isLoading ? (
+              <div className="px-6">
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : pendingInvites.data?.length ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Invitee</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Invited by</TableHead>
+                    <TableHead>Expires</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pendingInvites.data.map((invite) => {
+                    const isExpired = new Date(invite.expiresAt).getTime() < Date.now();
+                    const isResending = resendingId === invite.id;
+                    return (
+                      <TableRow key={invite.id}>
+                        <TableCell className="text-sm font-medium text-foreground">{invite.email}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{roleLabelMap[invite.role]}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{invite.invitedByName ?? "-"}</TableCell>
+                        <TableCell className="text-xs">
+                          {isExpired ? (
+                            <span className="text-rose-400">Expired {formatDateTime(invite.expiresAt)}</span>
+                          ) : (
+                            <span className="text-muted-foreground">{formatDateTime(invite.expiresAt)}</span>
+                          )}
+                          {invite.resendCount > 0 && (
+                            <p className="mt-0.5 text-muted-foreground">
+                              Last sent {formatRelativeTime(invite.lastSentAt)}, resent {invite.resendCount}x
+                            </p>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="gap-1.5"
+                              disabled={isResending}
+                              onClick={() => handleResendInvite(invite)}
+                            >
+                              {isResending ? (
+                                <Loader2 className="size-3.5 animate-spin" />
+                              ) : (
+                                <RotateCw className="size-3.5" />
+                              )}
+                              Resend
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="gap-1 text-destructive hover:text-destructive"
+                              onClick={() => setRevokeTarget(invite)}
+                            >
+                              <Ban className="size-3.5" />
+                              Revoke
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="px-6 py-6 text-sm text-muted-foreground">No invitations are waiting to be accepted.</p>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       <Dialog open={!!editing} onOpenChange={(open) => !open && closeEdit()}>
@@ -472,6 +658,81 @@ export function PeoplePage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!activityTarget} onOpenChange={(open) => !open && setActivityTarget(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Sign-in activity: {activityTarget?.name}</DialogTitle>
+            <DialogDescription>
+              Recent sign-in attempts for this account, most recent first. This tracks whether their sign-ins
+              succeeded or failed, not what they did once inside.
+            </DialogDescription>
+          </DialogHeader>
+          {activityTarget && (
+            <div className="max-h-96 space-y-1 overflow-y-auto">
+              {loginActivity.isLoading ? (
+                <div className="space-y-2 py-2">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : loginActivity.data?.length ? (
+                <div className="divide-y divide-border">
+                  {loginActivity.data.map((entry: ActivityLogEntry) => {
+                    const visual = LOGIN_ACTIVITY_VISUALS[entry.action] ?? {
+                      label: entry.action,
+                      icon: ShieldAlert,
+                      className: "text-muted-foreground",
+                    };
+                    const Icon = visual.icon;
+                    return (
+                      <div key={entry.id} className="flex items-center justify-between gap-3 py-2.5">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <Icon className={cn("size-4 shrink-0", visual.className)} />
+                          <span className={cn("truncate text-sm font-medium", visual.className)}>{visual.label}</span>
+                        </div>
+                        <div className="shrink-0 text-right text-xs text-muted-foreground">
+                          <p>{formatDateTime(entry.createdAt)}</p>
+                          {entry.ipAddress && <p>{entry.ipAddress}</p>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  No sign-in activity recorded for this account yet.
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setActivityTarget(null)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!revokeTarget} onOpenChange={(open) => !open && setRevokeTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Revoke invitation to {revokeTarget?.email}?</DialogTitle>
+            <DialogDescription>
+              Their invite link will stop working. You can invite this email again later if needed.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setRevokeTarget(null)}>
+              Cancel
+            </Button>
+            <Button type="button" variant="destructive" disabled={isRevoking} className="gap-1.5" onClick={handleRevokeInvite}>
+              {isRevoking && <Loader2 className="size-3.5 animate-spin" />}
+              Revoke invitation
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

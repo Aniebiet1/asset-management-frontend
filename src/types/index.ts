@@ -27,8 +27,26 @@ export interface User {
   avatarUrl: string | null;
   isActive: boolean;
   totpEnabled: boolean;
+  failedLoginAttempts: number;
+  lockedUntil: string | null;
+  lastLoginAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export type OrgInviteStatus = "pending" | "accepted" | "expired" | "revoked";
+
+/** An org-level staff invite (`POST /people/invite`) that hasn't been accepted yet. */
+export interface PersonInvite {
+  id: string;
+  email: string;
+  role: UserRole;
+  status: OrgInviteStatus;
+  invitedByName: string | null;
+  lastSentAt: string;
+  resendCount: number;
+  expiresAt: string;
+  createdAt: string;
 }
 
 /** `GET /auth/me` response shape, plus the org context the shell needs to render. */

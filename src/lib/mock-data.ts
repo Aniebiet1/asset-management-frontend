@@ -44,6 +44,9 @@ export const mockCurrentUser: CurrentUser = {
   avatarUrl: null,
   isActive: true,
   totpEnabled: true,
+  failedLoginAttempts: 0,
+  lockedUntil: null,
+  lastLoginAt: "2026-01-15T09:00:00Z",
   createdAt: "2026-01-10T09:00:00Z",
   updatedAt: "2026-01-10T09:00:00Z",
 };
