@@ -88,9 +88,6 @@ export function Header({ onOpenCommandPalette, onOpenMobileMenu }: HeaderProps) 
         >
           <Search className="size-3.5 shrink-0" />
           <span className="truncate">Search assets, people...</span>
-          <kbd className="ml-auto hidden shrink-0 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground sm:inline-block">
-            Ctrl K
-          </kbd>
         </button>
       </div>
 
