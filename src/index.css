@@ -143,11 +143,7 @@
 /* Brand gradient utilities — built from --org-primary/--org-accent only, per the theming rules
    above, so they stay on-brand for every tenant instead of hardcoding Tecres's own blue. */
 .bg-brand-hero {
-  background-color: #05070d;
-  background-image:
-    radial-gradient(120% 120% at 12% -10%, color-mix(in oklab, var(--org-primary) 55%, transparent) 0%, transparent 55%),
-    radial-gradient(90% 90% at 100% 100%, color-mix(in oklab, var(--org-accent) 38%, transparent) 0%, transparent 50%),
-    linear-gradient(180deg, #0b1220 0%, #05070d 100%);
+  background-color: oklch(0.16 0 0);
 }
 .text-gradient-brand {
   background-image: linear-gradient(90deg, var(--org-primary), var(--org-accent));
