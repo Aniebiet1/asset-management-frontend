@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="doc-short" content="Security Remediation Register (internal)">
+<title>Remediation Register</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+
+<div class="cover">
+  <img class="logo" src="../assets/tecres-logo.png" alt="Tecres">
+  <div class="kicker">Security &middot; Internal</div>
+  <h1>Security Remediation Register</h1>
+  <div class="subtitle">Hardening items identified by the 26 September 2026 security assessment, with their fixes, owners' effort estimates and the tests that prove each one closed. Companion to the Security Architecture &amp; Assurance Report.</div>
+  <div class="classification">Confidential: Tecres engineering and leadership only</div>
+  <div class="meta">
+    <div><b>TecresTrackIT AMS</b><br>Version 1.0 &middot; 26 September 2026</div>
+    <div style="text-align:right"><span class="tagline">...go beyond paper</span><br>Tecres</div>
+  </div>
+</div>
+
+<section class="chapter cont">
+  <div class="chapter-head"><div class="num">1</div><div><div class="audience">Leadership, engineering</div><h2>Register</h2></div></div>
+  <p>Each item has an automated test in <code>src/test/security/pentest.security.test.ts</code> written as an expected failure (<code>it.fails</code>). When the fix lands, the test starts passing and the suite fails on purpose until the test is changed to a normal <code>it</code>, so closure is proven by the test run, not by assertion.</p>
+  <table class="small">
+    <tr><th style="width:12mm">ID</th><th>Item</th><th style="width:19mm">Severity</th><th style="width:16mm">Test</th><th style="width:20mm">Status</th></tr>
+    <tr><td>F-01</td><td>Password-only token accepted as a console session (two-factor bypass)</td><td><span class="badge b-crit">Critical</span></td><td>PT-06</td><td><span class="badge b-fixed">Fixed, deploy</span></td></tr>
+    <tr><td>F-02</td><td>Leftover public endpoint lets anyone create an organization</td><td><span class="badge b-high">High</span></td><td>PT-27</td><td><span class="badge b-open">Open</span></td></tr>
+    <tr><td>F-03</td><td>Console authenticator codes can be replayed within their window</td><td><span class="badge b-med">Medium</span></td><td>PT-17</td><td><span class="badge b-open">Open</span></td></tr>
+    <tr><td>F-04</td><td>No lockout on console accounts after wrong passwords</td><td><span class="badge b-med">Medium</span></td><td>PT-18</td><td><span class="badge b-open">Open</span></td></tr>
+    <tr><td>F-05</td><td>Deactivated users keep access until their token expires (up to 15 min)</td><td><span class="badge b-med">Medium</span></td><td>PT-25</td><td><span class="badge b-open">Open</span></td></tr>
+    <tr><td>F-06</td><td>An org admin can demote or deactivate the last super admin</td><td><span class="badge b-med">Medium</span></td><td>PT-26</td><td><span class="badge b-open">Open</span></td></tr>
+    <tr><td>F-07</td><td>Dependencies with published advisories</td><td><span class="badge b-med">Medium</span></td><td>audit</td><td><span class="badge b-open">Open</span></td></tr>
+    <tr><td>F-08</td><td>Sign-in timing and workspace lookup reveal registered emails</td><td><span class="badge b-low">Low</span></td><td>PT-14</td><td><span class="badge b-open">Open</span></td></tr>
+    <tr><td>F-09</td><td>Password policy is length 8 only</td><td><span class="badge b-low">Low</span></td><td>review</td><td><span class="badge b-open">Open</span></td></tr>
+    <tr><td>F-10</td><td>Oversized requests answered 500 instead of 413</td><td><span class="badge b-low">Low</span></td><td>PT-29</td><td><span class="badge b-open">Open</span></td></tr>
+  </table>
+</section>
+
+<section class="chapter">
+  <div class="chapter-head"><div class="num">2</div><div><div class="audience">Engineering</div><h2>Item details and fixes</h2></div></div>
+
+  <h3>F-01 &middot; Two-factor bypass on the platform console <span class="badge b-fixed">Fixed</span></h3>
+  <p>Pre-auth tokens shared a signing secret with session tokens and the session check verified only the signature. Fixed by giving every token type its own JWT audience (<code>src/lib/jwt.ts</code>). Before: platform read routes returned 200 to a pre-auth token. After: 401 everywhere. <b>Action:</b> deploy to production; platform admins sign in once more after deployment.</p>
+
+  <h3>F-02 &middot; Public organization creation</h3>
+  <p><code>POST /api/organizations</code> is unauthenticated. Beyond bypassing onboarding, because emails are unique platform-wide an attacker could pre-register a prospect's email and block their onboarding. <b>Fix:</b> delete the route (the frontend uses <code>POST /api/platform/orgs</code>) and move the integration tests to the platform route.</p>
+
+  <h3>F-03 &middot; Console authenticator code replay</h3>
+  <p>Customer sign-in stores the last accepted time-step; the console passes <code>null</code>. <b>Fix:</b> add <code>totp_last_used_step</code> to <code>platform_admins</code> and pass it through, mirroring the customer implementation.</p>
+<div class="snippet"><pre><span class="k">const</span> result = verifyTotpCode(secret, code, admin.totpLastUsedStep);
+<span class="k">if</span> (result.valid) <span class="k">await</span> db.update(platformAdmins).set({ totpLastUsedStep: result.step }).where(eq(platformAdmins.id, admin.id));</pre></div>
+
+  <h3>F-04 &middot; Console account lockout</h3>
+  <p>Only the per-IP rate limit applies, which distributed guessing avoids, and failed console sign-ins are not logged. <b>Fix:</b> add <code>failed_login_attempts</code> / <code>locked_until</code> to <code>platform_admins</code>, reuse the customer lockout (5 attempts, 15 minutes) and log failures to the platform admin log.</p>
+
+  <h3>F-05 &middot; Access after deactivation</h3>
+  <p>Access tokens are verified by signature only, so deactivation or a role change takes effect when the token expires. <b>Fix:</b> in <code>loadOrgContext</code> also load the user, reject inactive users and use the stored role; revoke refresh tokens on deactivation; add the same check to <code>authenticatePlatformAdmin</code>.</p>
+
+  <h3>F-06 &middot; Last super admin can be removed</h3>
+  <p><code>PUT</code>/<code>DELETE /api/people/:id</code> let any admin change any role, including all super admins and themselves. <b>Fix:</b> only a super admin may grant or remove <code>super_admin</code>; refuse any change leaving zero active super admins; forbid self-demotion and self-deactivation.</p>
+
+  <h3>F-07 &middot; Dependencies</h3>
+  <table class="small">
+    <tr><th>Package</th><th>Advisories</th><th>Reachable here?</th><th>Action</th></tr>
+    <tr><td><code>nodemailer</code> 6.9</td><td>12 (3 high): address-parser DoS, header injection, recipient-domain bypass</td><td>Partly: recipients come from user-entered emails</td><td>Upgrade to 9.1.1+</td></tr>
+    <tr><td><code>drizzle-orm</code> 0.36</td><td>1 high: identifier escaping</td><td>No: user sort choices map to a fixed list</td><td>Upgrade to 0.45.2+</td></tr>
+    <tr><td><code>qs</code></td><td>2 moderate</td><td>Possibly, via query strings</td><td>Upgrade to 6.16+</td></tr>
+    <tr><td><code>xlsx</code> (frontend)</td><td>1 high, parsing only</td><td>No: the app only writes files</td><td>Replace with maintained build or <code>exceljs</code></td></tr>
+  </table>
+
+  <h3>F-08 &middot; Account discovery</h3>
+  <p>Sign-in takes about 137 ms for a real account and 6 ms for an unknown email; the sign-in page's workspace lookup also confirms whether an email is registered (rate-limited). <b>Fix:</b> verify against a dummy argon2 hash when no user exists; optionally return default Tecres branding instead of 404 from the lookup.</p>
+
+  <h3>F-09 &middot; Password policy</h3>
+  <p><b>Fix:</b> minimum 12 characters and a breached-password check (Have I Been Pwned range API), per NIST SP 800-63B. Mandatory two-factor limits current exposure.</p>
+
+  <h3>F-10 &middot; Oversized request handling</h3>
+  <p>The body-size limit works, but the error handler reports it as a 500 and logs it as a crash. <b>Fix:</b> in <code>errorHandler.ts</code>, pass through errors with a 4xx <code>status</code> (for example 413 <code>entity.too.large</code>).</p>
+</section>
+
+<section class="chapter">
+  <div class="chapter-head"><div class="num">3</div><div><div class="audience">Leadership, engineering</div><h2>Plan</h2></div></div>
+  <table>
+    <tr><th style="width:26mm">When</th><th>Work</th><th style="width:20mm">Items</th><th style="width:18mm">Effort</th></tr>
+    <tr><td><b>Immediately</b></td><td>Deploy the token-audience fix</td><td>F-01</td><td>1 hour</td></tr>
+    <tr><td><b>This sprint</b></td><td>Remove public org creation; console replay protection and lockout; status check on every request; super-admin guards</td><td>F-02 to F-06</td><td>2 days</td></tr>
+    <tr><td><b>Next sprint</b></td><td>Dependency upgrades and full re-test</td><td>F-07</td><td>1 day</td></tr>
+    <tr><td><b>Backlog</b></td><td>Constant-time sign-in, password policy, 413 handling</td><td>F-08 to F-10</td><td>0.5 day</td></tr>
+    <tr><td><b>Before scaling out</b></td><td>Redis-backed rate limits and a single job scheduler; production configuration review (TLS, proxy, SPA headers, database exposure, backups)</td><td>n/a</td><td>1 to 2 days</td></tr>
+  </table>
+  <p>When an item closes, update its row here and add its test to the relevant table of the Security Architecture &amp; Assurance Report.</p>
+</section>
+
+</body>
+</html>

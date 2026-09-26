@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="doc-short" content="Organization User Guide">
+<title>Organization User Guide</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+
+<div class="cover">
+  <img class="logo" src="../assets/tecres-logo.png" alt="Tecres">
+  <div class="kicker">User Guide &middot; Customer organizations</div>
+  <h1>TecresTrackIT AMS<br>Organization User Guide</h1>
+  <div class="subtitle">Everything your team needs to track assets with TecresTrackIT: signing in, setting up your workspace, registering and labelling assets, check-out and return, maintenance, audits, people, reports and settings.</div>
+  <div class="classification internal">For administrators, asset managers and staff</div>
+  <div class="meta">
+    <div><b>TecresTrackIT AMS</b><br>Version 1.0 &middot; 26 September 2026</div>
+    <div style="text-align:right"><span class="tagline">...go beyond paper</span><br>Tecres</div>
+  </div>
+</div>
+
+<div class="front">
+  <h2>Contents</h2>
+  <ul class="toc">
+    <li><span class="n">1</span>Welcome and roles<span class="who">Everyone</span></li>
+    <li><span class="n">2</span>Signing in securely<span class="who">Everyone</span></li>
+    <li><span class="n">3</span>First-time workspace setup<span class="who">Administrators</span></li>
+    <li><span class="n">4</span>Finding your way around<span class="who">Everyone</span></li>
+    <li><span class="n">5</span>Assets<span class="who">Everyone</span></li>
+    <li><span class="n">6</span>Check-out and return<span class="who">Admins, asset managers</span></li>
+    <li><span class="n">7</span>Maintenance<span class="who">Everyone</span></li>
+    <li><span class="n">8</span>Audits<span class="who">Everyone</span></li>
+    <li><span class="n">9</span>People<span class="who">Administrators</span></li>
+    <li><span class="n">10</span>Vendors<span class="who">Admins, asset managers</span></li>
+    <li><span class="n">11</span>Reports<span class="who">Admins, asset managers</span></li>
+    <li><span class="n">12</span>Labels<span class="who">Admins, asset managers</span></li>
+    <li><span class="n">13</span>Settings<span class="who">Administrators</span></li>
+    <li><span class="n">14</span>Help and troubleshooting<span class="who">Everyone</span></li>
+  </ul>
+  <div class="callout" style="margin-top:8mm">
+    <div class="t">About the examples</div>
+    <p>Screens in this guide come from the real application in dark mode, using a fictional company, <b>Harbor Logistics Ltd</b>. Your workspace shows your own logo, colors and data. The application also has a light mode (section 13).</p>
+  </div>
+</div>
+
+<!-- 1 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">1</div><div><div class="audience">Everyone</div><h2>Welcome and roles</h2></div></div>
+  <p class="lead">TecresTrackIT is your organization's register of physical assets: laptops, vehicles, machinery, furniture and anything else you need to account for. It records where each item is, who has it, its condition and value, its maintenance, and whether it was found at the last audit.</p>
+
+  <h3>Your role decides what you see</h3>
+  <p>Your administrator gives you one of four roles. Menu items and buttons you cannot use are hidden.</p>
+  <table class="small">
+    <tr><th>You can...</th><th style="width:26mm">Super admin / Admin</th><th style="width:22mm">Asset manager</th><th style="width:16mm">Staff</th></tr>
+    <tr><td>View the dashboard, assets, vendors and audits</td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td></tr>
+    <tr><td>Request maintenance for an asset</td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td></tr>
+    <tr><td>Carry out an audit assigned to you</td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td></tr>
+    <tr><td>Register and edit assets</td><td>&#10003;</td><td>&#10003;</td><td></td></tr>
+    <tr><td>Check assets out and in</td><td>&#10003;</td><td>&#10003;</td><td></td></tr>
+    <tr><td>Update and complete maintenance</td><td>&#10003;</td><td>&#10003;</td><td></td></tr>
+    <tr><td>Create, assign and verify audits</td><td>&#10003;</td><td>&#10003;</td><td></td></tr>
+    <tr><td>Manage vendors, export reports, print labels</td><td>&#10003;</td><td>&#10003;</td><td></td></tr>
+    <tr><td>See purchase price and current value</td><td>&#10003;</td><td>&#10003;</td><td></td></tr>
+    <tr><td>Delete assets and correct a locked asset tag</td><td>&#10003;</td><td></td><td></td></tr>
+    <tr><td>Manage people, company profile, branding and settings</td><td>&#10003;</td><td></td><td></td></tr>
+  </table>
+  <p class="small muted">The first administrator of your workspace is created by Tecres. Everyone else is added by your administrators (section 9).</p>
+</section>
+
+<!-- 2 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">2</div><div><div class="audience">Everyone</div><h2>Signing in securely</h2></div></div>
+  <p>Every account uses two-step sign-in: your password, then a 6-digit code from an authenticator app on your phone. This protects your organization even if a password is guessed or leaked. You will need an authenticator app such as <b>Google Authenticator</b>, <b>Microsoft Authenticator</b> or <b>1Password</b>.</p>
+
+  <h3>2.1 Your first sign-in</h3>
+  <ol class="steps">
+    <li>Open the sign-in page and type your work email. Your company's logo and colors appear once the email is recognised.</li>
+    <li>Enter the password you were given (or the one you chose when accepting an invitation) and select <b>Sign in</b>.</li>
+    <li>You are asked to set up two-factor authentication. In your authenticator app, add an account and <b>scan the QR code</b>. If you cannot scan it, type the key shown under <b>Can't scan? Enter this key manually</b>.</li>
+    <li>Type the 6-digit code from the app and select <b>Verify and continue</b>.</li>
+    <li>Save the <b>10 recovery codes</b> in a safe place (a password manager, or printed and locked away). Each can be used once if you lose your phone. Tick the confirmation box and select <b>Continue</b>.</li>
+  </ol>
+  <div class="two-col">
+    <figure><img src="../assets/shots/tenant-totp-enroll-card.png" alt="Set up two-factor"><figcaption>Scan the QR code (blurred here).</figcaption></figure>
+    <figure><img src="../assets/shots/tenant-recovery-codes-card.png" alt="Recovery codes"><figcaption>Save your recovery codes (blurred here).</figcaption></figure>
+  </div>
+  <div class="callout warn"><div class="t">Keep these private</div><p>Never share your password, QR code, setup key, recovery codes or a sign-in code with anyone, including colleagues or anyone claiming to be from Tecres. Tecres will never ask for them.</p></div>
+
+  <h3>2.2 Everyday sign-in</h3>
+  <div class="two-col">
+    <div>
+      <ol class="steps">
+        <li>Enter your email and password and select <b>Sign in</b>.</li>
+        <li>Type the current 6-digit code from your authenticator app and select <b>Verify</b>. Each code changes every 30 seconds.</li>
+      </ol>
+      <p>Lost your phone? Select <b>Use a recovery code instead</b> and enter one of your saved codes.</p>
+      <p>You stay signed in while you work, and TecresTrackIT renews your session quietly in the background. Use <b>Sign out</b> from your name in the top-right corner when you finish, especially on shared computers.</p>
+    </div>
+    <figure><img src="../assets/shots/tenant-totp-challenge-card.png" alt="Enter authentication code"><figcaption>The second sign-in step.</figcaption></figure>
+  </div>
+
+  <h3>2.3 Forgotten password</h3>
+  <ol class="steps">
+    <li>On the sign-in page select <b>Reset it</b>, enter your work email and submit.</li>
+    <li>Open the email and follow the link within <b>60 minutes</b>. Choose a new password. For your safety you are signed out of all devices.</li>
+  </ol>
+  <p class="small">After 5 wrong passwords your account locks for 15 minutes. Wait, or reset your password.</p>
+</section>
+
+<!-- 3 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">3</div><div><div class="audience">Administrators</div><h2>First-time workspace setup</h2></div></div>
+  <p>The first time your workspace's administrator signs in, a four-step wizard prepares the workspace. It only appears once.</p>
+
+  <h3>Step 1: Profile</h3>
+  <p>Confirm your organization's name, currency, timezone and date format, then select <b>Continue</b>.</p>
+  <figure><img src="../assets/shots/onboarding-1-profile.png" alt="Onboarding profile"><figcaption>Step 1: organization profile.</figcaption></figure>
+
+  <h3>Step 2: Branding</h3>
+  <p>Select <b>Upload logo</b> (PNG or JPG up to 5 MB). Colors are suggested from your logo; adjust the <b>Primary</b>, <b>Accent</b> and optional <b>Sidebar</b> colors if you wish and check the <b>Live preview</b>. Your logo and colors then appear across your workspace, on the sign-in page, in emails and on printed asset labels.</p>
+  <figure><img src="../assets/shots/onboarding-2-branding.png" alt="Onboarding branding"><figcaption>Step 2: logo and colors.</figcaption></figure>
+
+  <h3>Step 3: Seed data</h3>
+  <p>Add your first <b>location</b>, <b>asset type</b> and <b>department</b>, each with a short code. You can add more later in Settings &rarr; Catalog.</p>
+  <figure><img src="../assets/shots/onboarding-3-seed.png" alt="Onboarding seed data"><figcaption>Step 3: first location, asset type and department.</figcaption></figure>
+
+  <h3>Step 4: Finish</h3>
+  <p>Review the summary and finish. You arrive on your dashboard, ready to add assets and invite your team.</p>
+
+  <div class="callout ok"><div class="t">Recommended next steps</div>
+    <ol>
+      <li>Complete your catalog: locations, asset types, departments, and (if you use structured tags) subsidiaries and branches (section 13).</li>
+      <li>Choose your label format (section 12).</li>
+      <li>Invite your team (section 9).</li>
+      <li>Register your assets (section 5).</li>
+    </ol>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">4</div><div><div class="audience">Everyone</div><h2>Finding your way around</h2></div></div>
+  <figure><img src="../assets/shots/t-dashboard.png" alt="Dashboard"><figcaption>The dashboard of an administrator at Harbor Logistics Ltd.</figcaption></figure>
+  <table>
+    <tr><th style="width:44mm">Area</th><th>What it does</th></tr>
+    <tr><td><b>Sidebar</b></td><td>The main menu. Collapse it with the icon at its top. <b>New Asset</b> at the bottom is a shortcut for registering assets.</td></tr>
+    <tr><td><b>Search bar</b></td><td>Click it and type any part of an asset's name, tag or serial number, or a person's name, to jump straight to it.</td></tr>
+    <tr><td><b>Sun / moon icon</b></td><td>Switches between light and dark mode.</td></tr>
+    <tr><td><b>Bell</b></td><td>Notifications, for example when an audit is assigned to you.</td></tr>
+    <tr><td><b>Your name</b></td><td>Your account menu and <b>Sign out</b>.</td></tr>
+  </table>
+
+  <h3>The dashboard</h3>
+  <ul>
+    <li><b>Cards</b>: total assets, how many are available, in maintenance, and active users. Administrators and asset managers also see <b>Total Fleet Value</b>.</li>
+    <li><b>Charts</b>: assets by type and by status.</li>
+    <li><b>Recent Activity</b>: who did what, and when.</li>
+    <li><b>Maintenance Due</b>: upcoming and overdue maintenance jobs.</li>
+    <li><b>Scan Asset</b> opens the camera to scan an asset label; <b>New Asset</b> registers one.</li>
+  </ul>
+  <figure><img src="../assets/shots/t-command-palette.png" alt="Search"><figcaption>Quick search finding forklifts.</figcaption></figure>
+</section>
+
+<!-- 5 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">5</div><div><div class="audience">Everyone</div><h2>Assets</h2></div></div>
+  <h3>5.1 Browsing assets</h3>
+  <p><b>All Assets</b> lists every asset with its tag, type, location, status and custodian. Narrow the list with the search box and the <b>asset type</b>, <b>location</b> and <b>status</b> filters. Select an asset to open it.</p>
+  <figure><img src="../assets/shots/t-assets-list.png" alt="Assets list"><figcaption>The asset register.</figcaption></figure>
+
+  <h3>5.2 An asset's page</h3>
+  <figure><img src="../assets/shots/t-asset-detail.png" alt="Asset detail"><figcaption>An asset's page, with its label preview on the right.</figcaption></figure>
+  <ul>
+    <li><b>Header</b>: name, status, asset tag, make and model, serial number.</li>
+    <li><b>Cards</b>: location, department, custodian (who has it) and purchase date.</li>
+    <li><b>Overview</b>: condition, asset type, vendor, warranty expiry and, for roles allowed to see them, purchase price and current value.</li>
+    <li><b>History</b>: every change and movement. <b>Maintenance</b>: its maintenance jobs.</li>
+    <li><b>Buttons</b> (depending on your role): <b>Label</b> prints this asset's label, <b>Check Out</b>, <b>Correct tag</b> and <b>Edit</b>.</li>
+  </ul>
+  <div class="callout"><div class="t">Staff view</div><p>Staff see the same page without purchase price, current value and the action buttons. Money values are never sent to staff accounts at all.</p></div>
+
+  <h3>5.3 Registering a new asset</h3>
+  <p>Select <b>New Asset</b>. The form has four tabs; only fields marked <span style="color:#e31e24">*</span> are required.</p>
+  <figure><img src="../assets/shots/t-asset-new.png" alt="New asset"><figcaption>Registering a new asset.</figcaption></figure>
+  <table class="small">
+    <tr><th style="width:36mm">Tab</th><th>What to fill in</th></tr>
+    <tr><td><b>General</b></td><td>Asset tag details, name, location, department, vendor, custodian, status, condition and description.</td></tr>
+    <tr><td><b>Specifications</b></td><td>Brand, model, serial number and, for IT equipment, MAC and IP address.</td></tr>
+    <tr><td><b>Purchase &amp; warranty</b></td><td>Purchase price, current value, salvage value and warranty expiry.</td></tr>
+    <tr><td><b>Photo &amp; notes</b></td><td>A photo of the item and any notes.</td></tr>
+  </table>
+
+  <h3>5.4 How asset tags are generated</h3>
+  <p>If your organization uses subsidiaries and branches, TecresTrackIT builds each tag for you. Choose the <b>Subsidiary</b>, <b>Branch</b>, <b>Asset Type</b> and <b>Purchase date</b>, and the <b>Tag preview</b> shows the result:</p>
+  <div class="flow">
+    <div class="node">HFS<small>subsidiary</small></div><div class="arr">-</div>
+    <div class="node">LP<small>asset type</small></div><div class="arr">-</div>
+    <div class="node">01<small>branch</small></div><div class="arr">-</div>
+    <div class="node">290526<small>purchase date</small></div><div class="arr">-</div>
+    <div class="node fill">006<small style="color:#dbe4f3">running number</small></div>
+  </div>
+  <ul>
+    <li>The running number counts up for each asset type across your whole organization.</li>
+    <li>If the item is one of several <b>identical items bought on the same invoice</b>, tick that box and pick the first item. The new one shares its number with a letter added (<code>-A</code>, <code>-B</code>...).</li>
+    <li>Once saved, the tag's details are locked so printed labels stay correct. If a detail was entered wrongly, an administrator can use <b>Correct tag</b> on the asset's page. The tag is regenerated and the change is recorded.</li>
+  </ul>
+  <p class="small">Organizations without subsidiaries type their own tag instead.</p>
+</section>
+
+<!-- 6 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">6</div><div><div class="audience">Admins, asset managers</div><h2>Check-out and return</h2></div></div>
+  <p>Checking an asset out records who is responsible for it and when it is due back. <b>Check-Out / Return</b> shows every asset currently out; overdue ones are outlined in red.</p>
+  <figure><img src="../assets/shots/t-checkout.png" alt="Check-out page"><figcaption>Active check-outs, with an overdue vehicle highlighted.</figcaption></figure>
+
+  <h3>Checking an asset out</h3>
+  <ol class="steps">
+    <li>Type the asset's tag, name or serial number and select <b>Search</b>, or select <b>Scan</b> and point your camera at its label.</li>
+    <li>Check the asset details that appear and select <b>Check Out</b>.</li>
+    <li>Choose the <b>Custodian</b>, optionally an <b>Expected return date</b>, record the <b>Condition at check-out</b> and add notes. Select <b>Check Out</b>.</li>
+  </ol>
+  <figure><img src="../assets/shots/t-checkout-dialog.png" alt="Check out dialog"><figcaption>Assigning an asset to a custodian.</figcaption></figure>
+
+  <h3>Returning an asset</h3>
+  <ol class="steps">
+    <li>Find the asset in <b>Active check-outs</b> (or search for it) and select <b>Check In</b>.</li>
+    <li>Record its condition on return and any notes, then confirm. The asset becomes <b>Available</b> again.</li>
+  </ol>
+  <p><b>Receipt</b> downloads a PDF receipt of the check-out for your records.</p>
+</section>
+
+<!-- 7 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">7</div><div><div class="audience">Everyone</div><h2>Maintenance</h2></div></div>
+  <p><b>Maintenance</b> lists all preventive and corrective work, with priority, status and dates. Overdue jobs show their date in red. Filter by status at the top.</p>
+  <figure><img src="../assets/shots/t-maintenance.png" alt="Maintenance"><figcaption>Maintenance jobs at different stages.</figcaption></figure>
+
+  <h3>Requesting maintenance (everyone)</h3>
+  <ol class="steps">
+    <li>Select <b>Schedule maintenance</b>.</li>
+    <li>Choose the asset, give the job a title, pick the type (preventive, corrective, calibration, inspection or upgrade) and priority, set the scheduled date and optionally the vendor or technician.</li>
+    <li>Save. The job appears as <b>Scheduled</b>.</li>
+  </ol>
+
+  <h3>Progressing and completing work (admins, asset managers)</h3>
+  <p>Use the pencil icon to update a job as it moves through <b>In Progress</b>, <b>Waiting Parts</b> and <b>Completed</b> (or <b>Cancelled</b>). When completing, record the completion date, cost and parts used.</p>
+  <div class="callout"><div class="t">Asset status follows automatically</div><p>Starting work sets the asset to <b>In Maintenance</b>; completing or cancelling it makes the asset <b>Available</b> again, and the dashboard updates to match.</p></div>
+</section>
+
+<!-- 8 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">8</div><div><div class="audience">Everyone</div><h2>Audits</h2></div></div>
+  <p>An audit is a physical count: someone walks the floor, scans each asset, and the results are checked by a second person. <b>The person who verifies an audit can never be the person who carried it out.</b></p>
+  <div class="flow">
+    <div class="node">Draft<small>created</small></div><div class="arr">&rarr;</div>
+    <div class="node">Assigned<small>to an auditor</small></div><div class="arr">&rarr;</div>
+    <div class="node">In Progress<small>scanning</small></div><div class="arr">&rarr;</div>
+    <div class="node">Submitted<small>for checking</small></div><div class="arr">&rarr;</div>
+    <div class="node fill">Verified</div>
+  </div>
+  <p class="small">A verifier can instead <b>reject</b> a submission with a reason; the auditor then resumes and resubmits. An audit can be cancelled before it is verified.</p>
+
+  <h3>8.1 Creating and assigning (admins, asset managers)</h3>
+  <ol class="steps">
+    <li>In <b>Audits</b>, select <b>New Audit</b>.</li>
+    <li>Name it and choose its scope: all assets, or one location, department or asset type.</li>
+    <li>Open the audit and assign it to the person who will do the count. They are notified.</li>
+  </ol>
+  <figure><img src="../assets/shots/t-audits.png" alt="Audits"><figcaption>The audits list.</figcaption></figure>
+
+  <h3>8.2 Carrying out an audit (the assigned auditor)</h3>
+  <ol class="steps">
+    <li>Open the audit from <b>Audits</b> (or the notification) and start it.</li>
+    <li>Scan each asset's label with <b>Use Camera</b>, or type its tag and select <b>Scan</b>. If you find it somewhere else, choose its actual location; if its condition has changed, choose the new condition.</li>
+    <li>Watch the counters: <b>Expected</b>, <b>Scanned</b>, <b>Matched</b>, <b>Missing</b> and <b>Discrepant</b>. Each item in the list turns from <b>Pending</b> to its result.</li>
+    <li>When finished, summarise what you found in the remark box (required) and select <b>Submit for verification</b>.</li>
+  </ol>
+  <figure><img src="../assets/shots/t-audit-perform.png" alt="Performing an audit"><figcaption>A staff member scanning assets during an audit.</figcaption></figure>
+
+  <h3>8.3 Verifying (admins, asset managers)</h3>
+  <p>Open the submitted audit. Review the counts, the auditor's remark and each item, then either add an optional remark and select <b>Verify</b>, or give a reason and select <b>Reject</b>. The <b>History</b> panel records every step and who took it.</p>
+  <figure><img src="../assets/shots/t-audit-verify.png" alt="Verifying an audit"><figcaption>Verifying a submitted audit: 8 of 10 assets matched, 2 missing.</figcaption></figure>
+</section>
+
+<!-- 9 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">9</div><div><div class="audience">Administrators</div><h2>People</h2></div></div>
+  <p><b>People</b> lists everyone in your organization with their role, employee ID, title, department, status and last sign-in.</p>
+  <figure><img src="../assets/shots/t-people.png" alt="People"><figcaption>The people directory.</figcaption></figure>
+
+  <h3>Inviting someone</h3>
+  <ol class="steps">
+    <li>Select <b>Invite Person</b>, enter their work email and choose their role.</li>
+    <li>They receive an email with a link to accept. They choose their own password and set up two-factor at their first sign-in.</li>
+    <li>Until they accept, the invitation appears under <b>Pending invitations</b>, where you can resend or revoke it.</li>
+  </ol>
+  <figure><img src="../assets/shots/t-people-invite.png" alt="Invite a person"><figcaption>Inviting a new team member.</figcaption></figure>
+  <p class="small">Each email address can belong to only one workspace on TecresTrackIT.</p>
+
+  <h3>Changing a role or removing access</h3>
+  <ul>
+    <li><b>Edit</b> changes a person's name, role, title, department or phone.</li>
+    <li><b>Deactivate</b> removes their access when someone leaves; their history is kept. You cannot deactivate yourself.</li>
+    <li>Give people the lowest role that lets them do their job.</li>
+  </ul>
+</section>
+
+<!-- 10 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">10</div><div><div class="audience">Admins, asset managers</div><h2>Vendors</h2></div></div>
+  <p><b>Vendors</b> holds the suppliers and service providers you buy from and use for repairs, with contact details. Vendors can then be chosen on assets and maintenance jobs. Everyone can view the list; administrators and asset managers can add and edit vendors.</p>
+  <figure><img src="../assets/shots/t-vendors.png" alt="Vendors"><figcaption>The vendors list.</figcaption></figure>
+</section>
+
+<!-- 11 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">11</div><div><div class="audience">Admins, asset managers</div><h2>Reports</h2></div></div>
+  <p><b>Reports</b> summarises your asset register and its value, and exports it.</p>
+  <figure><img src="../assets/shots/t-reports.png" alt="Reports"><figcaption>The asset report with totals and depreciation.</figcaption></figure>
+  <ul>
+    <li><b>Totals</b>: assets valued, total purchase value, total current value and average percentage depreciated.</li>
+    <li><b>Filter</b> by asset type, location and custodian, and by a date range on either the <b>Purchase date</b> or the <b>Depreciation date</b> (one at a time).</li>
+    <li><b>Group</b> by asset type, location or depreciation band, and <b>sort</b> by any column, ascending or descending. <b>Reset</b> clears everything.</li>
+    <li><b>Export</b> downloads exactly what is on screen as <b>CSV</b>, <b>Excel</b> or <b>PDF</b>.</li>
+  </ul>
+  <p class="small">Depreciation is calculated on a straight-line basis from the purchase date.</p>
+</section>
+
+<!-- 12 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">12</div><div><div class="audience">Admins, asset managers</div><h2>Labels</h2></div></div>
+  <p>Printed labels let anyone identify an asset and scan it during check-out and audits.</p>
+  <h3>One-time setup (administrators)</h3>
+  <ol class="steps">
+    <li>Go to <b>Settings &rarr; Labels</b> and choose a format: <b>Barcode + QR</b>, <b>Barcode only</b> or <b>QR only</b>. Select <b>Save format</b>.</li>
+    <li>Under <b>Print sheet calibration</b>, enter your label paper's measurements (label size, columns, rows, gaps and margins) so printing lines up with pre-cut labels. The preview shows how many labels fit on a page.</li>
+  </ol>
+  <figure><img src="../assets/shots/t-settings-labels.png" alt="Label settings"><figcaption>Choosing a label format and calibrating the print sheet.</figcaption></figure>
+
+  <h3>Printing labels</h3>
+  <ol class="steps">
+    <li>Open <b>Labels</b>, find assets with the search and filters, and tick the ones you need.</li>
+    <li>Select <b>Print N Labels</b> to download a PDF sheet, then print it at 100% scale on your label paper.</li>
+  </ol>
+  <figure><img src="../assets/shots/t-labels-selected.png" alt="Labels"><figcaption>Six assets selected for printing.</figcaption></figure>
+  <p class="small">To print a single label, use <b>Label</b> on the asset's page.</p>
+</section>
+
+<!-- 13 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">13</div><div><div class="audience">Administrators</div><h2>Settings</h2></div></div>
+  <table>
+    <tr><th style="width:34mm">Tab</th><th>What you can change</th></tr>
+    <tr><td><b>Organization</b></td><td>Company name and contact details, currency, timezone and date format.</td></tr>
+    <tr><td><b>Branding</b></td><td>Logo and colors (as in onboarding).</td></tr>
+    <tr><td><b>Catalog</b></td><td>Locations, asset types, departments, subsidiaries and branches, each with a short code. Codes used in asset tags cannot be changed once an asset uses them.</td></tr>
+    <tr><td><b>Labels</b></td><td>Label format and print calibration (section 12).</td></tr>
+    <tr><td><b>Appearance</b></td><td>Your own display preference: light, dark or follow your device, and whether the sidebar starts collapsed. This affects only you.</td></tr>
+  </table>
+  <figure><img src="../assets/shots/t-settings-catalog.png" alt="Catalog settings"><figcaption>Settings &rarr; Catalog.</figcaption></figure>
+</section>
+
+<!-- 14 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">14</div><div><div class="audience">Everyone</div><h2>Help and troubleshooting</h2></div></div>
+  <table>
+    <tr><th style="width:62mm">Situation</th><th>What to do</th></tr>
+    <tr><td>"Invalid email or password"</td><td>Check both and try again. The message is the same for every sign-in problem, for security. After 5 wrong attempts, wait 15 minutes or reset your password.</td></tr>
+    <tr><td>"Invalid authentication code"</td><td>Make sure your phone's time is set automatically and use the newest code. A code only works once.</td></tr>
+    <tr><td>I lost or replaced my phone</td><td>Sign in with a recovery code, then ask your administrator to help you set up the authenticator again. No recovery codes? Contact your administrator.</td></tr>
+    <tr><td>I can't see a menu item or button</td><td>Your role doesn't include it. Ask your administrator.</td></tr>
+    <tr><td>I can't see asset values</td><td>Values are only shown to administrators and asset managers.</td></tr>
+    <tr><td>My invitation link has expired</td><td>Ask your administrator to resend it from People &rarr; Pending invitations.</td></tr>
+    <tr><td>"This organization's access has been suspended"</td><td>Your administrator should contact Tecres.</td></tr>
+    <tr><td>Labels print out of line</td><td>Print at 100% (not "fit to page") and check the calibration in Settings &rarr; Labels.</td></tr>
+    <tr><td>The camera scanner doesn't start</td><td>Allow camera access in your browser, or type the tag instead.</td></tr>
+  </table>
+  <div class="callout"><div class="t">Getting support</div><p>First ask your organization's TecresTrackIT administrator. Administrators can contact Tecres through the <b>Support</b> link at the bottom of every page.</p></div>
+</section>
+
+</body>
+</html>

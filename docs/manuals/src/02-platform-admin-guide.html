@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="doc-short" content="Tecres Platform Admin Guide">
+<title>Platform Admin Guide</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+
+<div class="cover">
+  <img class="logo" src="../assets/tecres-logo.png" alt="Tecres">
+  <div class="kicker">User Guide &middot; Tecres staff</div>
+  <h1>Tecres Platform Admin Guide</h1>
+  <div class="subtitle">How Tecres staff sign in to the platform console, create customer workspaces, look after organizations and their users, respond to alerts, and manage who at Tecres has access.</div>
+  <div class="classification internal">Internal: Tecres staff only</div>
+  <div class="meta">
+    <div><b>TecresTrackIT AMS</b><br>Version 1.0 &middot; 26 September 2026</div>
+    <div style="text-align:right"><span class="tagline">...go beyond paper</span><br>Tecres</div>
+  </div>
+</div>
+
+<div class="front">
+  <h2>Contents</h2>
+  <ul class="toc">
+    <li><span class="n">1</span>About the platform console<span class="who">All Tecres staff</span></li>
+    <li><span class="n">2</span>Joining and signing in<span class="who">All Tecres staff</span></li>
+    <li><span class="n">3</span>The fleet dashboard<span class="who">All Tecres staff</span></li>
+    <li><span class="n">4</span>Creating a customer workspace<span class="who">Platform owners</span></li>
+    <li><span class="n">5</span>Looking after an organization<span class="who">Owners, support</span></li>
+    <li><span class="n">6</span>Alerts<span class="who">Owners, support</span></li>
+    <li><span class="n">7</span>Managing platform admins<span class="who">Platform owners</span></li>
+    <li><span class="n">8</span>Security responsibilities<span class="who">All Tecres staff</span></li>
+    <li><span class="n">9</span>Troubleshooting<span class="who">All Tecres staff</span></li>
+  </ul>
+  <div class="callout" style="margin-top:10mm">
+    <div class="t">Screens in this guide</div>
+    <p>Every screenshot was taken from the real application in dark mode, using a fictional customer, <b>Harbor Logistics Ltd</b>. Where a screen listed other organizations or staff, those rows are blurred.</p>
+  </div>
+</div>
+
+<!-- 1 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">1</div><div><div class="audience">All Tecres staff</div><h2>About the platform console</h2></div></div>
+  <p class="lead">The platform console is where Tecres runs TecresTrackIT as a service. It is a separate application from the one customers use, with its own sign-in, its own accounts and its own address: <code>/platform</code>.</p>
+
+  <h3>What you can do here</h3>
+  <ul>
+    <li>Create a workspace for a new customer, together with its first administrator.</li>
+    <li>See every customer workspace at a glance: users, assets, plan status and risk signals.</li>
+    <li>Adjust a customer's user and asset quotas, suspend or reactivate a workspace, and force a password reset for one of its users.</li>
+    <li>Watch for failed-login spikes and other automatic alerts.</li>
+    <li>Invite other Tecres staff to the console and set their role.</li>
+  </ul>
+
+  <h3>What you cannot do here, by design</h3>
+  <ul>
+    <li><b>You cannot sign in as a customer or work inside their workspace.</b> You can see usage figures, user lists and activity, but not their assets or records.</li>
+    <li>You cannot use a Tecres console account to sign in to the customer application, or a customer account to sign in here.</li>
+  </ul>
+
+  <h3>Roles</h3>
+  <table>
+    <tr><th>Action</th><th style="width:30mm">Platform owner</th><th style="width:30mm">Platform support</th></tr>
+    <tr><td>View dashboard, organizations, their users and activity</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>Resolve alerts</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>Create a customer workspace</td><td>Yes</td><td>No</td></tr>
+    <tr><td>Suspend or reactivate a workspace</td><td>Yes</td><td>No</td></tr>
+    <tr><td>Adjust quotas</td><td>Yes</td><td>No</td></tr>
+    <tr><td>Force a customer user's password reset</td><td>Yes</td><td>No</td></tr>
+    <tr><td>Invite platform admins and change their roles</td><td>Yes</td><td>No</td></tr>
+  </table>
+  <p class="small muted">Buttons for actions your role cannot perform are hidden, and the server refuses them even if attempted another way.</p>
+</section>
+
+<!-- 2 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">2</div><div><div class="audience">All Tecres staff</div><h2>Joining and signing in</h2></div></div>
+
+  <h3>2.1 Accepting your invitation</h3>
+  <p>Console accounts are created only by invitation from a platform owner. You receive an email titled <i>"You have been invited to the Tecres platform console"</i>. The link in it is valid for <b>7 days</b>.</p>
+  <ol class="steps">
+    <li>Open the link. The page greets you by name and shows the role you are joining as.</li>
+    <li>Choose a password and type it again to confirm, then select <b>Continue to two-factor setup</b>.</li>
+  </ol>
+  <figure class="narrow">
+    <img src="../assets/shots/platform-invite-accept-card.png" alt="Accept invitation">
+    <figcaption>Accepting a platform console invitation.</figcaption>
+  </figure>
+
+  <h3>2.2 Setting up two-factor authentication</h3>
+  <p>Before you get into the console, you must connect an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password or similar). This cannot be skipped.</p>
+  <ol class="steps">
+    <li>In your authenticator app, add an account and scan the QR code. If you cannot scan, type the key shown under <b>Can't scan? Enter this key manually</b>.</li>
+    <li>Type the 6-digit code the app shows and select <b>Verify and continue</b>.</li>
+    <li>You are shown <b>10 recovery codes</b>. Save them somewhere safe and offline, such as a password manager. Each works once, if you ever lose your phone.</li>
+    <li>Tick <b>I've saved these recovery codes somewhere safe</b> and select <b>Continue</b>.</li>
+  </ol>
+  <div class="two-col">
+    <figure><img src="../assets/shots/platform-totp-enroll-card.png" alt="Set up two-factor"><figcaption>Scan the QR code (blurred here).</figcaption></figure>
+    <figure><img src="../assets/shots/platform-recovery-codes-card.png" alt="Recovery codes"><figcaption>Save your recovery codes (blurred here).</figcaption></figure>
+  </div>
+  <div class="callout warn"><div class="t">Never share or screenshot these</div><p>Anyone with your QR code, setup key or recovery codes can generate your sign-in codes. They are blurred in this guide for that reason.</p></div>
+
+  <h3>2.3 Signing in</h3>
+  <ol class="steps">
+    <li>Go to the console sign-in page (<code>/platform/login</code>), enter your Tecres email and password, and select <b>Sign in</b>.</li>
+    <li>Open your authenticator app and type the current 6-digit code, then select <b>Verify</b>. The countdown shows how long you have before you must start again.</li>
+  </ol>
+  <div class="two-col">
+    <figure><img src="../assets/shots/platform-login-filled-card.png" alt="Console sign-in"><figcaption>Step 1: email and password.</figcaption></figure>
+    <figure><img src="../assets/shots/platform-totp-challenge-local-card.png" alt="Authentication code"><figcaption>Step 2: the 6-digit code.</figcaption></figure>
+  </div>
+  <p>Lost your phone? On the code screen choose <b>Use a recovery code instead</b> and enter one of your saved codes.</p>
+  <div class="callout"><div class="t">Sessions are short on purpose</div><p>A console session lasts 15 minutes and is not kept when you reload or close the tab. If you are returned to the sign-in page, simply sign in again. Sign out with the arrow icon next to your name when you finish.</p></div>
+</section>
+
+<!-- 3 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">3</div><div><div class="audience">All Tecres staff</div><h2>The fleet dashboard</h2></div></div>
+  <p>After signing in you land on <b>Fleet overview</b>, a live summary of every customer workspace.</p>
+  <figure class="tall">
+    <img src="../assets/shots/platform-dashboard-full.png" alt="Fleet overview">
+    <figcaption>The fleet dashboard. Login-risk entries for other customers are blurred.</figcaption>
+  </figure>
+  <table>
+    <tr><th style="width:42mm">Panel</th><th>What it tells you</th></tr>
+    <tr><td><b>Top cards</b></td><td>Number of organizations, total users, total assets across all customers, and how many workspaces are suspended.</td></tr>
+    <tr><td><b>Fleet growth</b></td><td>New workspaces and new assets added each month over the last six months.</td></tr>
+    <tr><td><b>Plan status</b></td><td>How many workspaces are active, suspended or expired.</td></tr>
+    <tr><td><b>Risk &amp; health</b></td><td>Workspaces that need attention: suspended, near their asset or user quota, with overdue maintenance, or with damaged or lost assets. Select a tile to see the matching organizations.</td></tr>
+    <tr><td><b>Detected login risk</b></td><td>Customer accounts currently in a failed-sign-in spike: who, which workspace, how many attempts, from which IP address and when.</td></tr>
+    <tr><td><b>Open alerts</b></td><td>The latest unresolved alerts; <b>View all</b> opens the Alerts page (section 6).</td></tr>
+  </table>
+</section>
+
+<!-- 4 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">4</div><div><div class="audience">Platform owners</div><h2>Creating a customer workspace</h2></div></div>
+  <p>Customers cannot sign themselves up. A platform owner creates each workspace together with its first administrator, then hands the sign-in details to the customer.</p>
+  <ol class="steps">
+    <li>Go to <b>Organizations</b> and select <b>New Workspace</b>.</li>
+    <li>Enter the <b>Organization name</b>. A <b>Workspace slug</b> (a short, unique, lowercase identifier such as <code>harbor-logistics</code>) is suggested from the name; adjust it if you wish.</li>
+    <li>Under <b>First admin account</b>, enter the customer administrator's <b>Name</b> and work <b>Email</b>. Each email can belong to only one workspace on the whole platform.</li>
+    <li>An <b>Initial password</b> is generated for you. Use the button beside it to generate a different one.</li>
+    <li>Select <b>Create workspace</b>.</li>
+  </ol>
+  <figure>
+    <img src="../assets/shots/platform-org-create-filled.png" alt="New workspace form">
+    <figcaption>Creating the Harbor Logistics Ltd workspace. The generated password is blurred.</figcaption>
+  </figure>
+
+  <p>The confirmation screen shows the workspace, the admin's email, the initial password and the sign-in address <b>once only</b>. Select <b>Copy all</b>, then <b>Done</b>.</p>
+  <figure>
+    <img src="../assets/shots/platform-org-created.png" alt="Workspace created">
+    <figcaption>The credentials are shown once (blurred here).</figcaption>
+  </figure>
+
+  <div class="callout warn"><div class="t">Hand over credentials securely</div>
+    <ul>
+      <li>Send the email address and the password through <b>different channels</b> (for example email for the address and sign-in link, a phone call or text for the password).</li>
+      <li>Never paste them into a shared chat, ticket or document.</li>
+      <li>The customer sets up two-factor authentication at their first sign-in, so the password alone never gives access.</li>
+    </ul>
+  </div>
+
+  <h3>What happens next for the customer</h3>
+  <div class="flow">
+    <div class="node">Signs in<small>with the initial password</small></div><div class="arr">&rarr;</div>
+    <div class="node">Sets up two-factor<small>and saves recovery codes</small></div><div class="arr">&rarr;</div>
+    <div class="node">Onboarding wizard<small>profile, branding, first data</small></div><div class="arr">&rarr;</div>
+    <div class="node fill">Workspace live</div>
+  </div>
+  <p>Until they finish onboarding, the organization's detail page shows <b>Onboarding: Pending</b>. The customer's own guide (Organization User Guide) walks them through these steps.</p>
+</section>
+
+<!-- 5 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">5</div><div><div class="audience">Owners, support</div><h2>Looking after an organization</h2></div></div>
+  <h3>5.1 The organizations list</h3>
+  <p><b>Organizations</b> lists every customer workspace with its plan status, users and assets against quota, and when it was last active. Select a row to open it.</p>
+  <figure>
+    <img src="../assets/shots/platform-orgs-list.png" alt="Organizations list">
+    <figcaption>The organizations list. Other customers are blurred.</figcaption>
+  </figure>
+
+  <h3>5.2 Overview and quotas</h3>
+  <p>The <b>Overview</b> tab shows usage against quota, last activity and whether onboarding is complete. Platform owners can change quotas here:</p>
+  <ol class="steps">
+    <li>Under <b>Adjust quotas</b>, enter the new <b>User quota</b> and/or <b>Asset quota</b>.</li>
+    <li>Select <b>Update quotas</b>. The change is recorded in the platform admin log.</li>
+  </ol>
+  <figure>
+    <img src="../assets/shots/platform-org-detail.png" alt="Organization overview">
+    <figcaption>An organization's overview with the quota editor.</figcaption>
+  </figure>
+  <p class="small">The system raises an alert when a workspace reaches 90% of its asset quota and again at 100%.</p>
+
+  <h3>5.3 Users and forced password resets</h3>
+  <p>The <b>Users</b> tab lists the organization's people with their role, status, whether two-factor is set up, and when they joined. If a customer tells you an account may be compromised, or a user is locked out and cannot reset their own password:</p>
+  <ol class="steps">
+    <li>Select the key icon (<b>Force password reset</b>) on that user's row.</li>
+    <li>Read the confirmation and select <b>Send reset email</b>.</li>
+  </ol>
+  <p>The user is <b>signed out everywhere immediately</b> and emailed a link to choose a new password. The link lasts 60 minutes.</p>
+  <figure>
+    <img src="../assets/shots/platform-org-force-reset-dialog.png" alt="Force password reset">
+    <figcaption>Forcing a password reset.</figcaption>
+  </figure>
+  <div class="callout"><div class="t">Verify before you act</div><p>Only force a reset when the request comes from the customer's known administrator through a channel you trust. Confirm the person's identity if the request is unexpected.</p></div>
+
+  <h3>5.4 Activity</h3>
+  <p>The <b>Activity</b> tab shows the organization's recent activity log: sign-ins (including failed ones, with IP address), changes to assets and people, and workspace events. Use it when investigating a support request or a security concern.</p>
+  <figure>
+    <img src="../assets/shots/platform-org-activity.png" alt="Organization activity">
+    <figcaption>An organization's activity log.</figcaption>
+  </figure>
+
+  <h3>5.5 Suspending and reactivating a workspace</h3>
+  <p>Suspending blocks <b>every user of that organization</b> on their next action, with a message that access has been suspended. No data is deleted.</p>
+  <ol class="steps">
+    <li>Open the organization and select <b>Suspend workspace</b> (top right). It takes effect at once; the status badge turns to <b>Suspended</b>.</li>
+    <li>To restore access, select <b>Reactivate workspace</b>.</li>
+  </ol>
+  <figure>
+    <img src="../assets/shots/platform-org-suspended.png" alt="Suspended workspace">
+    <figcaption>A suspended workspace, with the Reactivate button.</figcaption>
+  </figure>
+  <p class="small">Typical reasons: an unpaid or expired plan, a customer's request during a security incident, or the end of a contract. Every suspension and reactivation is logged with your name.</p>
+</section>
+
+<!-- 6 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">6</div><div><div class="audience">Owners, support</div><h2>Alerts</h2></div></div>
+  <p>The system checks every workspace every 15 minutes and raises alerts automatically. <b>Alerts</b> lists them with severity and the organization concerned.</p>
+  <figure>
+    <img src="../assets/shots/platform-alerts.png" alt="Alerts">
+    <figcaption>The Alerts page. Organization names and details are blurred.</figcaption>
+  </figure>
+  <table>
+    <tr><th>Alert</th><th style="width:22mm">Severity</th><th>Suggested action</th></tr>
+    <tr><td>Failed login spike</td><td><span class="badge b-med">Warning</span></td><td>Check <b>Detected login risk</b> on the dashboard. Contact the customer's administrator; force a password reset if the account may be compromised.</td></tr>
+    <tr><td>Asset quota nearly reached (90%)</td><td><span class="badge b-med">Warning</span></td><td>Discuss a plan change with the customer; raise the quota if agreed.</td></tr>
+    <tr><td>Asset quota exceeded (100%)</td><td><span class="badge b-high">Critical</span></td><td>Raise the quota or agree next steps with the customer.</td></tr>
+    <tr><td>Plan expired</td><td><span class="badge b-high">Critical</span></td><td>Follow up on renewal; suspend if required by the contract.</td></tr>
+    <tr><td>No recent activity (30 days)</td><td><span class="badge b-low">Info</span></td><td>Check in with the customer; they may need help getting started.</td></tr>
+  </table>
+  <p>When an alert has been dealt with, select <b>Resolve</b>. Resolved alerts stay in the list, marked <b>Resolved</b>, as a record.</p>
+</section>
+
+<!-- 7 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">7</div><div><div class="audience">Platform owners</div><h2>Managing platform admins</h2></div></div>
+  <p><b>Admins</b> (visible to platform owners only) lists everyone at Tecres with console access, their role, whether they have set up two-factor, and pending invitations.</p>
+  <figure>
+    <img src="../assets/shots/platform-admins.png" alt="Platform admins">
+    <figcaption>The Admins page. Other staff are blurred.</figcaption>
+  </figure>
+
+  <h3>Inviting a colleague</h3>
+  <ol class="steps">
+    <li>Select <b>Invite admin</b>.</li>
+    <li>Enter their name and Tecres email address, and choose a role. Give <b>Platform support</b> unless they need to create or suspend workspaces, change quotas, force resets or manage admins.</li>
+    <li>Select <b>Send invitation</b>. They receive an email valid for 7 days and set their own password and two-factor (section 2).</li>
+  </ol>
+  <figure>
+    <img src="../assets/shots/platform-admin-invite-dialog.png" alt="Invite a platform admin">
+    <figcaption>Inviting a new platform admin.</figcaption>
+  </figure>
+
+  <h3>Changing a role</h3>
+  <p>Use <b>Change role</b> on a colleague's row to move them between Platform owner and Platform support. You cannot change your own role, so there is always an owner who can manage the team.</p>
+  <div class="callout"><div class="t">Least privilege</div><p>Keep the number of platform owners small. Review the Admins list whenever someone changes job or leaves Tecres, and downgrade or remove access promptly.</p></div>
+</section>
+
+<!-- 8 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">8</div><div><div class="audience">All Tecres staff</div><h2>Security responsibilities</h2></div></div>
+  <p>Console accounts can see information about every customer, so they are among the most sensitive accounts Tecres has. Every console user agrees to the following:</p>
+  <table>
+    <tr><th style="width:8mm"></th><th>Practice</th></tr>
+    <tr><td>&#10003;</td><td>Use a unique, strong password for the console, stored in a password manager.</td></tr>
+    <tr><td>&#10003;</td><td>Keep your authenticator on a phone that has a screen lock; keep recovery codes offline.</td></tr>
+    <tr><td>&#10003;</td><td>Never share your account, codes or a signed-in screen with anyone, including colleagues.</td></tr>
+    <tr><td>&#10003;</td><td>Hand customer credentials over through two separate channels; never in shared chats or tickets.</td></tr>
+    <tr><td>&#10003;</td><td>Confirm who you are talking to before forcing a reset or suspending a workspace.</td></tr>
+    <tr><td>&#10003;</td><td>Sign out when you finish, especially on shared or public networks.</td></tr>
+    <tr><td>&#10003;</td><td>Report a lost phone, a suspicious email or unexpected console activity to the Tecres security lead at once.</td></tr>
+  </table>
+  <p>Every action you take in the console (creating, suspending or reactivating a workspace, changing quotas, forcing a reset, inviting or changing an admin, resolving an alert) is recorded against your name.</p>
+</section>
+
+<!-- 9 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">9</div><div><div class="audience">All Tecres staff</div><h2>Troubleshooting</h2></div></div>
+  <table>
+    <tr><th style="width:62mm">Situation</th><th>What to do</th></tr>
+    <tr><td>"Invalid email or password"</td><td>Check the email and password. The message is deliberately the same for every sign-in problem. After 10 quick attempts you must wait 15 minutes before trying again.</td></tr>
+    <tr><td>"Invalid authentication code"</td><td>Make sure your phone's clock is set automatically, then use the newest code. A code shown a minute ago will no longer work.</td></tr>
+    <tr><td>I lost my phone</td><td>Sign in with a recovery code, then ask a platform owner to help you set up a new authenticator. If you have no recovery codes, contact the Tecres security lead.</td></tr>
+    <tr><td>I was sent back to the sign-in page</td><td>Console sessions last 15 minutes and do not survive a page reload. Sign in again.</td></tr>
+    <tr><td>My invitation link does not work</td><td>Links expire after 7 days or once used. Ask a platform owner to send a new invitation.</td></tr>
+    <tr><td>A customer's user is locked out</td><td>After 5 wrong passwords an account locks for 15 minutes. The user can wait, use <b>Forgot password</b>, or you can force a password reset (5.3).</td></tr>
+    <tr><td>A customer lost their authenticator and recovery codes</td><td>Their own administrator should help them first. Escalate to a platform owner if the administrator is the one affected.</td></tr>
+    <tr><td>The new workspace's admin never received their details</td><td>The console does not email them; the credentials must be handed over by you (section 4). If they are lost, force a password reset for that admin.</td></tr>
+  </table>
+</section>
+
+</body>
+</html>

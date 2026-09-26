@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="doc-short" content="Security Architecture &amp; Assurance Report">
+<title>Security Architecture</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+
+<!-- ============================== COVER ============================== -->
+<div class="cover">
+  <img class="logo" src="../assets/tecres-logo.png" alt="Tecres">
+  <div class="kicker">Security</div>
+  <h1>Security Architecture &amp; Assurance Report</h1>
+  <div class="subtitle">How TecresTrackIT AMS protects every account, session and organization: the architecture, the controls built into it, and the penetration testing that verified them.</div>
+  <div class="classification internal">Restricted: Tecres and customers under NDA</div>
+  <div class="meta">
+    <div><b>TecresTrackIT AMS</b><br>Version 1.0 &middot; 26 September 2026</div>
+    <div style="text-align:right"><span class="tagline">...go beyond paper</span><br>Tecres</div>
+  </div>
+</div>
+
+<!-- ============================== FRONT MATTER ============================== -->
+<div class="front">
+  <h2>Document control</h2>
+  <table class="control">
+    <tr><td>Document</td><td>Security Architecture &amp; Assurance Report</td></tr>
+    <tr><td>Version</td><td>1.0</td></tr>
+    <tr><td>Date</td><td>26 September 2026</td></tr>
+    <tr><td>Audience</td><td>Tecres leadership and engineering; customer IT, security and procurement teams</td></tr>
+    <tr><td>Systems covered</td><td>TecresTrackIT AMS backend API and web application (backend commit <code>cef8df1</code> with the 26 September 2026 token hardening; frontend commit <code>1c21661</code>)</td></tr>
+    <tr><td>Assurance activities</td><td>Architecture and source code review; automated penetration test suite; live black-box testing; dependency audit</td></tr>
+    <tr><td>Related documents</td><td>Technical Documentation (engineering reference); Security Remediation Register (internal)</td></tr>
+  </table>
+
+  <h2 style="margin-top:10mm">Contents</h2>
+  <ul class="toc">
+    <li><span class="n">1</span>Executive summary<span class="who">All readers</span></li>
+    <li><span class="n">2</span>Security architecture at a glance<span class="who">All readers</span></li>
+    <li><span class="n">3</span>Identity and authentication<span class="who">Security, engineering</span></li>
+    <li><span class="n">4</span>Session management<span class="who">Security, engineering</span></li>
+    <li><span class="n">5</span>Authorization and access control<span class="who">Security, engineering</span></li>
+    <li><span class="n">6</span>Tenant isolation<span class="who">Security, engineering</span></li>
+    <li><span class="n">7</span>Data protection<span class="who">Security, engineering</span></li>
+    <li><span class="n">8</span>Application and API hardening<span class="who">Security, engineering</span></li>
+    <li><span class="n">9</span>Monitoring, audit trail and response<span class="who">All readers</span></li>
+    <li><span class="n">10</span>Secure development practices<span class="who">Engineering</span></li>
+    <li><span class="n">11</span>Penetration testing<span class="who">All readers</span></li>
+    <li><span class="n">A</span>Re-running the security tests<span class="who">Engineering</span></li>
+    <li><span class="n">B</span>Glossary<span class="who">All readers</span></li>
+  </ul>
+</div>
+
+<!-- ============================== 1 ============================== -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">1</div><div><div class="audience">All readers</div><h2>Executive summary</h2></div></div>
+
+  <p class="lead">TecresTrackIT AMS was designed security-first. It is a from-scratch platform built specifically to prevent the classes of weakness most common in multi-tenant business software: data leaking between customers, accounts protected only by a password, long-lived sessions, and permissions enforced only in the user interface.</p>
+
+  <div class="tiles">
+    <div class="tile ok"><div class="v">100%</div><div class="l">Accounts on two-factor</div></div>
+    <div class="tile"><div class="v">41</div><div class="l">Security checks executed</div></div>
+    <div class="tile ok"><div class="v">32</div><div class="l">Attacks blocked</div></div>
+    <div class="tile ok"><div class="v">0</div><div class="l">Cross-customer data exposure</div></div>
+  </div>
+
+  <h3>What protects customers</h3>
+  <table>
+    <tr><th style="width:48mm">Layer</th><th>Protection in place</th></tr>
+    <tr><td><b>Identity</b></td><td>Mandatory two-factor authentication (TOTP authenticator app) for every account, with no opt-out. Passwords hashed with argon2id. Accounts lock after repeated wrong passwords.</td></tr>
+    <tr><td><b>Sessions</b></td><td>15-minute access tokens held only in memory; rotating refresh tokens in secure, script-proof cookies; automatic detection of stolen tokens that signs the attacker out everywhere.</td></tr>
+    <tr><td><b>Access control</b></td><td>Every action checked on the server against a role permission matrix. Financial values are removed from responses for roles not entitled to them. Audit verification requires a second person.</td></tr>
+    <tr><td><b>Customer isolation</b></td><td>The customer an account belongs to is taken only from its cryptographically signed token, and every database query is structurally bound to that customer.</td></tr>
+    <tr><td><b>Data protection</b></td><td>Authenticator secrets encrypted with AES-256-GCM; all tokens and recovery codes stored only as one-way hashes; HTTPS enforced with HSTS.</td></tr>
+    <tr><td><b>Platform operations</b></td><td>Tecres staff use a completely separate identity system, console and signing key; their access is itself protected by two-factor authentication and logged.</td></tr>
+    <tr><td><b>Monitoring</b></td><td>Sign-in activity with IP addresses, automatic alerts for failed-login spikes, a full activity log per organization, and instant suspension and forced password reset.</td></tr>
+  </table>
+
+  <h3>Independent verification</h3>
+  <p>The controls in this report were tested by attacking them directly: <b>34 automated attack scenarios</b> run against the real application and database, plus <b>7 live tests</b> against a running server, following OWASP methodology. Every attempt to read or change another customer's data, forge or tamper with a session token, skip two-factor authentication, escalate a role, or inject SQL <b>was blocked</b>. One vulnerability found during testing was fixed immediately and re-verified with a permanent regression test (section 11). Further hardening items identified by the assessment are tracked to closure in Tecres' internal remediation register.</p>
+</section>
+
+<!-- ============================== 2 ============================== -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">2</div><div><div class="audience">All readers</div><h2>Security architecture at a glance</h2></div></div>
+
+  <p>TecresTrackIT follows a <b>defense-in-depth</b> design: every request crosses several independent layers, and each one would still protect data if another failed. The web application is treated as untrusted; <b>all enforcement happens on the server.</b></p>
+
+  <div class="stack" style="max-width:165mm">
+    <div class="layer"><b>1 &middot; Transport</b>: HTTPS only, HSTS for one year, strict CORS allow-list</div>
+    <div class="layer"><b>2 &middot; Edge protection</b>: security headers (CSP, anti-framing, no-sniff), request-size limits, rate limiting per IP and per account</div>
+    <div class="layer"><b>3 &middot; Authentication</b>: signed, purpose-bound, 15-minute tokens; mandatory two-factor sign-in</div>
+    <div class="layer"><b>4 &middot; Organization context</b>: the customer is taken from the verified token; suspended customers are refused on every request</div>
+    <div class="layer"><b>5 &middot; Authorization</b>: role permission check on every action</div>
+    <div class="layer"><b>6 &middot; Input validation</b>: every field checked against a strict schema; unknown fields discarded</div>
+    <div class="layer"><b>7 &middot; Data access</b>: org-scoped query layer; ownership re-checked on direct lookups and file downloads</div>
+    <div class="layer accent"><b>8 &middot; Data at rest</b>: argon2id passwords, AES-256-GCM secrets, hashed tokens</div>
+    <div class="layer accent"><b>9 &middot; Observability</b>: activity and security logs, automated alerts, platform risk dashboard</div>
+  </div>
+
+  <h3>Two identity systems, fully separated</h3>
+  <p>Customer users and Tecres staff are kept apart at every level. They live in different database tables, have different roles, sign in at different addresses, and hold tokens signed with <b>different secret keys</b>. A customer's token is mathematically incapable of opening the Tecres console, and a Tecres token cannot act inside a customer's workspace.</p>
+  <div class="two-col">
+    <div class="stack">
+      <div class="layer"><b>Customer users</b><br>Roles: super admin, admin, asset manager, staff</div>
+      <div class="layer">Own signing key and token audience</div>
+      <div class="layer">Own server checks: authenticate, org context, authorize</div>
+      <div class="layer">Own browser store and API client</div>
+    </div>
+    <div class="stack">
+      <div class="layer accent"><b>Tecres platform admins</b><br>Roles: platform owner, platform support</div>
+      <div class="layer accent">Separate signing key and audience</div>
+      <div class="layer accent">Separate server checks and permissions</div>
+      <div class="layer accent">Separate store, client and minimal console</div>
+    </div>
+  </div>
+
+  <h3>Workspaces are provisioned, never self-registered</h3>
+  <p>Customer workspaces are created by Tecres platform owners only, together with their first administrator. Further staff join by invitation from their own administrator. This keeps every organization on the platform a known, contracted customer.</p>
+</section>
+
+<!-- ============================== 3 ============================== -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">3</div><div><div class="audience">Security, engineering</div><h2>Identity and authentication</h2></div></div>
+
+  <h3>3.1 Password security</h3>
+  <ul>
+    <li>Passwords are hashed with <b>argon2id</b>, the algorithm recommended by OWASP and winner of the Password Hashing Competition. It is deliberately slow and memory-hard, which makes offline guessing expensive even if a database were ever copied.</li>
+    <li>Passwords are never stored, logged or returned in plain text, and every API response that includes a user removes the hash.</li>
+    <li>Every sign-in failure (unknown email, wrong password, inactive or locked account) returns the identical message <i>"Invalid email or password"</i>, so the sign-in form does not reveal which part was wrong.</li>
+  </ul>
+
+  <h3>3.2 Mandatory two-factor authentication</h3>
+  <p>Every account, customer and Tecres alike, must use an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password and similar). There is <b>no setting to turn it off for an organization</b> and no way to reach a working session without it. A correct password earns only a short-lived, single-purpose token that can do nothing except be exchanged for a session when the 6-digit code is entered.</p>
+
+  <div class="flow">
+    <div class="node">Email + password</div><div class="arr">&rarr;</div>
+    <div class="node">Pre-auth token<small>valid 5 minutes, one use only</small></div><div class="arr">&rarr;</div>
+    <div class="node">6-digit code<small>from authenticator app</small></div><div class="arr">&rarr;</div>
+    <div class="node fill">Session<small style="color:#dbe4f3">issued only now</small></div>
+  </div>
+
+  <figure>
+    <img src="../assets/shots/platform-totp-challenge.png" alt="Authentication code screen">
+    <figcaption>The second step of every sign-in. The code expires with the pre-auth token, shown by the countdown.</figcaption>
+  </figure>
+
+  <table class="kv">
+    <tr><td>Standard</td><td>RFC 6238 time-based one-time passwords, 30-second codes</td></tr>
+    <tr><td>First sign-in</td><td>The user scans a QR code, confirms one code, and only then receives a session. Enrollment cannot be skipped.</td></tr>
+    <tr><td>Secret storage</td><td>Each user's authenticator secret is encrypted with AES-256-GCM before it reaches the database</td></tr>
+    <tr><td>Replay protection</td><td>Customer sign-ins record the last accepted time-step, so a code that has been used cannot be used again</td></tr>
+    <tr><td>Recovery</td><td>10 single-use recovery codes issued at enrollment, stored only as SHA-256 hashes</td></tr>
+  </table>
+
+  <h3>3.3 Brute-force and credential-stuffing defenses</h3>
+  <table>
+    <tr><th>Control</th><th>Setting</th><th>Protects against</th></tr>
+    <tr><td>Account lockout</td><td>5 wrong passwords lock the account for 15 minutes, even if the next guess is correct</td><td>Password guessing against one account</td></tr>
+    <tr><td>Sign-in rate limit</td><td>10 attempts per 15 minutes per IP address and account</td><td>Automated guessing and credential stuffing</td></tr>
+    <tr><td>Sensitive actions</td><td>5 per 15 minutes per IP (authenticator setup, password reset)</td><td>Abuse of reset and enrollment</td></tr>
+    <tr><td>Global limit</td><td>600 requests per 15 minutes per IP</td><td>Scraping and flooding</td></tr>
+    <tr><td>Failed-sign-in trail</td><td>Every failure logged with IP; spikes raise an alert to Tecres</td><td>Undetected attacks</td></tr>
+  </table>
+
+  <h3>3.4 Password reset</h3>
+  <ul>
+    <li>The reset form responds identically whether or not the email exists.</li>
+    <li>Reset links are random 256-bit tokens, stored only as hashes, valid for 60 minutes and usable once.</li>
+    <li>Completing a reset signs the account out of every device.</li>
+  </ul>
+</section>
+
+<!-- ============================== 4 ============================== -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">4</div><div><div class="audience">Security, engineering</div><h2>Session management</h2></div></div>
+
+  <table>
+    <tr><th>Token</th><th>Lifetime</th><th>Where it is kept</th><th>Why it is safe</th></tr>
+    <tr><td>Access token (signed JWT)</td><td>15 minutes</td><td>Browser memory only</td><td>Never written to disk or local storage; expires quickly if exposed</td></tr>
+    <tr><td>Refresh token (random 256-bit)</td><td>30 days, rotated on every use</td><td><code>httpOnly</code>, <code>Secure</code> cookie limited to the sign-in endpoints</td><td>Unreadable by JavaScript; stored on the server only as a hash</td></tr>
+  </table>
+
+  <h3>4.1 Purpose-bound tokens</h3>
+  <p>Every token states what it is for (its <i>audience</i>), and every check accepts exactly one purpose. A token earned by the password step can therefore never be used as a session, a customer token can never be used on the Tecres console, and the reverse is equally impossible.</p>
+  <div class="snippet">
+    <div class="cap">Token purposes <span>&middot; backend/src/lib/jwt.ts</span></div>
+<pre><span class="k">const</span> AUDIENCE = {
+  access: <span class="s">"tecres:tenant:access"</span>,
+  preAuth: <span class="s">"tecres:tenant:pre-auth"</span>,
+  platformAccess: <span class="s">"tecres:platform:access"</span>,
+  platformPreAuth: <span class="s">"tecres:platform:pre-auth"</span>,
+} <span class="k">as const</span>;
+
+<span class="k">export function</span> verifyAccessToken(token: string) {
+  <span class="k">return</span> jwt.verify(token, env.JWT_ACCESS_SECRET, { audience: AUDIENCE.access });
+}</pre>
+  </div>
+
+  <h3>4.2 Rotation and stolen-token detection</h3>
+  <p>Each time the application renews a session, the old refresh token is retired and a new one issued. If a retired token is ever presented again, it can only mean someone copied it. The platform then <b>revokes the entire session chain</b>, signing out both the attacker and the real user, who simply signs in again.</p>
+  <div class="snippet">
+    <div class="cap">Theft detection <span>&middot; backend/src/modules/auth/auth.service.ts</span></div>
+<pre><span class="k">if</span> (existing.revokedAt) {
+  <span class="c">// Reuse of a revoked token is a theft signal: revoke the entire rotation family.</span>
+  <span class="k">await</span> db.update(refreshTokens).set({ revokedAt: <span class="k">new</span> Date() })
+    .where(and(eq(refreshTokens.familyId, existing.familyId), isNull(refreshTokens.revokedAt)));
+  <span class="k">throw new</span> UnauthorizedError(<span class="s">"Refresh token reuse detected, session revoked"</span>);
+}</pre>
+  </div>
+
+  <h3>4.3 Ending sessions</h3>
+  <ul>
+    <li><b>Sign out</b> revokes the current session; <b>sign out everywhere</b> revokes every session of the account.</li>
+    <li>A password reset, or a reset forced by Tecres, revokes all sessions immediately.</li>
+    <li>Suspending an organization blocks all of its users on their very next request.</li>
+  </ul>
+</section>
+
+<!-- ============================== 5 ============================== -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">5</div><div><div class="audience">Security, engineering</div><h2>Authorization and access control</h2></div></div>
+
+  <p>Permissions are enforced by the server on every request through a single <code>authorize()</code> check tied to a central permission matrix. The web application hides buttons a role cannot use, purely for convenience; calling the API directly gives exactly the same answer as the screen.</p>
+  <div class="snippet">
+    <div class="cap">Enforcement point <span>&middot; backend/src/middleware/authorize.ts</span></div>
+<pre><span class="k">export function</span> authorize(permission: keyof PermissionSet) {
+  <span class="k">return</span> (req, _res, next) =&gt; {
+    <span class="k">if</span> (!req.user) <span class="k">throw new</span> UnauthorizedError();
+    <span class="k">if</span> (!hasPermission(req.user.role, permission)) <span class="k">throw new</span> ForbiddenError(<span class="s">`Missing required permission: ${permission}`</span>);
+    next();
+  };
+}</pre>
+  </div>
+
+  <h3>5.1 Customer roles</h3>
+  <table class="small">
+    <tr><th>Capability</th><th>Super admin / Admin</th><th>Asset manager</th><th>Staff</th></tr>
+    <tr><td>Organization profile, branding and settings</td><td>&#10003;</td><td></td><td></td></tr>
+    <tr><td>Create and edit assets</td><td>&#10003;</td><td>&#10003;</td><td></td></tr>
+    <tr><td>Delete assets; correct a locked asset tag</td><td>&#10003;</td><td></td><td></td></tr>
+    <tr><td>Check assets out and in</td><td>&#10003;</td><td>&#10003;</td><td></td></tr>
+    <tr><td>Request maintenance</td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td></tr>
+    <tr><td>Update and complete maintenance</td><td>&#10003;</td><td>&#10003;</td><td></td></tr>
+    <tr><td>Manage people and invitations</td><td>&#10003;</td><td></td><td></td></tr>
+    <tr><td>Manage vendors; export reports; print labels</td><td>&#10003;</td><td>&#10003;</td><td></td></tr>
+    <tr><td>Assign and verify audits</td><td>&#10003;</td><td>&#10003;</td><td></td></tr>
+    <tr><td>Carry out an audit assigned to them</td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td></tr>
+    <tr><td>See purchase price, current and salvage value</td><td>&#10003;</td><td>&#10003;</td><td></td></tr>
+  </table>
+
+  <h3>5.2 Financial data is removed, not hidden</h3>
+  <p>For roles without valuation rights, monetary fields are <b>deleted from the server's response</b> before it leaves the API. They are not blanked in the browser; they are never sent. Inspecting network traffic reveals nothing more than the screen shows.</p>
+  <div class="snippet">
+    <div class="cap">backend/src/lib/permissions.ts</div>
+<pre><span class="k">export const</span> VALUATION_FIELDS = [<span class="s">"purchasePrice"</span>, <span class="s">"currentValue"</span>, <span class="s">"salvageValue"</span>, <span class="s">"totalValuation"</span>] <span class="k">as const</span>;
+
+<span class="k">export function</span> stripValuationFields(obj, role) {
+  <span class="k">if</span> (hasPermission(role, <span class="s">"canViewAssetValuation"</span>)) <span class="k">return</span> obj;
+  <span class="k">const</span> clone = { ...obj };
+  <span class="k">for</span> (<span class="k">const</span> field <span class="k">of</span> VALUATION_FIELDS) <span class="k">delete</span> clone[field];
+  <span class="k">return</span> clone;
+}</pre>
+  </div>
+
+  <h3>5.3 Segregation of duties</h3>
+  <p>Asset audits follow a controlled workflow (draft, assigned, in progress, submitted, verified). The person who verifies an audit can <b>never</b> be the person who submitted it, whatever their role. This is enforced in the server's audit service, and every status change is permanently recorded with who made it.</p>
+
+  <h3>5.4 Tecres platform roles</h3>
+  <table class="small">
+    <tr><th>Capability</th><th>Platform owner</th><th>Platform support</th></tr>
+    <tr><td>View fleet dashboard, organizations, users, activity, alerts</td><td>&#10003;</td><td>&#10003;</td></tr>
+    <tr><td>Resolve alerts</td><td>&#10003;</td><td>&#10003;</td></tr>
+    <tr><td>Create and suspend organizations; adjust quotas</td><td>&#10003;</td><td></td></tr>
+    <tr><td>Force a user's password reset; manage platform admins</td><td>&#10003;</td><td></td></tr>
+  </table>
+  <p class="small">Tecres staff cannot sign in as a customer or act inside a customer's workspace. An earlier impersonation capability was deliberately removed from the product.</p>
+</section>
+
+<!-- ============================== 6 ============================== -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">6</div><div><div class="audience">Security, engineering</div><h2>Tenant isolation</h2></div></div>
+
+  <p class="lead">All customers share one database, so keeping each organization's data separate is the platform's most important property. Isolation is built into the structure of the code rather than left to careful coding.</p>
+
+  <h3>6.1 Three rules, enforced structurally</h3>
+  <ol class="steps">
+    <li><b>The organization comes only from the signed token.</b> No customer-facing endpoint accepts an organization ID from the request. A value smuggled into a request is discarded, and editing a token breaks its signature.</li>
+    <li><b>Every query is bound to one organization.</b> Customer data is read and written through <code>scopedDb(orgId)</code>, whose every operation adds the organization filter. There is no function in it that omits the filter, so an unscoped query cannot be written by accident.</li>
+    <li><b>Ownership is re-checked on direct access.</b> Looking up any record or file by its ID confirms it belongs to the caller's organization. A record from another organization answers "not found", so its existence is not even confirmed.</li>
+  </ol>
+
+  <div class="snippet">
+    <div class="cap">Org-scoped data access <span>&middot; backend/src/lib/scopedDb.ts</span></div>
+<pre><span class="k">export function</span> scopedDb(orgId: string) {
+  <span class="k">return</span> {
+    findById(table, id) {
+      <span class="k">return</span> db.select().from(table)
+        .where(and(eq(table.orgId, orgId), eq(table.id, id)))   <span class="c">// the org filter is not optional</span>
+        .then((rows) =&gt; rows[0]);
+    },
+    insert(table, data) {
+      <span class="k">return</span> db.insert(table).values({ ...data, orgId }).returning();   <span class="c">// orgId always injected</span>
+    },
+    <span class="c">// findMany, update, remove: same pattern</span>
+  };
+}</pre>
+  </div>
+
+  <div class="snippet">
+    <div class="cap">File downloads re-check ownership <span>&middot; backend/src/modules/files/files.router.ts</span></div>
+<pre><span class="k">const</span> meta = <span class="k">await</span> getFileMeta(req.params.id);
+<span class="k">if</span> (!meta) <span class="k">throw new</span> NotFoundError(<span class="s">"File not found"</span>);
+<span class="k">if</span> (meta.orgId !== req.user!.orgId) <span class="k">throw new</span> NotFoundError(<span class="s">"File not found"</span>);</pre>
+  </div>
+
+  <h3>6.2 Organization status on every request</h3>
+  <p>Before any customer request is processed, the organization named in the token is loaded and checked. A suspended organization is refused immediately, even if its users hold tokens that have not yet expired.</p>
+
+  <div class="callout ok"><div class="t">Verified by attack</div><p>Penetration tests tried to read, edit and delete another organization's assets by ID, download another organization's files, inject a foreign organization ID, swap the organization inside a token, and search across organizations. <b>Every attempt was blocked</b> (tests PT-03, PT-19, PT-20, PT-21, PT-28 and the core isolation test).</p></div>
+</section>
+
+<!-- ============================== 7 ============================== -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">7</div><div><div class="audience">Security, engineering</div><h2>Data protection</h2></div></div>
+
+  <h3>7.1 Data at rest</h3>
+  <table>
+    <tr><th>Data</th><th>Protection</th></tr>
+    <tr><td>Passwords</td><td>argon2id one-way hash</td></tr>
+    <tr><td>Authenticator secrets</td><td>AES-256-GCM authenticated encryption, fresh random IV per secret, key held outside the database</td></tr>
+    <tr><td>Refresh, reset and invitation tokens</td><td>SHA-256 hash only; the usable value exists only in the user's cookie or email</td></tr>
+    <tr><td>Recovery codes</td><td>SHA-256 hash, invalidated on first use</td></tr>
+    <tr><td>Uploaded files</td><td>Stored per organization (Cloudinary, S3 or the database) with ownership checked on every download</td></tr>
+  </table>
+
+  <div class="snippet">
+    <div class="cap">Encryption of authenticator secrets <span>&middot; backend/src/lib/crypto.ts</span></div>
+<pre><span class="k">export function</span> encryptSecret(plaintext: string): string {
+  <span class="k">const</span> iv = crypto.randomBytes(<span class="n">12</span>);
+  <span class="k">const</span> cipher = crypto.createCipheriv(<span class="s">"aes-256-gcm"</span>, ENCRYPTION_KEY, iv);
+  <span class="k">const</span> encrypted = Buffer.concat([cipher.update(plaintext, <span class="s">"utf8"</span>), cipher.final()]);
+  <span class="k">return</span> [iv, cipher.getAuthTag(), encrypted].map((b) =&gt; b.toString(<span class="s">"hex"</span>)).join(<span class="s">"."</span>);
+}</pre>
+  </div>
+
+  <h3>7.2 Data in transit</h3>
+  <ul>
+    <li>HTTPS is required; <b>HSTS</b> instructs browsers to refuse plain HTTP for one year, including subdomains.</li>
+    <li>Session cookies carry <code>Secure</code>, <code>httpOnly</code> and a path restricted to the sign-in endpoints.</li>
+    <li>Only the Tecres web application's own address may call the API from a browser (CORS allow-list).</li>
+  </ul>
+
+  <h3>7.3 Secrets management</h3>
+  <p>Signing and encryption keys live in the server environment, never in source code. At start-up every key is validated: the server <b>refuses to run</b> if any is missing or shorter than 32 characters. Customer and Tecres tokens are signed with different keys.</p>
+
+  <h3>7.4 Data minimization</h3>
+  <ul>
+    <li>Financial values are withheld from roles that do not need them (section 5.2).</li>
+    <li>The public sign-in page can learn only a workspace's name, logo and color, never its data.</li>
+    <li>Expired tokens and invitations are deleted automatically every hour.</li>
+  </ul>
+</section>
+
+<!-- ============================== 8 ============================== -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">8</div><div><div class="audience">Security, engineering</div><h2>Application and API hardening</h2></div></div>
+
+  <h3>8.1 Strict input validation</h3>
+  <p>Every request body, query string and URL parameter is checked against a Zod schema before any business logic runs. Values of the wrong type or format are rejected, and fields the schema does not name are discarded, which prevents mass-assignment attacks. Database access uses parameterized queries through the Drizzle ORM, and user-selectable sort columns map to a fixed list, so user input is never assembled into SQL text.</p>
+  <div class="snippet">
+    <div class="cap">Example schema <span>&middot; backend/src/modules/people/people.schema.ts</span></div>
+<pre><span class="k">export const</span> personUpdateSchema = z.object({
+  name: z.string().min(<span class="n">1</span>).max(<span class="n">255</span>).optional(),
+  role: z.enum([<span class="s">"super_admin"</span>, <span class="s">"admin"</span>, <span class="s">"asset_manager"</span>, <span class="s">"staff"</span>]).optional(),
+  isActive: z.boolean().optional(),
+  <span class="c">// anything else in the request body is dropped</span>
+});</pre>
+  </div>
+
+  <h3>8.2 Security headers</h3>
+  <table class="small">
+    <tr><th>Header</th><th>Value</th><th>Effect</th></tr>
+    <tr><td><code>Content-Security-Policy</code></td><td><code>default-src 'self'; object-src 'none'; frame-ancestors 'self'</code> ...</td><td>Blocks injected scripts and foreign content</td></tr>
+    <tr><td><code>Strict-Transport-Security</code></td><td><code>max-age=31536000; includeSubDomains</code></td><td>HTTPS only for one year</td></tr>
+    <tr><td><code>X-Frame-Options</code></td><td><code>SAMEORIGIN</code></td><td>Prevents clickjacking</td></tr>
+    <tr><td><code>X-Content-Type-Options</code></td><td><code>nosniff</code></td><td>Prevents content-type confusion</td></tr>
+    <tr><td><code>Referrer-Policy</code></td><td><code>no-referrer</code></td><td>No URL leakage to other sites</td></tr>
+    <tr><td><code>Cross-Origin-Opener/Resource-Policy</code></td><td><code>same-origin</code></td><td>Isolates the API from other sites</td></tr>
+    <tr><td><code>X-Powered-By</code></td><td>removed</td><td>No technology fingerprinting</td></tr>
+  </table>
+
+  <h3>8.3 Safe error handling</h3>
+  <p>Clients receive only an error code and a plain message. Stack traces, file paths and database details are written to the server log and never returned. A record belonging to another organization is reported as "not found" rather than "forbidden".</p>
+
+  <h3>8.4 Resource limits</h3>
+  <p>Request bodies are capped at 2 MB, file uploads at 20 MB and logos at 5 MB (images only), alongside the rate limits in section 3.3.</p>
+
+  <h3>8.5 Browser-side safeguards</h3>
+  <ul>
+    <li>Access tokens are kept in memory only, never in <code>localStorage</code> or <code>sessionStorage</code>.</li>
+    <li>The customer application and the Tecres console use separate stores and API clients, so a token can never flow from one to the other.</li>
+    <li>Concurrent session renewals are merged into one, so the application never trips its own stolen-token detection.</li>
+  </ul>
+</section>
+
+<!-- ============================== 9 ============================== -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">9</div><div><div class="audience">All readers</div><h2>Monitoring, audit trail and response</h2></div></div>
+
+  <h3>9.1 What is recorded</h3>
+  <table>
+    <tr><th style="width:48mm">Log</th><th>Contents</th></tr>
+    <tr><td>Organization activity log</td><td>Successful and failed sign-ins with IP address, lockouts, authenticator enrollment, and changes to assets, tags, people and settings</td></tr>
+    <tr><td>Audit status history</td><td>Every audit transition, who made it and when; append-only</td></tr>
+    <tr><td>Platform admin log</td><td>Every Tecres action: organization created, suspended or reactivated, quota changed, password reset forced, admin invited, alert resolved</td></tr>
+    <tr><td>Server log</td><td>Structured request log with request IDs; errors at elevated level</td></tr>
+  </table>
+
+  <h3>9.2 Detection</h3>
+  <ul>
+    <li><b>Login-risk view:</b> the Tecres console lists accounts in the middle of a failed-sign-in spike, the IP addresses involved, and links straight to the account.</li>
+    <li><b>Automatic alerts</b> every 15 minutes: failed-sign-in spikes, quota breaches, expired plans and inactive organizations.</li>
+  </ul>
+
+  <h3>9.3 Response capabilities</h3>
+  <table>
+    <tr><th>Situation</th><th>Response available</th><th>Takes effect</th></tr>
+    <tr><td>A user's account may be compromised</td><td>Tecres forces a password reset (all sessions revoked); or the user signs out everywhere</td><td>Immediately</td></tr>
+    <tr><td>An organization must be stopped</td><td>Tecres suspends the organization</td><td>On every user's next request</td></tr>
+    <tr><td>A session token was copied</td><td>Detected automatically on reuse; whole session chain revoked</td><td>Automatic</td></tr>
+    <tr><td>A lost phone</td><td>The user signs in with a one-time recovery code</td><td>Immediately</td></tr>
+  </table>
+</section>
+
+<!-- ============================== 10 ============================== -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">10</div><div><div class="audience">Engineering</div><h2>Secure development practices</h2></div></div>
+  <ul>
+    <li><b>Security by structure.</b> The safe way is the easy way: org-scoped data access, a shared CRUD factory that includes permission checks, typed errors, and validation middleware on every route.</li>
+    <li><b>Typed end to end.</b> TypeScript on both sides; changes must pass a strict type-check and production build before they are considered done.</li>
+    <li><b>Security regression tests.</b> Authentication, isolation, token handling and the audit workflow are covered by integration tests against a real database, and every penetration test in section 11 is kept as a repeatable test, so a fixed weakness cannot quietly return.</li>
+    <li><b>Mandatory testing for sensitive changes.</b> Any change to authentication, org-scoped queries, tokens or audits must run the full integration and security suites.</li>
+    <li><b>Dependency auditing</b> of both applications' production dependencies as part of security review.</li>
+    <li><b>No secrets in code.</b> Keys come only from the validated environment.</li>
+  </ul>
+</section>
+
+<!-- ============================== 11 ============================== -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">11</div><div><div class="audience">All readers</div><h2>Penetration testing</h2></div></div>
+
+  <h3>11.1 Approach</h3>
+  <table class="kv">
+    <tr><td>Date</td><td>26 September 2026</td></tr>
+    <tr><td>Type</td><td>White-box (full source access), combining code review, an automated attack suite and live black-box testing</td></tr>
+    <tr><td>Standards</td><td>OWASP API Security Top 10 (2023), OWASP ASVS 4.0.3 Level 2, OWASP Web Security Testing Guide</td></tr>
+    <tr><td>Target</td><td>The real Express application and a real PostgreSQL database (no mocks), plus a running server for live tests. Production was not attacked.</td></tr>
+    <tr><td>Scale</td><td>34 automated attack scenarios and 7 live tests</td></tr>
+  </table>
+
+  <ol class="steps">
+    <li><b>Review.</b> Every security-relevant component was read to form attack hypotheses.</li>
+    <li><b>Attack.</b> Each hypothesis became an automated test that attacks the running application exactly as an outsider or a malicious user would.</li>
+    <li><b>Probe live.</b> Headers, CORS, rate limiting and error responses were tested over HTTP against a running server.</li>
+    <li><b>Fix and prove.</b> Anything found was fixed, and the attack kept as a permanent regression test.</li>
+  </ol>
+
+  <h3>11.2 Authentication and sessions</h3>
+  <table class="small">
+    <tr><th style="width:13mm">ID</th><th>Attack attempted</th><th style="width:15mm">OWASP</th><th style="width:20mm">Result</th></tr>
+    <tr><td>PT-01</td><td>Forge an administrator token with no signature (<code>alg: none</code>)</td><td>API2</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>PT-02</td><td>Forge a token signed with a guessed key</td><td>API2</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>PT-03</td><td>Edit a genuine token to point at another organization</td><td>API2</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>PT-04</td><td>Reuse an expired token</td><td>API2</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>PT-05</td><td>Use a customer token on the Tecres console, and the reverse</td><td>API5</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>PT-06</td><td>Use the password-only token as a session to skip two-factor</td><td>API2</td><td><span class="badge b-fixed">Found &amp; fixed</span></td></tr>
+    <tr><td>PT-07</td><td>Tell a wrong password from an unknown email by the message</td><td>API2</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>PT-08</td><td>Guess a password: 5 wrong attempts, then the right one</td><td>API2</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>PT-09</td><td>Replay a used authenticator code</td><td>API2</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>PT-10</td><td>Use one recovery code twice</td><td>API2</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>PT-11</td><td>Replay a stolen, already-rotated refresh token</td><td>API2</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>PT-12</td><td>Discover accounts through the password-reset form</td><td>API2</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>PT-13</td><td>Reset a password with a forged link</td><td>API2</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>PT-15</td><td>Open the Tecres console with a password alone</td><td>API2</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>PT-16</td><td>Perform owner-only actions as platform support</td><td>API5</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>PT-33</td><td>Read the refresh token from JavaScript or a response</td><td>API2</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>PT-34</td><td>Call 18 protected endpoints with no token</td><td>API2</td><td><span class="badge b-pass">Blocked</span></td></tr>
+  </table>
+
+  <h3>11.3 Authorization and tenant isolation</h3>
+  <table class="small">
+    <tr><th style="width:13mm">ID</th><th>Attack attempted</th><th style="width:15mm">OWASP</th><th style="width:20mm">Result</th></tr>
+    <tr><td>PT-19</td><td>Read, edit and delete another organization's asset by guessing its ID</td><td>API1</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>PT-20</td><td>Download another organization's file by ID</td><td>API1</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>PT-21</td><td>Write into another organization by injecting its ID</td><td>API3</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>PT-22</td><td>As staff, call delete, role-change, report and settings endpoints directly</td><td>API5</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>PT-23</td><td>As staff, extract asset values from list responses</td><td>API3</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>PT-24</td><td>Keep working in a suspended organization with a live token</td><td>API5</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>ISO</td><td>List and search across organizations (core isolation test)</td><td>API1</td><td><span class="badge b-pass">Blocked</span></td></tr>
+  </table>
+
+  <h3>11.4 Injection and HTTP hardening</h3>
+  <table class="small">
+    <tr><th style="width:13mm">ID</th><th>Attack attempted</th><th style="width:15mm">OWASP</th><th style="width:20mm">Result</th></tr>
+    <tr><td>PT-28</td><td>SQL injection in search and filters (4 classic payloads)</td><td>API8</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>PT-30</td><td>Provoke errors to leak stack traces or file paths</td><td>API8</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>PT-31</td><td>Look for missing security headers or a framework banner</td><td>API8</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>PT-32</td><td>Call the API from a foreign website (CORS)</td><td>API8</td><td><span class="badge b-pass">Blocked</span></td></tr>
+  </table>
+
+  <h3>11.5 Live tests against a running server</h3>
+  <table class="small">
+    <tr><th style="width:13mm">ID</th><th>Test</th><th>Observed</th><th style="width:20mm">Result</th></tr>
+    <tr><td>LIVE-1</td><td>Inspect response headers</td><td>CSP, HSTS (1 year), X-Frame-Options, nosniff, no-referrer, COOP, CORP; no banner</td><td><span class="badge b-pass">Pass</span></td></tr>
+    <tr><td>LIVE-2</td><td>Request from <code>https://evil.example</code></td><td>No cross-origin permission granted</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>LIVE-3</td><td>CORS pre-flight from that origin</td><td>Origin not allowed; browser blocks the call</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>LIVE-4</td><td>12 rapid customer sign-in attempts</td><td>Throttled after 10 (HTTP 429)</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>LIVE-5</td><td>12 rapid Tecres console sign-in attempts</td><td>Throttled after 10 (HTTP 429)</td><td><span class="badge b-pass">Blocked</span></td></tr>
+    <tr><td>LIVE-7</td><td>Path traversal and injected IDs in the URL</td><td>Clean 404/401; nothing leaked</td><td><span class="badge b-pass">Blocked</span></td></tr>
+  </table>
+
+  <h3>11.6 Found and fixed during testing</h3>
+  <p>Testing identified that the short-lived token issued after the password step was accepted by the Tecres console as if sign-in had completed, which could have let someone holding a Tecres staff password view console pages without the authenticator code. It was fixed during the engagement by binding every token to a single purpose (section 4.1), re-tested (the attack now returns HTTP 401 on every route), and kept as a permanent regression test (<code>tokenPurpose.security.test.ts</code>).</p>
+
+  <h3>11.7 Conclusion</h3>
+  <div class="callout ok">
+    <div class="t">Result</div>
+    <p>With the fix described in 11.6 in place, every attempt to access another customer's data, forge or tamper with tokens, bypass two-factor authentication, escalate privileges or inject SQL was blocked. The penetration test confirms that TecresTrackIT's core protections (mandatory two-factor authentication, purpose-bound short-lived sessions with theft detection, server-side authorization and structural tenant isolation) hold up against direct attack. Additional hardening opportunities identified by the assessment are tracked to closure in Tecres' internal remediation register and are re-verified by the same test suite.</p>
+  </div>
+</section>
+
+<!-- ============================== A ============================== -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">A</div><div><div class="audience">Engineering</div><h2>Re-running the security tests</h2></div></div>
+  <p>Every penetration test is kept as code in the backend repository and runs against a separate PostgreSQL test database (setup in the backend <code>README.md</code>, "Testing").</p>
+  <div class="snippet">
+    <div class="cap">Commands <span>&middot; run in asset-management-backend</span></div>
+<pre><span class="c"># one-off: bring the test database schema up to date</span>
+DATABASE_URL=&lt;test database url&gt; pnpm db:migrate
+
+<span class="c"># everything: integration tests and the security suites</span>
+pnpm test
+
+<span class="c"># only the penetration suite</span>
+pnpm vitest run src/test/security</pre>
+  </div>
+  <table class="kv small">
+    <tr><td>Penetration suite</td><td><code>src/test/security/pentest.security.test.ts</code></td></tr>
+    <tr><td>Two-factor bypass regression</td><td><code>src/modules/auth/tokenPurpose.security.test.ts</code></td></tr>
+    <tr><td>Core integration tests</td><td><code>src/modules/auth/auth.integration.test.ts</code> (sign-in, token theft detection, isolation, value hiding)</td></tr>
+  </table>
+  <div class="snippet">
+    <div class="cap">Example attack test <span>&middot; PT-19, cross-organization access</span></div>
+<pre>it(<span class="s">"PT-19 another org cannot read, edit, or delete an asset by guessing its ID (IDOR)"</span>, <span class="k">async</span> () =&gt; {
+  <span class="k">const</span> orgA = <span class="k">await</span> onboardOrg(<span class="s">"pta"</span>);
+  <span class="k">const</span> orgB = <span class="k">await</span> onboardOrg(<span class="s">"ptb"</span>);
+  <span class="k">const</span> { assetId } = <span class="k">await</span> seedAsset(orgA.accessToken);
+  <span class="k">await</span> request(app).get(<span class="s">`/api/assets/${assetId}`</span>).set(bearer(orgB.accessToken)).expect(<span class="n">404</span>);
+  <span class="k">await</span> request(app).put(<span class="s">`/api/assets/${assetId}`</span>).set(bearer(orgB.accessToken)).send({ name: <span class="s">"pwned"</span> }).expect(<span class="n">404</span>);
+  <span class="k">await</span> request(app).delete(<span class="s">`/api/assets/${assetId}`</span>).set(bearer(orgB.accessToken)).expect(<span class="n">404</span>);
+});</pre>
+  </div>
+  <div class="avoid-break">
+  <p>Live tests are plain HTTP requests against a running server, for example the sign-in throttling test:</p>
+<div class="snippet"><pre><span class="k">for</span> i <span class="k">in</span> $(seq 1 12); <span class="k">do</span>
+  curl -s -o /dev/null -w <span class="s">"%{http_code} "</span> -X POST localhost:4000/api/auth/login \
+    -H <span class="s">'content-type: application/json'</span> -d <span class="s">"{\"email\":\"probe@nowhere.invalid\",\"password\":\"guess$i\"}"</span>
+<span class="k">done</span>   <span class="c"># observed: ten 401s, then 429</span></pre></div>
+  </div>
+</section>
+
+<!-- ============================== B ============================== -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">B</div><div><div class="audience">All readers</div><h2>Glossary</h2></div></div>
+  <table class="kv">
+    <tr><td>Tenant / organization</td><td>A customer using TecresTrackIT. All share one database, separated by organization.</td></tr>
+    <tr><td>Platform admin</td><td>Tecres staff member with access to the platform console.</td></tr>
+    <tr><td>Two-factor (TOTP)</td><td>A 6-digit code from an authenticator app, changing every 30 seconds, required in addition to the password.</td></tr>
+    <tr><td>Recovery code</td><td>A single-use backup code for when the authenticator app is unavailable.</td></tr>
+    <tr><td>JWT</td><td>JSON Web Token: a signed token the server issues and can verify.</td></tr>
+    <tr><td>Audience</td><td>The part of a token stating what it is for; each check accepts only one.</td></tr>
+    <tr><td>Refresh token</td><td>A cookie-held token used to renew a session without signing in again.</td></tr>
+    <tr><td>IDOR</td><td>Insecure direct object reference: reaching another's record by changing an ID.</td></tr>
+    <tr><td>RBAC</td><td>Role-based access control.</td></tr>
+    <tr><td>argon2id</td><td>A slow, memory-hard password-hashing algorithm.</td></tr>
+    <tr><td>AES-256-GCM</td><td>Authenticated encryption: data can be neither read nor altered without the key.</td></tr>
+    <tr><td>HSTS</td><td>A header telling browsers to use only HTTPS for the site.</td></tr>
+    <tr><td>CORS</td><td>Browser rules that stop other websites calling the API with a user's credentials.</td></tr>
+    <tr><td>OWASP</td><td>Open Worldwide Application Security Project, publisher of the standards used here.</td></tr>
+  </table>
+</section>
+
+</body>
+</html>

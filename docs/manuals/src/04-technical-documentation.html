@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="doc-short" content="Technical Documentation">
+<title>Technical Documentation</title>
+<link rel="stylesheet" href="manual.css">
+</head>
+<body>
+
+<div class="cover">
+  <img class="logo" src="../assets/tecres-logo.png" alt="Tecres">
+  <div class="kicker">Technical Documentation</div>
+  <h1>TecresTrackIT AMS<br>Engineering Reference</h1>
+  <div class="subtitle">Architecture, data model, authentication, multi-tenancy, the permission system, the asset and audit workflows, the HTTP API, and how to run, test and deploy both applications.</div>
+  <div class="classification internal">Internal: Tecres engineering</div>
+  <div class="meta">
+    <div><b>TecresTrackIT AMS</b><br>Version 1.0 &middot; 26 September 2026</div>
+    <div style="text-align:right"><span class="tagline">...go beyond paper</span><br>Tecres</div>
+  </div>
+</div>
+
+<div class="front">
+  <h2>About this document</h2>
+  <p>This is the engineering reference for TecresTrackIT AMS. It is written for developers joining the project and for anyone reviewing how the system works. It describes the code as of backend commit <code>cef8df1</code> (plus the token-audience security fix of 26 September 2026) and frontend commit <code>1c21661</code>. Where this document and the code disagree, the code wins; the repositories' <code>CLAUDE.md</code> and <code>BUILD_PLAN.md</code> files track day-to-day status.</p>
+
+  <h2 style="margin-top:8mm">Contents</h2>
+  <ul class="toc">
+    <li><span class="n">1</span>Overview and stack</li>
+    <li><span class="n">2</span>Repository layout</li>
+    <li><span class="n">3</span>Request lifecycle</li>
+    <li><span class="n">4</span>Data model</li>
+    <li><span class="n">5</span>Authentication and sessions</li>
+    <li><span class="n">6</span>Multi-tenancy and authorization</li>
+    <li><span class="n">7</span>Domain workflows</li>
+    <li><span class="n">8</span>Frontend architecture</li>
+    <li><span class="n">9</span>HTTP API reference</li>
+    <li><span class="n">10</span>Email, files and background jobs</li>
+    <li><span class="n">11</span>Local setup and configuration</li>
+    <li><span class="n">12</span>Testing and quality gates</li>
+    <li><span class="n">13</span>Conventions for contributors</li>
+  </ul>
+</div>
+
+<!-- 1 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">1</div><div><div class="audience">Engineering</div><h2>Overview and stack</h2></div></div>
+  <p class="lead">TecresTrackIT AMS is a multi-tenant IT asset management platform. Customer organizations (tenants) track their assets through check-out, maintenance, audits, reporting and labelling. Tecres staff run the service from a separate platform console.</p>
+  <p>The system is two applications in two repositories that talk over a JSON API:</p>
+  <table>
+    <tr><th>Layer</th><th>Repository</th><th>Technology</th></tr>
+    <tr><td>Frontend SPA</td><td><code>asset-management-frontend</code></td><td>Vite, React 19, TypeScript, React Router 7, TanStack Query (server state), Zustand (client state), Tailwind CSS v4, shadcn/ui (Nova preset, Radix primitives), react-hook-form + zod, recharts, jspdf, xlsx, jsbarcode, qrcode, html5-qrcode. Package manager: <b>npm</b>.</td></tr>
+    <tr><td>Backend API</td><td><code>asset-management-backend</code></td><td>Node 20+, Express 4, TypeScript, Drizzle ORM on PostgreSQL, Zod, argon2, jsonwebtoken, otplib, Helmet, express-rate-limit, pino, nodemailer / Brevo, Cloudinary, AWS S3. Package manager: <b>pnpm</b>.</td></tr>
+    <tr><td>Database</td><td>n/a</td><td>PostgreSQL, one database shared by all tenants; every tenant table carries <code>org_id</code>.</td></tr>
+  </table>
+
+  <div class="stack">
+    <div class="layer"><b>Browser</b>: React SPA; tenant app at <code>/</code>, platform console at <code>/platform/*</code></div>
+    <div class="layer"><b>HTTPS JSON API</b>: <code>/api/*</code>, bearer access token + httpOnly refresh cookie</div>
+    <div class="layer"><b>Express middleware chain</b>: helmet, CORS, logging, rate limit, body parsing</div>
+    <div class="layer"><b>Module routers</b>: authenticate &rarr; loadOrgContext &rarr; authorize &rarr; validate &rarr; service</div>
+    <div class="layer"><b>Services + Drizzle</b>: business logic, <code>scopedDb(orgId)</code></div>
+    <div class="layer accent"><b>PostgreSQL</b> &middot; <b>Cloudinary / S3</b> (files) &middot; <b>Brevo</b> (email)</div>
+  </div>
+
+  <h3>Design principles</h3>
+  <ul>
+    <li><b>The server is the only security boundary.</b> The frontend hides what a role cannot use, but every rule is enforced again in the API.</li>
+    <li><b>Tenant isolation is structural.</b> The organization comes from the verified token, never from the request, and queries go through an org-scoped helper.</li>
+    <li><b>Two identities, never mixed.</b> Tenant users and Tecres platform admins have separate tables, secrets, middleware, stores and API clients.</li>
+    <li><b>Mandatory two-factor authentication</b> for every account, before any session exists.</li>
+    <li><b>Workspaces are provisioned by Tecres.</b> There is no public sign-up; a platform admin creates an organization and its first super admin.</li>
+  </ul>
+</section>
+
+<!-- 2 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">2</div><div><div class="audience">Engineering</div><h2>Repository layout</h2></div></div>
+  <h3>Backend</h3>
+<div class="snippet"><pre>src/
+  config/        env.ts (Zod-validated environment), database.ts (Drizzle + pg Pool)
+  db/
+    schema/      one file per domain: organizations, users, assets, audits, security, platform, ...
+    migrations/  drizzle-kit generated SQL, applied by migrate.ts
+    seed.ts, seedPlatformAdmin.ts
+  middleware/    authenticate, authenticatePlatformAdmin, loadOrgContext, authorize,
+                 rateLimit, validate, errorHandler
+  lib/           jwt, password, totp, crypto, permissions, scopedDb, crudFactory,
+                 storage, cloudinary, email, activityLog, assetReportQuery, ...
+  modules/       one folder per domain: &lt;name&gt;.router.ts + .service.ts + .schema.ts
+  jobs/          alertDetection.cron.ts, tokenCleanup.cron.ts
+  emails/        HTML templates with {{var}} placeholders, rendered through layout.html
+  routes/        index.ts mounts every module router under /api
+  test/          vitest setup + security/pentest.security.test.ts
+  app.ts         Express app and middleware chain
+  server.ts      entrypoint: HTTP server + background jobs</pre></div>
+
+  <h3>Frontend</h3>
+<div class="snippet"><pre>src/
+  app/router.tsx        route tree: tenant routes (ProtectedRoute / PermissionRoute + AppShell),
+                        /platform/* behind PlatformProtectedRoute + PlatformShell
+  features/&lt;domain&gt;/     pages + api.ts (TanStack Query hooks) + components/
+  components/ui/        shadcn primitives (CLI-managed, do not hand-edit)
+  components/layout/    AppShell, Sidebar, Header, MobileNav, CommandPalette, PlatformShell
+  components/common/    StatusBadge family, PageHeader, ...
+  components/brand/     Logo, BrandedLoader, OrgSwitcher
+  lib/                  api-client.ts, platform-api-client.ts, permissions.ts (UX only),
+                        format.ts, status.ts, depreciation.ts, env.ts
+  store/                auth.store.ts, platformAuth.store.ts, theme.store.ts
+  types/                domain types, kept in sync by hand with the backend schema</pre></div>
+</section>
+
+<!-- 3 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">3</div><div><div class="audience">Engineering</div><h2>Request lifecycle</h2></div></div>
+  <p>Every tenant request passes through the same ordered chain. Knowing the order explains most behavior, for example why a suspended organization is refused before any permission check.</p>
+  <table>
+    <tr><th style="width:8mm">#</th><th style="width:44mm">Stage</th><th>What it does</th></tr>
+    <tr><td>1</td><td><code>helmet()</code></td><td>Security headers (CSP, HSTS, frame and sniffing protection)</td></tr>
+    <tr><td>2</td><td><code>cors()</code></td><td>Allows only <code>CORS_ALLOWED_ORIGINS</code>, with credentials</td></tr>
+    <tr><td>3</td><td><code>pinoHttp</code></td><td>Request ID and structured logging (4xx at warn, 5xx at error)</td></tr>
+    <tr><td>4</td><td><code>globalRateLimiter</code></td><td>600 requests per 15 minutes per IP</td></tr>
+    <tr><td>5</td><td><code>express.json</code>, <code>cookieParser</code>, <code>compression</code></td><td>2 MB JSON limit; reads the refresh cookie</td></tr>
+    <tr><td>6</td><td><code>authenticate</code></td><td>Verifies the access JWT (secret + audience) and sets <code>req.user = { id, orgId, role }</code></td></tr>
+    <tr><td>7</td><td><code>loadOrgContext</code></td><td>Loads the organization from the token's <code>orgId</code>; rejects suspended orgs with 403 <code>ORG_SUSPENDED</code></td></tr>
+    <tr><td>8</td><td><code>authorize(permission)</code></td><td>Checks the role's permission set; 403 if missing</td></tr>
+    <tr><td>9</td><td><code>validate({ body, query, params })</code></td><td>Parses input with Zod and replaces it with the parsed (stripped) value</td></tr>
+    <tr><td>10</td><td>Service function</td><td>Business logic and database access</td></tr>
+    <tr><td>11</td><td><code>errorHandler</code></td><td>Maps Zod errors to 422 and <code>AppError</code>s to their status; anything else becomes a generic 500</td></tr>
+  </table>
+  <div class="snippet">
+    <div class="cap">A typical route <span>&middot; modules/assets/assets.router.ts</span></div>
+<pre>assetsRouter.use(authenticate, loadOrgContext);
+
+assetsRouter.post(<span class="s">"/"</span>, authorize(<span class="s">"canCreateAsset"</span>), validate({ body: assetCreateSchema }), <span class="k">async</span> (req, res) =&gt; {
+  <span class="k">const</span> asset = <span class="k">await</span> assetsService.createAsset(req.user!.orgId, req.body, req.user!.id);
+  res.status(<span class="n">201</span>).json({ data: stripValuationFields(asset, req.user!.role) });
+});</pre>
+  </div>
+  <h3>Response and error envelope</h3>
+  <div class="two-col">
+<div class="snippet"><div class="cap">Success</div><pre>{ <span class="s">"data"</span>: { ... } }
+<span class="c">// lists may add</span>
+{ <span class="s">"data"</span>: [...], <span class="s">"pagination"</span>: { ... } }</pre></div>
+<div class="snippet"><div class="cap">Error</div><pre>{ <span class="s">"error"</span>: {
+    <span class="s">"code"</span>: <span class="s">"VALIDATION_ERROR"</span>,
+    <span class="s">"message"</span>: <span class="s">"Validation failed"</span>,
+    <span class="s">"details"</span>: { ... } } }</pre></div>
+  </div>
+  <table class="small">
+    <tr><th>Status</th><th>Code</th><th>When</th></tr>
+    <tr><td>401</td><td><code>UNAUTHORIZED</code></td><td>Missing, invalid or expired token; bad credentials</td></tr>
+    <tr><td>403</td><td><code>FORBIDDEN</code>, <code>ORG_SUSPENDED</code></td><td>Role lacks the permission; organization suspended</td></tr>
+    <tr><td>404</td><td><code>NOT_FOUND</code></td><td>No such record in <i>your</i> organization (another org's record is also 404, never 403)</td></tr>
+    <tr><td>409</td><td><code>CONFLICT</code></td><td>Unique constraint (duplicate email, slug, tag, code)</td></tr>
+    <tr><td>422</td><td><code>VALIDATION_ERROR</code></td><td>Input failed its Zod schema</td></tr>
+    <tr><td>429</td><td>n/a</td><td>Rate limit exceeded</td></tr>
+  </table>
+</section>
+
+<!-- 4 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">4</div><div><div class="audience">Engineering</div><h2>Data model</h2></div></div>
+  <p>The schema is defined with Drizzle in <code>src/db/schema/*.ts</code>; migrations are generated with <code>pnpm db:generate</code> and applied with <code>pnpm db:migrate</code> (also run automatically by <code>pnpm start</code>). IDs are application-generated text keys.</p>
+  <h3>Tenant tables (all carry <code>org_id</code>)</h3>
+  <table class="small">
+    <tr><th style="width:44mm">Table</th><th>Purpose and notable columns</th></tr>
+    <tr><td><code>organizations</code></td><td>The tenant. <code>slug</code> (unique), branding (<code>logo_url</code>, <code>primary_color</code>, <code>accent_color</code>, <code>sidebar_color</code>), currency, timezone, <code>asset_quota</code>/<code>user_quota</code>, <code>plan_status</code> (active / suspended / expired), <code>onboarding_completed_at</code>, label settings</td></tr>
+    <tr><td><code>users</code></td><td>Tenant staff. <code>email</code> <b>globally unique</b> (one email belongs to exactly one workspace, which is how login finds the org), <code>role</code>, <code>password_hash</code>, <code>totp_enabled</code>, <code>failed_login_attempts</code>, <code>locked_until</code>, <code>is_active</code></td></tr>
+    <tr><td><code>departments</code>, <code>locations</code>, <code>categories</code>, <code>vendors</code></td><td>Catalog lookups (categories are shown as "asset types" in the UI)</td></tr>
+    <tr><td><code>subsidiaries</code>, <code>branches</code></td><td>Org structure used by structured asset tags; branches are org-level, codes unique per org</td></tr>
+    <tr><td><code>asset_tag_sequences</code></td><td>Running tag index per <code>(org_id, category_id)</code>, incremented atomically with <code>INSERT ... ON CONFLICT DO UPDATE</code></td></tr>
+    <tr><td><code>assets</code></td><td>The asset register. <code>asset_tag</code> unique per org, <code>status</code> (available, in_use, in_maintenance, reserved, disposed, lost), <code>condition</code>, valuation fields, custodian, category/location/department/vendor</td></tr>
+    <tr><td><code>asset_assignments</code></td><td>Check-out / check-in records with due dates</td></tr>
+    <tr><td><code>maintenance_records</code></td><td>Status (scheduled, in_progress, waiting_parts, completed, cancelled), priority, cost</td></tr>
+    <tr><td><code>audits</code>, <code>audit_items</code>, <code>audit_status_history</code></td><td>Audit header, per-asset results (pending, matched, missing, relocated, damaged), and an append-only status log</td></tr>
+    <tr><td><code>stored_files</code>, <code>asset_files</code></td><td>Uploaded files (Cloudinary, S3 or <code>bytea</code>) and their link to assets</td></tr>
+    <tr><td><code>activity_logs</code>, <code>notifications</code>, <code>system_settings</code></td><td>Audit trail (including sign-in events with IP), user notifications, settings</td></tr>
+    <tr><td><code>org_invites</code></td><td>Staff invitations: SHA-256 token hash, role, expiry, resend count</td></tr>
+  </table>
+  <h3>Security tables</h3>
+  <table class="small">
+    <tr><th style="width:44mm">Table</th><th>Purpose</th></tr>
+    <tr><td><code>refresh_tokens</code></td><td>SHA-256 hash, <code>family_id</code> (rotation chain), <code>replaced_by_token_id</code>, <code>revoked_at</code>, IP, user agent</td></tr>
+    <tr><td><code>totp_credentials</code></td><td>AES-256-GCM encrypted secret, status (pending / active), <code>last_used_step</code> for replay protection</td></tr>
+    <tr><td><code>totp_recovery_codes</code></td><td>SHA-256 hash per code, <code>used_at</code></td></tr>
+    <tr><td><code>password_reset_tokens</code></td><td>SHA-256 hash, 60-minute expiry, <code>used_at</code>, requesting IP</td></tr>
+  </table>
+  <h3>Platform tables (no <code>org_id</code>, separate identity space)</h3>
+  <table class="small">
+    <tr><th style="width:44mm">Table</th><th>Purpose</th></tr>
+    <tr><td><code>platform_admins</code></td><td>Tecres staff: role (platform_owner / platform_support), password hash, encrypted TOTP secret, hashed recovery codes</td></tr>
+    <tr><td><code>platform_admin_invites</code></td><td>Invitations for new platform admins (never reuses <code>org_invites</code>)</td></tr>
+    <tr><td><code>platform_admin_activity_logs</code></td><td>Every platform action with actor and target org/user</td></tr>
+    <tr><td><code>platform_alerts</code></td><td>Raised by the alert-detection job: quota_breach, plan_expired, stale_org, failed_login_spike</td></tr>
+  </table>
+</section>
+
+<!-- 5 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">5</div><div><div class="audience">Engineering</div><h2>Authentication and sessions</h2></div></div>
+  <h3>5.1 Sign-in sequence</h3>
+  <table class="small">
+    <tr><th style="width:8mm">#</th><th style="width:58mm">Call</th><th>Result</th></tr>
+    <tr><td>1</td><td><code>POST /api/auth/login</code> <br>{ email, password }</td><td>Finds the user by email (which identifies the org), checks lockout, verifies argon2id. First sign-in: <code>{ status: "totp_enrollment_required", enrollmentToken }</code>. Otherwise <code>{ status: "totp_challenge_required", preAuthToken }</code>. All failures: 401 "Invalid email or password".</td></tr>
+    <tr><td>2a</td><td><code>POST /api/auth/totp/enroll</code><br>{ enrollmentToken }</td><td>Creates a pending encrypted secret; returns QR code data URL and manual key</td></tr>
+    <tr><td>2b</td><td><code>POST /api/auth/totp/verify-enroll</code><br>{ enrollmentToken, code }</td><td>Activates TOTP, issues 10 recovery codes <b>and</b> a session</td></tr>
+    <tr><td>3</td><td><code>POST /api/auth/login/totp</code><br>{ preAuthToken, code }</td><td>Verifies the code (or a recovery code), stamps <code>last_used_step</code>, issues a session</td></tr>
+    <tr><td>4</td><td><code>POST /api/auth/refresh</code> (cookie)</td><td>Rotates the refresh token; returns a new access token</td></tr>
+  </table>
+  <p>A <b>session</b> is a 15-minute access JWT (returned in the body, kept in memory by the SPA) plus a 30-day opaque refresh token in an <code>httpOnly</code> cookie scoped to <code>/api/auth</code>.</p>
+
+  <h3>5.2 Token types</h3>
+  <table class="small">
+    <tr><th>Token</th><th>Secret</th><th>Audience</th><th>Lifetime</th><th>Claims</th></tr>
+    <tr><td>Tenant access</td><td><code>JWT_ACCESS_SECRET</code></td><td><code>tecres:tenant:access</code></td><td>15 min</td><td>sub, orgId, role</td></tr>
+    <tr><td>Tenant pre-auth</td><td><code>JWT_ACCESS_SECRET</code></td><td><code>tecres:tenant:pre-auth</code></td><td>5 min (10 enroll)</td><td>sub, purpose</td></tr>
+    <tr><td>Platform access</td><td><code>PLATFORM_ADMIN_JWT_SECRET</code></td><td><code>tecres:platform:access</code></td><td>15 min</td><td>sub, role</td></tr>
+    <tr><td>Platform pre-auth</td><td><code>PLATFORM_ADMIN_JWT_SECRET</code></td><td><code>tecres:platform:pre-auth</code></td><td>5 min (10 enroll)</td><td>sub, purpose</td></tr>
+    <tr><td>Refresh</td><td>n/a (random 256-bit)</td><td>n/a</td><td>30 days</td><td>opaque; stored as SHA-256</td></tr>
+  </table>
+  <div class="callout warn"><div class="t">Never share an audience</div><p>Each verifier accepts exactly one audience. A new token type must get its own audience constant in <code>src/lib/jwt.ts</code>; reusing one lets a token be accepted where it was never meant to be (see the Security Remediation Register, item F-01).</p></div>
+
+  <h3>5.3 Refresh rotation and reuse detection</h3>
+<div class="snippet"><div class="cap">refreshSession <span>&middot; modules/auth/auth.service.ts (abridged)</span></div><pre><span class="k">const</span> [existing] = <span class="k">await</span> db.select().from(refreshTokens).where(eq(refreshTokens.tokenHash, sha256Hex(raw)));
+<span class="k">if</span> (!existing) <span class="k">throw new</span> UnauthorizedError(<span class="s">"Invalid refresh token"</span>);
+<span class="k">if</span> (existing.revokedAt) {                       <span class="c">// already rotated: someone replayed it</span>
+  <span class="k">await</span> revokeWholeFamily(existing.familyId);   <span class="c">// forces full re-login</span>
+  <span class="k">throw new</span> UnauthorizedError(<span class="s">"Refresh token reuse detected"</span>);
+}
+<span class="c">// insert new token in the same family, mark the old one revoked + replacedBy</span></pre></div>
+
+  <h3>5.4 Password reset and forced reset</h3>
+  <ul>
+    <li><code>POST /auth/password-reset/request</code> always answers 200 with the same message (no account discovery), and emails a 60-minute single-use link to the user.</li>
+    <li><code>POST /auth/password-reset/confirm</code> sets the new password and revokes every refresh token.</li>
+    <li>A platform owner can force a reset (<code>POST /platform/orgs/:id/users/:userId/force-reset</code>): sessions are revoked immediately and the user is emailed a reset link.</li>
+  </ul>
+
+  <h3>5.5 Platform admin authentication</h3>
+  <p>Same two-step shape under <code>/api/platform/auth/*</code>, but platform sessions are a single 15-minute JWT with <b>no refresh endpoint</b>: a reload or expiry means signing in again. New platform admins join by invitation (<code>POST /platform/admins/invite</code> &rarr; emailed link &rarr; <code>POST /platform/admins/invite/:token/accept</code> sets a password, then TOTP enrollment).</p>
+</section>
+
+<!-- 6 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">6</div><div><div class="audience">Engineering</div><h2>Multi-tenancy and authorization</h2></div></div>
+  <h3>6.1 Org scoping</h3>
+  <p>All tenants share one database. Three rules keep them apart; break none of them:</p>
+  <ol>
+    <li><code>orgId</code> comes <b>only</b> from <code>req.user.orgId</code> (the verified token). No tenant route accepts it from the body, query or params.</li>
+    <li>Tenant data access goes through <code>scopedDb(orgId)</code> wherever the resource fits its shape, so the org filter cannot be forgotten.</li>
+    <li>A lookup by ID in another org returns 404, not 403, so IDs of other tenants' records are not confirmed to exist.</li>
+  </ol>
+<div class="snippet"><div class="cap">Using scopedDb <span>&middot; any tenant service</span></div><pre><span class="k">const</span> scoped = scopedDb(orgId);
+<span class="k">const</span> location = <span class="k">await</span> scoped.findById(locations, id);        <span class="c">// WHERE org_id = $1 AND id = $2</span>
+<span class="k">if</span> (!location) <span class="k">throw new</span> NotFoundError();
+<span class="k">await</span> scoped.update(locations, id, { name, updatedAt: <span class="k">new</span> Date() });
+<span class="k">await</span> scoped.insert(departments, { id: generateId(), name });  <span class="c">// orgId injected automatically</span></pre></div>
+
+  <h3>6.2 Simple CRUD resources</h3>
+  <p>Catalog-style resources use <code>createCrudRouter()</code>, which wires list/get/create/update/delete through <code>scopedDb</code>, maps unique violations to 409, and lets any org member read while requiring a permission to write:</p>
+<div class="snippet"><div class="cap">modules/catalog/catalog.router.ts</div><pre><span class="k">export const</span> locationsRouter = createCrudRouter({
+  table: locations,
+  createSchema: locationCreateSchema,
+  updateSchema: locationUpdateSchema,
+  writePermission: <span class="s">"canManageSettings"</span>,
+});</pre></div>
+
+  <h3>6.3 Roles and permissions</h3>
+  <p>The matrix lives in <code>backend/src/lib/permissions.ts</code>. <code>super_admin</code> and <code>admin</code> share one permission set; the difference is organizational (the first admin created with the workspace is a super admin).</p>
+  <table class="small">
+    <tr><th>Permission key</th><th>Super admin / Admin</th><th>Asset manager</th><th>Staff</th></tr>
+    <tr><td><code>canManageOrg</code>, <code>canManageSettings</code></td><td>&#10003;</td><td></td><td></td></tr>
+    <tr><td><code>canCreateAsset</code>, <code>canEditAsset</code></td><td>&#10003;</td><td>&#10003;</td><td></td></tr>
+    <tr><td><code>canDeleteAsset</code>, <code>canEditAssetIdentity</code></td><td>&#10003;</td><td></td><td></td></tr>
+    <tr><td><code>canCheckInOut</code></td><td>&#10003;</td><td>&#10003;</td><td></td></tr>
+    <tr><td><code>canScheduleMaintenance</code></td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td></tr>
+    <tr><td><code>canCompleteMaintenance</code></td><td>&#10003;</td><td>&#10003;</td><td></td></tr>
+    <tr><td><code>canManagePeople</code></td><td>&#10003;</td><td></td><td></td></tr>
+    <tr><td><code>canManageVendors</code>, <code>canExportReports</code>, <code>canPrintLabels</code></td><td>&#10003;</td><td>&#10003;</td><td></td></tr>
+    <tr><td><code>canAssignAudits</code>, <code>canVerifyAudits</code></td><td>&#10003;</td><td>&#10003;</td><td></td></tr>
+    <tr><td><code>canPerformAssignedAudit</code></td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td></tr>
+    <tr><td><code>canViewAssetValuation</code></td><td>&#10003;</td><td>&#10003;</td><td></td></tr>
+  </table>
+  <p><b>Valuation hiding.</b> For roles without <code>canViewAssetValuation</code>, <code>stripValuationFields()</code> deletes <code>purchasePrice</code>, <code>currentValue</code>, <code>salvageValue</code> and <code>totalValuation</code> from responses. Any new money field must be added to <code>VALUATION_FIELDS</code> and routed through that function.</p>
+  <p><b>Frontend copy.</b> <code>frontend/src/lib/permissions.ts</code> mirrors the matrix to hide navigation and buttons. It is UX only; when the backend matrix changes, update the copy, but never rely on it for protection.</p>
+
+  <h3>6.4 Platform permissions</h3>
+  <table class="small">
+    <tr><th>Permission</th><th>platform_owner</th><th>platform_support</th></tr>
+    <tr><td>View dashboard, organizations, users, activity, login risk, alerts</td><td>&#10003;</td><td>&#10003;</td></tr>
+    <tr><td><code>canResolveAlert</code></td><td>&#10003;</td><td>&#10003;</td></tr>
+    <tr><td><code>canSuspendOrg</code> (also gates creating organizations)</td><td>&#10003;</td><td></td></tr>
+    <tr><td><code>canAdjustQuota</code>, <code>canForceResetPassword</code>, <code>canManagePlatformAdmins</code></td><td>&#10003;</td><td></td></tr>
+  </table>
+</section>
+
+<!-- 7 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">7</div><div><div class="audience">Engineering</div><h2>Domain workflows</h2></div></div>
+  <h3>7.1 Workspace provisioning</h3>
+  <div class="flow">
+    <div class="node red">Platform owner<small>POST /platform/orgs</small></div><div class="arr">&rarr;</div>
+    <div class="node">Org + first super admin<small>created in one call</small></div><div class="arr">&rarr;</div>
+    <div class="node">First sign-in<small>TOTP enrollment</small></div><div class="arr">&rarr;</div>
+    <div class="node">Onboarding wizard<small>profile, branding, catalog</small></div><div class="arr">&rarr;</div>
+    <div class="node fill">Workspace live<small style="color:#dbe4f3">onboarding-complete</small></div>
+  </div>
+  <p>The platform admin sets the first admin's credentials and hands them over out of band. Until <code>onboarding_completed_at</code> is set, the SPA routes that admin to <code>/onboarding</code>. Further staff join through <code>POST /people/invite</code> (emailed link, user sets their own password) or are added directly by an admin with <code>POST /people</code>.</p>
+
+  <h3>7.2 Structured asset tags</h3>
+  <p>When an organization has at least one subsidiary configured, new asset tags are generated server-side:</p>
+<div class="snippet"><pre>{SUB}-{TYPE}-{BRANCH}-{DDMMYY}-{index}[-{suffix}]        e.g. CCL-FF-09-210824-004
+<span class="c">// index : running counter per asset type across the whole org (asset_tag_sequences)</span>
+<span class="c">// suffix: A, B, C... only when staff mark the asset as a duplicate of an existing one</span></pre></div>
+  <p>Once set, tag-driving fields are locked on <code>PUT /assets/:id</code>. Corrections go through <code>PATCH /assets/:id/identity</code> (<code>canEditAssetIdentity</code>), which regenerates the tag and writes an activity-log entry. <code>GET /asset-tags/preview</code> returns an advisory preview for the form. Organizations without subsidiaries keep a free-text tag.</p>
+
+  <h3>7.3 Check-out and return</h3>
+  <p><code>POST /assignments/checkout</code> (<code>assetId</code>, <code>userId</code>, optional <code>expectedReturnDate</code>, <code>conditionOut</code>, <code>notes</code>) sets the asset to <i>in_use</i>; <code>POST /assignments/checkin</code> (<code>assignmentId</code>, <code>conditionIn</code>, optional <code>notes</code>) returns it to <i>available</i>. <code>GET /assignments/:id/receipt</code> supplies data for the PDF receipt the frontend renders with jspdf.</p>
+
+  <h3>7.4 Maintenance</h3>
+  <p>Moving a record to <i>in_progress</i> sets the asset to <i>in_maintenance</i>; <i>completed</i> or <i>cancelled</i> returns it to <i>available</i>. Staff may schedule maintenance; updating or completing a record needs <code>canCompleteMaintenance</code>.</p>
+
+  <h3>7.5 Audit state machine</h3>
+  <div class="flow">
+    <div class="node">draft</div><div class="arr">&rarr;</div>
+    <div class="node">assigned</div><div class="arr">&rarr;</div>
+    <div class="node">in_progress</div><div class="arr">&rarr;</div>
+    <div class="node">submitted</div><div class="arr">&rarr;</div>
+    <div class="node fill">verified</div>
+  </div>
+  <div class="flow" style="margin-top:0">
+    <div class="node">submitted</div><div class="arr">&rarr;</div>
+    <div class="node red">rejected</div><div class="arr">&rarr;</div>
+    <div class="node">in_progress <small>resume</small></div>
+    <div class="arr">&nbsp;&nbsp;|&nbsp;&nbsp;</div>
+    <div class="node red">cancelled<small>from any non-terminal state</small></div>
+  </div>
+  <table class="small">
+    <tr><th>Transition</th><th>Route</th><th>Who</th></tr>
+    <tr><td>create (draft)</td><td><code>POST /audits</code></td><td><code>canAssignAudits</code></td></tr>
+    <tr><td>assign</td><td><code>PATCH /audits/:id/assign</code></td><td><code>canAssignAudits</code></td></tr>
+    <tr><td>start, scan items, submit, resume</td><td><code>POST /audits/:id/start | scan | submit | resume</code></td><td>The assigned auditor (<code>canPerformAssignedAudit</code>)</td></tr>
+    <tr><td>verify / reject</td><td><code>POST /audits/:id/verify | reject</code></td><td><code>canVerifyAudits</code>, and <b>never the submitter</b></td></tr>
+    <tr><td>cancel</td><td><code>POST /audits/:id/cancel</code></td><td><code>canAssignAudits</code></td></tr>
+  </table>
+  <p>Every transition is appended to <code>audit_status_history</code>. The segregation-of-duties check (verifier &ne; submitter) is enforced in <code>audits.service.ts</code> regardless of role.</p>
+</section>
+
+<!-- 8 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">8</div><div><div class="audience">Engineering</div><h2>Frontend architecture</h2></div></div>
+  <h3>8.1 Routing and guards</h3>
+  <table class="small">
+    <tr><th>Guard</th><th>Behavior</th></tr>
+    <tr><td><code>ProtectedRoute</code></td><td>Waits for the boot-time silent refresh; signed out &rarr; <code>/login</code>; onboarding incomplete &rarr; <code>/onboarding</code>; otherwise renders inside <code>AppShell</code></td></tr>
+    <tr><td><code>PermissionRoute</code></td><td>As above, plus redirects home if the role lacks the named permission (UX only)</td></tr>
+    <tr><td><code>OnboardingRoute</code></td><td>Session required, no onboarding redirect loop</td></tr>
+    <tr><td><code>PlatformProtectedRoute</code></td><td>Synchronous check of the platform store; renders inside the minimal <code>PlatformShell</code></td></tr>
+  </table>
+
+  <h3>8.2 Sessions in the browser</h3>
+  <ul>
+    <li><b>Tokens live in memory</b> (Zustand), never <code>localStorage</code>. On boot, <code>auth.store.bootstrap()</code> calls <code>/auth/refresh</code> using the httpOnly cookie to restore the session.</li>
+    <li><code>apiFetch</code> attaches the bearer token and, on a 401, performs one refresh and retries. Concurrent refreshes are de-duplicated into a single in-flight promise, because the backend treats a second use of a rotated token as theft.</li>
+    <li>The platform console uses <code>platformApiFetch</code> and <code>platformAuth.store.ts</code>. A 401 there simply signs the admin out (no refresh endpoint). <b>Never</b> share a store, token or client between the two identities.</li>
+  </ul>
+<div class="snippet"><div class="cap">Tenant API client <span>&middot; src/lib/api-client.ts</span></div><pre><span class="k">export async function</span> apiFetch&lt;T&gt;(path: string, init: RequestInit = {}): Promise&lt;T&gt; {
+  <span class="k">let</span> res = <span class="k">await</span> doFetch(path, init);
+  <span class="k">if</span> (res.status === <span class="n">401</span>) {
+    <span class="k">const</span> restored = <span class="k">await</span> useAuthStore.getState().refresh();   <span class="c">// de-duplicated</span>
+    <span class="k">if</span> (restored) res = <span class="k">await</span> doFetch(path, init);
+    <span class="k">else</span> { useAuthStore.getState().clearSession(); <span class="k">throw new</span> ApiError(<span class="n">401</span>, <span class="s">"UNAUTHORIZED"</span>, <span class="s">"Your session has expired."</span>); }
+  }
+  <span class="k">if</span> (!res.ok) <span class="k">throw await</span> ApiError.fromResponse(res);
+  <span class="k">return</span> res.status === <span class="n">204</span> ? (undefined <span class="k">as</span> T) : res.json();
+}</pre></div>
+
+  <h3>8.3 Server state with TanStack Query</h3>
+  <p>Each feature owns an <code>api.ts</code> of query and mutation hooks. Mutations invalidate every query key they can affect.</p>
+<div class="snippet"><div class="cap">src/features/maintenance/api.ts <span>(abridged)</span></div><pre><span class="k">export function</span> useMaintenanceQuery() {
+  <span class="k">return</span> useQuery({
+    queryKey: [<span class="s">"maintenance"</span>],
+    queryFn: () =&gt; apiFetch&lt;{ data: MaintenanceRecord[] }&gt;(<span class="s">"/maintenance"</span>).then((r) =&gt; r.data),
+  });
+}
+
+<span class="k">export function</span> useUpdateMaintenanceMutation() {
+  <span class="k">const</span> queryClient = useQueryClient();
+  <span class="k">return</span> useMutation({
+    mutationFn: ({ id, input }) =&gt; apiFetch(<span class="s">`/maintenance/${id}`</span>, { method: <span class="s">"PUT"</span>, body: JSON.stringify(input) }),
+    <span class="c">// status changes also flip the asset's status, so refresh both</span>
+    onSuccess: () =&gt; { queryClient.invalidateQueries({ queryKey: [<span class="s">"maintenance"</span>] });
+                       queryClient.invalidateQueries({ queryKey: [<span class="s">"assets"</span>] }); },
+  });
+}</pre></div>
+
+  <h3>8.4 Theming and per-organization branding</h3>
+  <p><code>src/index.css</code> defines <code>--org-primary</code> and <code>--org-accent</code> as the only two colors that vary per tenant; every other token (<code>--primary</code>, <code>--ring</code>, sidebar, charts) derives from them. <code>useThemeStore().applyOrgTheme(org)</code> is the single place that writes them to the document. Light and dark palettes are both fully defined: the theme follows the device until the user picks one in the header, which is saved to <code>localStorage.tecres_theme</code> (a preference, not a secret). The sign-in page looks up the workspace from the email as it is typed and shows that organization's logo and color before sign-in.</p>
+
+  <h3>8.5 UI conventions</h3>
+  <ul>
+    <li>shadcn/ui components are added with <code>npx shadcn@latest add &lt;name&gt;</code> into <code>src/components/ui</code>; class merging uses the <code>cn</code> package; Radix comes from the unified <code>radix-ui</code> package.</li>
+    <li>No em dashes in any user-visible text; use <code>"-"</code> for empty values.</li>
+    <li>Reports, receipts and labels are rendered client-side (jspdf, xlsx, jsbarcode, qrcode); the backend returns JSON only.</li>
+  </ul>
+</section>
+
+<!-- 9 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">9</div><div><div class="audience">Engineering</div><h2>HTTP API reference</h2></div></div>
+  <p>Base path <code>/api</code>. Tenant routes need <code>Authorization: Bearer &lt;access token&gt;</code> and are org-scoped automatically. The "Guard" column shows the permission beyond authentication; a dash means any signed-in member. A runnable Bruno collection covering every route is in <code>backend/docs/api/asset-mgt/</code>.</p>
+
+  <h3>Authentication</h3>
+  <table class="small">
+    <tr><th style="width:62mm">Route</th><th style="width:34mm">Guard</th><th>Notes</th></tr>
+    <tr><td><code>POST /auth/login</code></td><td>public, rate-limited</td><td>{ email, password } &rarr; enrollment or pre-auth token</td></tr>
+    <tr><td><code>POST /auth/login/totp</code></td><td>pre-auth token</td><td>{ preAuthToken, code } &rarr; session; code may be a recovery code</td></tr>
+    <tr><td><code>POST /auth/totp/enroll</code></td><td>enrollment token</td><td>Returns QR data URL + manual key</td></tr>
+    <tr><td><code>POST /auth/totp/verify-enroll</code></td><td>enrollment token</td><td>Activates TOTP; returns session + recovery codes</td></tr>
+    <tr><td><code>POST /auth/totp/disable</code></td><td>session</td><td>{ password, code }</td></tr>
+    <tr><td><code>POST /auth/refresh</code></td><td>refresh cookie</td><td>Rotates refresh token</td></tr>
+    <tr><td><code>POST /auth/logout</code>, <code>/logout-all</code></td><td>cookie / session</td><td>Revoke this session / all sessions</td></tr>
+    <tr><td><code>POST /auth/password-reset/request</code>, <code>/confirm</code></td><td>public, rate-limited</td><td>Always 200 on request; single-use token on confirm</td></tr>
+    <tr><td><code>GET /auth/me</code></td><td>session</td><td>Current user (no password hash)</td></tr>
+  </table>
+
+  <h3>Organization and people</h3>
+  <table class="small">
+    <tr><th style="width:62mm">Route</th><th style="width:34mm">Guard</th><th>Notes</th></tr>
+    <tr><td><code>GET /organizations/public/lookup?email=</code></td><td>public, 60/15 min</td><td>Workspace branding for the sign-in page</td></tr>
+    <tr><td><code>GET /organizations/me</code></td><td>-</td><td>Current organization</td></tr>
+    <tr><td><code>PATCH /organizations/me</code>, <code>/me/theme</code>, <code>/me/label-format</code>, <code>/me/label-sheet-layout</code>, <code>/me/onboarding-complete</code>; <code>POST /me/logo</code></td><td>canManageOrg</td><td>Profile, colors, label settings, logo upload (image, 5 MB)</td></tr>
+    <tr><td><code>GET /organizations/me/label-sheet-layout</code></td><td>canPrintLabels</td><td>Print calibration</td></tr>
+    <tr><td><code>GET /people</code>, <code>GET /people/:id</code></td><td>-</td><td>Directory</td></tr>
+    <tr><td><code>POST /people</code>, <code>PUT /people/:id</code>, <code>DELETE /people/:id</code></td><td>canManagePeople</td><td>Add directly, edit role/status, deactivate</td></tr>
+    <tr><td><code>POST /people/invite</code>; <code>GET /people/invites</code>; <code>POST /people/invites/:id/resend</code>; <code>DELETE /people/invites/:id</code></td><td>canManagePeople</td><td>Invitation lifecycle</td></tr>
+    <tr><td><code>POST /people/invite/:token/accept</code></td><td>invite token</td><td>{ name, password }</td></tr>
+  </table>
+
+  <h3>Catalog and structure</h3>
+  <table class="small">
+    <tr><th style="width:62mm">Route</th><th style="width:34mm">Guard (writes)</th><th>Notes</th></tr>
+    <tr><td><code>/departments</code>, <code>/locations</code>, <code>/categories</code></td><td>canManageSettings</td><td>Standard CRUD (<code>GET</code>, <code>GET /:id</code>, <code>POST</code>, <code>PUT /:id</code>, <code>DELETE /:id</code>)</td></tr>
+    <tr><td><code>/vendors</code></td><td>canManageVendors</td><td>Standard CRUD</td></tr>
+    <tr><td><code>/subsidiaries</code>, <code>/branches</code></td><td>canManageSettings</td><td>CRUD; codes locked once used in a tag</td></tr>
+    <tr><td><code>GET /asset-tags/preview</code></td><td>-</td><td>Advisory tag preview</td></tr>
+  </table>
+
+  <h3>Assets and operations</h3>
+  <table class="small">
+    <tr><th style="width:62mm">Route</th><th style="width:34mm">Guard</th><th>Notes</th></tr>
+    <tr><td><code>GET /assets</code>, <code>GET /assets/:id</code>, <code>/:id/history</code>, <code>/:id/maintenance</code></td><td>-</td><td>Paginated list with filters; valuation stripped for staff</td></tr>
+    <tr><td><code>POST /assets</code></td><td>canCreateAsset</td><td>Structured tag generation when subsidiaries exist</td></tr>
+    <tr><td><code>PUT /assets/:id</code></td><td>canEditAsset</td><td>Tag-identity fields locked</td></tr>
+    <tr><td><code>PATCH /assets/:id/identity</code></td><td>canEditAssetIdentity</td><td>Correct a locked tag; audit-logged</td></tr>
+    <tr><td><code>DELETE /assets/:id</code></td><td>canDeleteAsset</td><td></td></tr>
+    <tr><td><code>GET /assignments</code>; <code>GET /assignments/:id/receipt</code></td><td>-</td><td></td></tr>
+    <tr><td><code>POST /assignments/checkout</code>, <code>/checkin</code></td><td>canCheckInOut</td><td>{ assetId, userId, expectedReturnDate? } / { assignmentId, conditionIn }</td></tr>
+    <tr><td><code>GET /maintenance</code>; <code>POST /maintenance</code></td><td>- / canScheduleMaintenance</td><td>Anyone may request maintenance</td></tr>
+    <tr><td><code>PUT /maintenance/:id</code>, <code>DELETE /maintenance/:id</code></td><td>canCompleteMaintenance</td><td>Status changes also update the asset</td></tr>
+    <tr><td><code>/audits</code> (see 7.5)</td><td>varies</td><td>Plus <code>GET /audits/trail</code>, <code>/:id/history</code>, <code>/:id/report</code></td></tr>
+    <tr><td><code>POST /files/upload</code>; <code>GET /files/:id</code></td><td>-</td><td>20 MB; download re-checks org ownership</td></tr>
+  </table>
+
+  <h3>Insight</h3>
+  <table class="small">
+    <tr><th style="width:62mm">Route</th><th style="width:34mm">Guard</th><th>Notes</th></tr>
+    <tr><td><code>GET /dashboard/stats</code>, <code>/activity</code>, <code>/charts</code></td><td>-</td><td>KPIs, recent activity, chart series</td></tr>
+    <tr><td><code>GET /reports/assets</code></td><td>canExportReports</td><td>Filters, <code>dateField</code>, <code>sortBy</code>/<code>sortDir</code></td></tr>
+    <tr><td><code>GET /reports/valuation-depreciation</code></td><td>+ canViewAssetValuation</td><td></td></tr>
+    <tr><td><code>GET /labels/assets</code></td><td>canPrintLabels</td><td>Same filters as reports</td></tr>
+    <tr><td><code>GET /search?q=</code>; <code>GET /activity</code>; <code>/notifications</code></td><td>-</td><td>Global search, activity log, notifications (mark read)</td></tr>
+    <tr><td><code>GET /settings</code></td><td>canManageSettings</td><td></td></tr>
+  </table>
+
+  <h3>Platform console (<code>/platform</code>)</h3>
+  <table class="small">
+    <tr><th style="width:62mm">Route</th><th style="width:34mm">Guard</th><th>Notes</th></tr>
+    <tr><td><code>POST /auth/login</code>, <code>/auth/login/totp</code>, <code>/auth/totp/enroll</code>, <code>/auth/totp/verify-enroll</code></td><td>public / pre-auth</td><td>Platform sign-in</td></tr>
+    <tr><td><code>GET /admins/invite/:token</code>; <code>POST /admins/invite/:token/accept</code></td><td>invite token</td><td>Join as a platform admin</td></tr>
+    <tr><td><code>GET /stats</code>, <code>/analytics</code>, <code>/orgs</code>, <code>/orgs/:id</code>, <code>/orgs/:id/users</code>, <code>/orgs/:id/activity</code>, <code>/security/login-risk</code>, <code>/alerts</code></td><td>platform session</td><td>Read-only fleet views</td></tr>
+    <tr><td><code>POST /orgs</code>; <code>PATCH /orgs/:id/status</code></td><td>canSuspendOrg</td><td>Create org + first admin; suspend / reactivate</td></tr>
+    <tr><td><code>PATCH /orgs/:id/quotas</code></td><td>canAdjustQuota</td><td>Asset and user quotas</td></tr>
+    <tr><td><code>POST /orgs/:id/users/:userId/force-reset</code></td><td>canForceResetPassword</td><td>Revoke sessions + email reset link</td></tr>
+    <tr><td><code>GET /admins</code>; <code>POST /admins/invite</code>; <code>PATCH /admins/:id/role</code></td><td>canManagePlatformAdmins</td><td>Manage Tecres staff</td></tr>
+    <tr><td><code>PATCH /alerts/:id/resolve</code></td><td>canResolveAlert</td><td></td></tr>
+  </table>
+  <div class="callout warn"><div class="t">Deprecated</div><p><code>POST /api/organizations</code> (public self-service org creation) still exists but contradicts the product model and is scheduled for removal (Security Remediation Register, item F-02). Do not build on it.</p></div>
+</section>
+
+<!-- 10 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">10</div><div><div class="audience">Engineering</div><h2>Email, files and background jobs</h2></div></div>
+  <h3>Email</h3>
+  <p><code>src/lib/email.ts</code> sends through the <b>Brevo HTTPS API</b> when <code>BREVO_API_KEY</code> is set (cloud hosts block SMTP ports), otherwise through SMTP when configured, otherwise it logs a warning and sends nothing. Templates are plain HTML in <code>src/emails/templates/</code> with <code>{{var}}</code> placeholders, wrapped by <code>layout.html</code> and carrying the organization's logo and color where relevant.</p>
+  <table class="small">
+    <tr><th>Email</th><th>Trigger</th><th>Link lifetime</th></tr>
+    <tr><td>Password reset</td><td>Reset request, or a platform owner's forced reset</td><td>60 minutes, single use</td></tr>
+    <tr><td>Organization invite</td><td><code>POST /people/invite</code> and resend</td><td>Until accepted, revoked or expired</td></tr>
+    <tr><td>Platform admin invite</td><td><code>POST /platform/admins/invite</code></td><td>7 days</td></tr>
+  </table>
+  <h3>Files</h3>
+  <p><code>src/lib/storage.ts</code> stores images on <b>Cloudinary</b> when configured, other files on <b>S3</b> when configured, and falls back to PostgreSQL <code>bytea</code>. Every file row records its <code>org_id</code>, and <code>GET /files/:id</code> re-checks it on download.</p>
+  <h3>Background jobs</h3>
+  <table class="small">
+    <tr><th>Job</th><th>Interval</th><th>What it does</th></tr>
+    <tr><td><code>alertDetection.cron.ts</code></td><td>15 minutes</td><td>Raises platform alerts: asset quota at 90% (warning) or 100% (critical), expired plan, no activity for 30 days, failed-login spikes</td></tr>
+    <tr><td><code>tokenCleanup.cron.ts</code></td><td>60 minutes</td><td>Deletes expired refresh, reset and invite tokens, and refresh tokens revoked over 7 days ago</td></tr>
+  </table>
+  <p class="small muted">Jobs run with <code>setInterval</code> inside the API process. With more than one instance, each would run them; move them to a single scheduler before scaling out.</p>
+</section>
+
+<!-- 11 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">11</div><div><div class="audience">Engineering</div><h2>Local setup and configuration</h2></div></div>
+  <h3>Backend</h3>
+<div class="snippet"><pre>cd asset-management-backend
+pnpm install
+cp .env.example .env            <span class="c"># fill in DATABASE_URL and the four 32+ character secrets</span>
+pnpm db:migrate
+pnpm db:seed                    <span class="c"># optional: demo org "acme" + one super admin</span>
+pnpm db:seed-platform-admin     <span class="c"># optional: a platform owner for the console</span>
+pnpm dev                        <span class="c"># http://localhost:4000, health check at /health</span></pre></div>
+  <h3>Frontend</h3>
+<div class="snippet"><pre>cd asset-management-frontend
+npm install
+echo VITE_API_BASE_URL=http://localhost:4000/api &gt; .env   <span class="c"># no trailing slash needed</span>
+npm run dev                     <span class="c"># http://localhost:5173</span></pre></div>
+
+  <h3>Backend environment variables</h3>
+  <p>Validated by Zod in <code>src/config/env.ts</code>; the process refuses to start if a required value is missing or a secret is under 32 characters.</p>
+  <table class="small">
+    <tr><th style="width:52mm">Variable</th><th>Purpose</th></tr>
+    <tr><td><code>DATABASE_URL</code></td><td>PostgreSQL connection string (required)</td></tr>
+    <tr><td><code>JWT_ACCESS_SECRET</code></td><td>Signs tenant access and pre-auth tokens</td></tr>
+    <tr><td><code>JWT_REFRESH_SECRET</code></td><td>Required at start-up but currently unused (refresh tokens are opaque random values, not JWTs)</td></tr>
+    <tr><td><code>PLATFORM_ADMIN_JWT_SECRET</code></td><td>Signs platform tokens; must differ from the tenant secret</td></tr>
+    <tr><td><code>TOTP_ENCRYPTION_KEY</code></td><td>Encrypts TOTP secrets at rest. <b>Changing it makes every enrolled authenticator unusable.</b></td></tr>
+    <tr><td><code>CORS_ALLOWED_ORIGINS</code></td><td>Comma-separated frontend origins; the first is also used to build emailed links</td></tr>
+    <tr><td><code>COOKIE_DOMAIN</code></td><td>Domain for the refresh cookie</td></tr>
+    <tr><td><code>TRUST_PROXY</code></td><td>Number of reverse proxies in front (defaults to 1 in production). Setting it higher than reality lets clients spoof their IP past rate limits.</td></tr>
+    <tr><td><code>BREVO_API_KEY</code>, <code>SMTP_*</code></td><td>Email transport (optional in development)</td></tr>
+    <tr><td><code>CLOUDINARY_*</code>, <code>AWS_*</code></td><td>File storage (optional; falls back to the database)</td></tr>
+    <tr><td><code>NODE_ENV</code>, <code>PORT</code></td><td>Production turns on <code>Secure; SameSite=None</code> cookies and proxy trust</td></tr>
+  </table>
+  <h3>Production notes</h3>
+  <ul>
+    <li><code>pnpm build</code> compiles TypeScript and copies email templates and migrations into <code>dist/</code>; <code>pnpm start</code> applies migrations, then starts the server.</li>
+    <li>The frontend is a static build (<code>npm run build</code> &rarr; <code>dist/</code>) served from <code>app.tecrestrackit.com</code>; it needs <code>VITE_API_BASE_URL</code> at build time.</li>
+    <li>Because frontend and API are on different sites in production, the refresh cookie is <code>SameSite=None; Secure</code>, and the API's <code>CORS_ALLOWED_ORIGINS</code> must list the exact frontend origin.</li>
+  </ul>
+</section>
+
+<!-- 12 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">12</div><div><div class="audience">Engineering</div><h2>Testing and quality gates</h2></div></div>
+  <table>
+    <tr><th>Repository</th><th>Gate</th><th>Command</th></tr>
+    <tr><td>Backend</td><td>Type-check</td><td><code>pnpm typecheck</code></td></tr>
+    <tr><td>Backend</td><td>Integration + security suites (needs a separate test database, see README)</td><td><code>pnpm test</code></td></tr>
+    <tr><td>Frontend</td><td>Type-check (unused imports fail the build)</td><td><code>npx tsc -b</code></td></tr>
+    <tr><td>Frontend</td><td>Production build</td><td><code>npm run build</code></td></tr>
+    <tr><td>Frontend</td><td>Smoke test of pages that render real data</td><td>Playwright script against <code>npm run dev</code>, checking the console for errors</td></tr>
+  </table>
+  <p>The backend suites run against the real Express app and a real PostgreSQL database, not mocks:</p>
+  <ul>
+    <li><code>auth.integration.test.ts</code>: login, TOTP, refresh rotation and reuse detection, cross-org isolation, valuation hiding, global email uniqueness.</li>
+    <li><code>tokenPurpose.security.test.ts</code>: pre-auth tokens can never act as sessions.</li>
+    <li><code>test/security/pentest.security.test.ts</code>: 32 attack scenarios; open hardening items are recorded with <code>it.fails</code> (see the Security Remediation Register).</li>
+  </ul>
+  <div class="callout"><div class="t">When you must run the backend tests</div><p>Any change to authentication, an org-scoped query, token handling or the audit state machine. These are exactly the bug classes the backend was rebuilt to prevent.</p></div>
+  <p class="small">Playwright is not a project dependency. Install it with <code>npm install --no-save playwright</code> for one-off checks, and confirm <code>git diff package.json package-lock.json</code> is empty before committing.</p>
+</section>
+
+<!-- 13 -->
+<section class="chapter">
+  <div class="chapter-head"><div class="num">13</div><div><div class="audience">Engineering</div><h2>Conventions for contributors</h2></div></div>
+  <h3>Backend</h3>
+  <ul>
+    <li>Each module is <code>&lt;name&gt;.router.ts</code> (HTTP wiring only) + <code>&lt;name&gt;.service.ts</code> (logic and database) + <code>&lt;name&gt;.schema.ts</code> (Zod).</li>
+    <li>Every request body, query and params goes through <code>validate()</code>; never read raw <code>req.body</code>.</li>
+    <li>Never accept <code>orgId</code> from a client. Use <code>scopedDb(orgId)</code> where it fits, and <code>createCrudRouter()</code> for plain catalog resources.</li>
+    <li>Platform routes use only <code>authenticatePlatformAdmin</code>/<code>authorizePlatformAdmin</code>; tenant routes only <code>authenticate</code>/<code>authorize</code>. No route accepts both.</li>
+    <li>New money fields go in <code>VALUATION_FIELDS</code> and through <code>stripValuationFields()</code>.</li>
+    <li>Throw the typed errors from <code>src/lib/errors.ts</code> (<code>NotFoundError</code>, <code>ForbiddenError</code>, <code>ConflictError</code>, ...) rather than writing responses by hand.</li>
+  </ul>
+  <h3>Frontend</h3>
+  <ul>
+    <li>One folder per domain in <code>src/features</code>, with an <code>api.ts</code> of TanStack Query hooks; invalidate every affected key after a mutation.</li>
+    <li>Keep types in <code>src/types</code> in step with the backend schema by hand.</li>
+    <li>Route per-organization colors only through <code>--org-primary</code>/<code>--org-accent</code> and <code>applyOrgTheme</code>; support both light and dark palettes.</li>
+    <li>Package managers: npm for the frontend, pnpm for the backend.</li>
+  </ul>
+  <h3>Before calling a change done</h3>
+  <ol class="steps">
+    <li>Backend: <code>pnpm typecheck</code> clean; <code>pnpm test</code> if you touched auth, scoping, tokens or audits.</li>
+    <li>Frontend: <code>npx tsc -b</code> clean and <code>npm run build</code> succeeds.</li>
+    <li>If a page renders real data, smoke-test it in a browser and check the console.</li>
+    <li>Update <code>BUILD_PLAN.md</code>'s status table if you started or finished a phase.</li>
+  </ol>
+</section>
+
+</body>
+</html>
