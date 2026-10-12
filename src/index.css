@@ -144,6 +144,9 @@
    above, so they stay on-brand for every tenant instead of hardcoding Tecres's own blue. */
 .bg-brand-hero {
   background-color: oklch(0.16 0 0);
+  background-image:
+    radial-gradient(42rem 34rem at 12% 8%, color-mix(in oklab, var(--org-primary) 42%, transparent), transparent 72%),
+    radial-gradient(34rem 30rem at 96% 100%, color-mix(in oklab, var(--org-accent) 30%, transparent), transparent 70%);
 }
 .text-gradient-brand {
   background-image: linear-gradient(90deg, var(--org-primary), var(--org-accent));
@@ -153,6 +156,122 @@
 }
 .bg-gradient-brand {
   background-image: linear-gradient(135deg, var(--org-primary), var(--org-accent));
+}
+
+/* Tenant login card (BrandedAuthCard). Same rule as above: everything is derived from
+   --org-primary/--org-accent, so a resolved email re-tints the whole card with no JS beyond
+   applyOrgTheme. The --ill-* tokens feed AssetIllustration's SVG fills. In dark mode the panel is
+   blended toward the card color so a saturated brand color doesn't glare, and the illustration's
+   paper surfaces are dimmed off pure white. Mixes use oklab, not oklch: --card is achromatic with
+   an explicit hue of 0, and oklch would interpolate the brand hue toward it (green turns brown). */
+/* Brand-colored link text that stays legible even when the org picked a pale primary (plain
+   text-primary on a white card vanishes for a yellow brand): pulls the color toward --foreground,
+   which darkens it in light mode and lightens it in dark mode. */
+.text-brand-link {
+  color: color-mix(in oklab, var(--primary) 68%, var(--foreground));
+}
+.bg-auth-backdrop {
+  background-color: var(--background);
+  background-image:
+    radial-gradient(42rem 30rem at 10% 6%, color-mix(in oklab, var(--org-primary) 20%, transparent), transparent 70%),
+    radial-gradient(38rem 28rem at 92% 96%, color-mix(in oklab, var(--org-accent) 16%, transparent), transparent 70%);
+}
+.dark .bg-auth-backdrop {
+  background-image:
+    radial-gradient(42rem 30rem at 10% 6%, color-mix(in oklab, var(--org-primary) 14%, transparent), transparent 70%),
+    radial-gradient(38rem 28rem at 92% 96%, color-mix(in oklab, var(--org-accent) 10%, transparent), transparent 70%);
+}
+.bg-auth-panel {
+  --ill-surface: #ffffff;
+  --ill-ink: color-mix(in oklab, var(--org-primary) 45%, black);
+  --ill-muted: color-mix(in oklab, var(--org-primary) 28%, white);
+  --ill-accent: var(--org-accent);
+  --ill-soft: color-mix(in oklab, white 20%, transparent);
+  --ill-shadow: color-mix(in oklab, black 16%, transparent);
+  background-image: linear-gradient(155deg, var(--org-primary), color-mix(in oklab, var(--org-primary) 82%, black));
+  color: var(--primary-foreground);
+}
+.dark .bg-auth-panel {
+  --ill-surface: color-mix(in oklab, white 88%, var(--org-primary));
+  --ill-ink: color-mix(in oklab, var(--org-primary) 30%, oklch(0.1 0 0));
+  --ill-muted: color-mix(in oklab, var(--org-primary) 32%, white);
+  --ill-soft: color-mix(in oklab, white 8%, transparent);
+  --ill-shadow: color-mix(in oklab, black 35%, transparent);
+  background-image: linear-gradient(
+    155deg,
+    color-mix(in oklab, var(--org-primary) 58%, var(--card)),
+    color-mix(in oklab, var(--org-primary) 30%, var(--card))
+  );
+  color: oklch(0.97 0 0);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .auth-float,
+  .auth-float-slow,
+  .auth-swing,
+  .auth-scanline {
+    transform-box: fill-box;
+  }
+  .auth-float {
+    animation: auth-float 6s ease-in-out infinite;
+  }
+  .auth-float-slow {
+    animation: auth-float 8s ease-in-out -2s infinite;
+  }
+  .auth-swing {
+    transform-origin: 50% 0%;
+    animation: auth-swing 5s ease-in-out infinite;
+  }
+  .auth-scanline {
+    animation: auth-scanline 2.4s ease-in-out infinite;
+  }
+  .auth-beam {
+    animation: auth-beam 2.4s ease-in-out infinite;
+  }
+}
+.auth-beam {
+  opacity: 0.22;
+}
+@keyframes auth-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes auth-swing {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+@keyframes auth-scanline {
+  0%, 100% { transform: translateY(-9px); }
+  50% { transform: translateY(9px); }
+}
+@keyframes auth-beam {
+  0%, 100% { opacity: 0.14; }
+  50% { opacity: 0.3; }
+}
+
+/* Platform admin sign-in (PlatformLoginPage + PlatformAuthIllustration). Same rule as the tenant card above:
+   everything derives from --org-primary/--org-accent, which useTecresBrandTheme pins to Tecres's
+   own blue/red on these screens. Dark mode deepens the panel and dims the paper so the
+   illustration doesn't glare on a dark device. Mixes are in oklab, not oklch: oklch
+   treats a neutral's 0 hue as real red and drags every blend toward pink. */
+.platform-auth {
+  --auth-band: color-mix(in oklab, var(--org-primary) 9%, var(--background));
+  --auth-hero: var(--org-primary);
+  --pa-board: color-mix(in oklab, var(--org-primary) 50%, oklch(0.2 0.04 262));
+  --pa-paper: oklch(0.995 0 0);
+  --pa-clip: color-mix(in oklab, var(--org-primary) 14%, oklch(0.97 0 0));
+  --pa-ink: oklch(0.27 0.03 262);
+  --pa-line: color-mix(in oklab, var(--org-primary) 22%, oklch(0.9 0.01 262));
+  --pa-mark: var(--org-primary);
+  --pa-accent: var(--org-accent);
+}
+.dark .platform-auth {
+  --auth-band: color-mix(in oklab, var(--org-primary) 14%, var(--background));
+  --auth-hero: color-mix(in oklab, var(--org-primary) 58%, oklch(0.14 0.02 262));
+  --pa-board: color-mix(in oklab, var(--org-primary) 38%, oklch(0.1 0.02 262));
+  --pa-paper: oklch(0.93 0.008 262);
+  --pa-clip: color-mix(in oklab, var(--org-primary) 18%, oklch(0.88 0 0));
+  --pa-line: color-mix(in oklab, var(--org-primary) 24%, oklch(0.84 0.01 262));
 }
 
 /* Custom scrollbar — ported from ink-asset-management/src/app/globals.css */

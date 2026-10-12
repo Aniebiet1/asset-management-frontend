@@ -1,5 +1,12 @@
 import type { ReactNode } from "react";
+import { Check } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
+
+const HERO_POINTS = [
+  "Check-outs and returns without the chase",
+  "A full history behind every item",
+  "Maintenance, audits and reporting in one place",
+];
 
 interface AuthLayoutProps {
   children: ReactNode;
@@ -24,23 +31,33 @@ interface AuthLayoutProps {
 export function AuthLayout({ children, footer, logoUrl, hero }: AuthLayoutProps) {
   return (
     <div className="flex min-h-screen bg-background">
-      <div className="relative hidden w-[42%] shrink-0 flex-col justify-between bg-brand-hero p-10 text-white lg:flex xl:p-14">
+      <div className="relative hidden w-[42%] shrink-0 flex-col justify-center bg-brand-hero p-10 text-white lg:flex xl:p-14">
         {hero ?? (
-          <div className="space-y-5">
-            <span className="inline-flex w-fit items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-medium tracking-wide text-white/80">
-              <span className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: "var(--org-accent)" }} />
-              ASSET MANAGEMENT, SIMPLIFIED
-            </span>
-            <h2 className="max-w-sm text-3xl font-semibold leading-tight">
-              Track every asset<span className="text-gradient-brand">, effortlessly</span>.
-            </h2>
-            <p className="max-w-sm text-sm text-white/60">
-              Check-outs, maintenance, audits and reporting in one workspace built for teams that
-              need to always know what they own.
-            </p>
+          <div className="max-w-sm space-y-8">
+            <div className="space-y-4">
+              <h2 className="text-4xl font-semibold leading-[1.1] tracking-tight">
+                Track every asset<span className="text-gradient-brand">, effortlessly</span>.
+              </h2>
+              <p className="text-sm leading-relaxed text-white/55">
+                One workspace for teams that need to always know what they own.
+              </p>
+            </div>
+            <ul className="space-y-3.5 border-t border-white/10 pt-7">
+              {HERO_POINTS.map((point) => (
+                <li key={point} className="flex items-start gap-3 text-sm text-white/75">
+                  <span
+                    className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full"
+                    style={{ backgroundColor: "color-mix(in oklab, var(--org-accent) 22%, transparent)" }}
+                  >
+                    <Check className="size-3" style={{ color: "var(--org-accent)" }} />
+                  </span>
+                  {point}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
-        <p className="text-xs text-white/40">TecresTrackIT AMS</p>
+        <p className="absolute inset-x-10 bottom-10 text-xs text-white/40 xl:inset-x-14 xl:bottom-14">TecresTrackIT AMS</p>
       </div>
 
       <div className="flex flex-1 items-center justify-center px-4 py-12">

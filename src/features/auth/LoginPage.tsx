@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/common/PasswordInput";
-import { AuthLayout } from "@/components/auth/AuthLayout";
+import { BrandedAuthCard } from "@/components/auth/BrandedAuthCard";
 import { useAuthStore } from "@/store/auth.store";
 import { ApiError } from "@/lib/http-error";
 import { useOrgBranding } from "./useOrgBranding";
@@ -43,22 +43,26 @@ export function LoginPage() {
   };
 
   return (
-    <AuthLayout
+    <BrandedAuthCard
       logoUrl={branding ? branding.logoUrl : null}
+      orgName={branding?.name}
       footer="New workspaces are set up by Tecres. Contact your account team if you need one."
     >
-      <div className="mb-5 text-center">
-        <h1 className="text-lg font-semibold text-foreground">Sign in to your workspace</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Enter your email and password to continue.</p>
-        {branding && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            Signing in to <span className="font-medium text-foreground">{branding.name}</span>
-          </p>
-        )}
+      <div className="mb-7">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Sign in</h1>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          {branding ? (
+            <>
+              Welcome back to <span className="font-medium text-foreground">{branding.name}</span>. Enter your details to continue.
+            </>
+          ) : (
+            "Enter your work email and password to continue."
+          )}
+        </p>
       </div>
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div className="space-y-1.5">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">Work email</Label>
           <Input
             id="email"
             type="email"
@@ -67,25 +71,33 @@ export function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
+            className="h-10"
             required
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="password">Password</Label>
-          <PasswordInput id="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password">Password</Label>
+            <Link to="/forgot-password" className="text-brand-link text-xs font-medium underline-offset-4 hover:underline">
+              Forgot password?
+            </Link>
+          </div>
+          <PasswordInput
+            id="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            className="h-10"
+            required
+          />
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
-        <Button type="submit" className="w-full" disabled={isLoading}>
+        <Button type="submit" size="lg" className="h-10 w-full" disabled={isLoading}>
           {isLoading && <Loader2 className="size-4 animate-spin" />}
           Sign in
         </Button>
       </form>
-      <p className="mt-4 text-center text-xs text-muted-foreground">
-        Forgot your password?{" "}
-        <span className="cursor-pointer font-medium text-primary hover:underline" onClick={() => navigate("/forgot-password")}>
-          Reset it
-        </span>
-      </p>
-    </AuthLayout>
+    </BrandedAuthCard>
   );
-}
+}
