@@ -201,7 +201,7 @@ export function PlatformDashboardPage() {
                     <tr key={o.id}>
                       <td className="py-3 pr-3">
                         <Link to={`/platform/orgs/${o.id}`} className="group flex min-w-0 items-center gap-2.5">
-                          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-[10px] font-bold text-brand-link">
+                          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground/75 text-[10px] font-bold">
                             {getInitials(o.name)}
                           </span>
                           <span className="min-w-0">

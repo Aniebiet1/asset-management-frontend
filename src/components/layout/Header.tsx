@@ -129,7 +129,7 @@ export function Header({ onOpenCommandPalette, onOpenMobileMenu }: HeaderProps) 
                 type="button"
                 className="ml-1 flex items-center gap-2.5 rounded-full p-0.5 transition-colors hover:bg-tb-hover sm:pr-2.5"
               >
-                <span className="flex size-9 items-center justify-center rounded-full bg-gradient-brand text-xs font-semibold text-primary-foreground">
+                <span className="flex size-9 items-center justify-center rounded-full bg-frame text-xs font-semibold text-frame-foreground max-lg:bg-frame-active">
                   {currentUser ? getInitials(currentUser.name) : "?"}
                 </span>
                 <span className="hidden min-w-0 flex-col text-left leading-tight md:flex">

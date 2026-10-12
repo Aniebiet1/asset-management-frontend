@@ -620,7 +620,7 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
                     }}
                     className={cn(
                       "rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 transition-colors ring-inset",
-                      isActive ? "bg-primary/12 text-brand-link ring-primary/30" : "text-muted-foreground ring-border hover:text-foreground"
+                      isActive ? "bg-foreground/[0.08] text-foreground ring-foreground/20" : "text-muted-foreground ring-border hover:text-foreground"
                     )}
                   >
                     {preset.label}

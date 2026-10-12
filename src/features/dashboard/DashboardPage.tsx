@@ -174,7 +174,7 @@ export function DashboardPage() {
             <ul className="-mx-2 space-y-0.5">
               {activity.slice(0, ACTIVITY_LIMIT).map((entry) => (
                 <li key={entry.id} className="flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-muted/60">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/12 text-[11px] font-semibold text-brand-link">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-foreground/75 text-[11px] font-semibold">
                     {getInitials(entry.userName ?? "?")}
                   </span>
                   <div className="min-w-0 flex-1">

@@ -211,7 +211,7 @@ function AssetCell({ id, name, tag }: { id: string; name: string; tag: string })
 function PersonCell({ name, compact = false }: { name: string; compact?: boolean }) {
   return (
     <span className="flex min-w-0 items-center gap-2">
-      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/12 text-[10px] font-semibold text-brand-link">
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-foreground/75 text-[10px] font-semibold">
         {getInitials(name)}
       </span>
       <span className={compact ? "max-w-24 truncate text-xs text-muted-foreground" : "truncate text-foreground"}>{name}</span>

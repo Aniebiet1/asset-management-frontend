@@ -585,7 +585,7 @@ export function CheckInOutPage() {
                   </div>
 
                   <div className="flex min-w-0 items-center gap-2 text-[13px]">
-                    <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/12 text-[10px] font-semibold text-brand-link">
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-foreground/75 text-[10px] font-semibold">
                       {getInitials(personName)}
                     </span>
                     <div className="min-w-0">

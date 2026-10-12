@@ -33,7 +33,7 @@ export function ViewAllLink({ to, label = "View all" }: { to: string; label?: st
   return (
     <Link
       to={to}
-      className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-primary px-3.5 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/20 transition-opacity hover:opacity-90"
+      className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-muted px-3.5 text-xs font-semibold text-foreground ring-1 ring-foreground/[0.06] transition-colors ring-inset hover:bg-foreground/[0.08]"
     >
       {label}
     </Link>
@@ -43,7 +43,9 @@ export function ViewAllLink({ to, label = "View all" }: { to: string; label?: st
 type Tone = "brand" | "warning" | "critical" | "neutral";
 
 const TONE_CLASSES: Record<Tone, string> = {
-  brand: "bg-primary/12 text-brand-link",
+  // "brand" is the default tile: neutral on purpose, so the brand color stays on the frame and
+  // primary actions instead of tinting every icon on the page.
+  brand: "bg-muted text-foreground/75",
   warning: "bg-amber-500/12 text-amber-600 dark:text-amber-400",
   critical: "bg-rose-500/12 text-rose-600 dark:text-rose-400",
   neutral: "bg-muted text-muted-foreground",
@@ -153,7 +155,7 @@ export function SegmentedControl<T extends string>({
                 <span
                   className={cn(
                     "rounded-full px-1.5 text-[10px] font-semibold tabular-nums",
-                    isActive ? "bg-primary/12 text-brand-link" : "bg-foreground/[0.06]"
+                    isActive ? "bg-foreground/[0.08] text-foreground" : "bg-foreground/[0.06]"
                   )}
                 >
                   {option.count}
@@ -170,7 +172,7 @@ export function SegmentedControl<T extends string>({
 /** Thin progress meter with its percentage beside it. */
 export function Meter({ percent, tone = "brand", label }: { percent: number; tone?: "brand" | "critical" | "warning"; label?: string }) {
   const clamped = Math.max(0, Math.min(100, percent));
-  const fill = tone === "critical" ? "bg-rose-500" : tone === "warning" ? "bg-amber-500" : "bg-primary";
+  const fill = tone === "critical" ? "bg-rose-500" : tone === "warning" ? "bg-amber-500" : "bg-(--viz-series)";
   return (
     <div className="flex items-center gap-2.5">
       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">

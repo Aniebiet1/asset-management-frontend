@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiFetch } from "@/lib/api-client";
@@ -56,7 +57,10 @@ export function BrandingForm({
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [primaryColor, setPrimaryColor] = useState(org.primaryColor);
   const [accentColor, setAccentColor] = useState(org.accentColor ?? "#7c3aed");
-  const [sidebarColor, setSidebarColor] = useState(org.sidebarColor ?? "");
+  // Off by default: the sidebar is a deep shade of the primary color. A custom color is an
+  // explicit opt-in, and switching back clears it (sends null) instead of leaving it saved.
+  const [customSidebar, setCustomSidebar] = useState(!!org.sidebarColor);
+  const [sidebarColor, setSidebarColor] = useState(org.sidebarColor ?? "#1f2937");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -74,6 +78,10 @@ export function BrandingForm({
   const handleSidebarChange = (v: string) => {
     setSidebarColor(v);
     applyOrgTheme({ sidebarColor: v });
+  };
+  const handleCustomSidebarToggle = (followsPrimary: boolean) => {
+    setCustomSidebar(!followsPrimary);
+    applyOrgTheme({ sidebarColor: followsPrimary ? null : sidebarColor });
   };
 
   const handleLogoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -117,7 +125,7 @@ export function BrandingForm({
     try {
       await apiFetch("/organizations/me/theme", {
         method: "PATCH",
-        body: JSON.stringify({ primaryColor, accentColor, sidebarColor: sidebarColor || undefined }),
+        body: JSON.stringify({ primaryColor, accentColor, sidebarColor: customSidebar ? sidebarColor : null }),
       });
       await refetchOrg();
       await onSaved();
@@ -156,20 +164,35 @@ export function BrandingForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <ColorField label="Primary color" value={primaryColor} onChange={handlePrimaryChange} />
         <ColorField label="Accent color" value={accentColor} onChange={handleAccentChange} />
-        <ColorField label="Sidebar color (optional)" value={sidebarColor || "#111113"} onChange={handleSidebarChange} />
+      </div>
+
+      <div className="space-y-3 rounded-lg border border-border p-3">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <Label htmlFor="sidebar-follows-primary" className="text-sm font-medium text-foreground">
+              Sidebar uses the primary color
+            </Label>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Recommended. The sidebar becomes a deep shade of your primary color, the way the rest of the app is designed.
+            </p>
+          </div>
+          <Switch id="sidebar-follows-primary" checked={!customSidebar} onCheckedChange={handleCustomSidebarToggle} />
+        </div>
+        {customSidebar && <ColorField label="Custom sidebar color" value={sidebarColor} onChange={handleSidebarChange} />}
       </div>
 
       <div className="rounded-lg border border-border bg-muted/20 p-3">
         <p className="mb-2 text-[11px] font-medium text-muted-foreground">Live preview</p>
-        <div className="flex items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar p-3">
-          <div className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-bold">
+        <div className="flex items-center gap-3 rounded-xl bg-frame p-3">
+          <div className="flex size-8 items-center justify-center rounded-lg bg-white text-xs font-bold text-neutral-900">
             {getInitials(org.name)}
           </div>
-          <span className="text-sm font-medium text-sidebar-foreground">{org.name}</span>
-          <Button type="button" size="sm" className="ml-auto h-7">
+          <span className="text-sm font-medium text-frame-foreground">{org.name}</span>
+          <span className="ml-auto hidden rounded-lg bg-frame-hover px-2.5 py-1 text-xs text-frame-foreground sm:inline">Dashboard</span>
+          <Button type="button" size="sm" className="h-7">
             Button
           </Button>
         </div>

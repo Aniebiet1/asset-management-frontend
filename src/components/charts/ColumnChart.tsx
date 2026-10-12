@@ -26,8 +26,8 @@ interface ValuePillProps {
 }
 
 /**
- * Single-series column chart. Every column is a soft tint of the brand except the focused one
- * (the latest period, or whichever the pointer is over), which goes full brand color and carries
+ * Single-series column chart. Every column is a soft tint of the series color except the focused
+ * one (the latest period, or whichever the pointer is over), which goes full strength and carries
  * its value in a pill above it. That focus is the hover readout, so there is no floating tooltip
  * box covering the columns.
  */
@@ -76,7 +76,7 @@ export function ColumnChart({ data, seriesName, height = 240 }: ColumnChartProps
           <Tooltip cursor={{ fill: "var(--viz-grid)", radius: 8 }} content={() => null} />
           <Bar dataKey="value" name={seriesName} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false}>
             {data.map((d, i) => (
-              <Cell key={d.key} fill={i === focusIndex ? "var(--primary)" : "var(--viz-bar-soft)"} className="transition-[fill] duration-150" />
+              <Cell key={d.key} fill={i === focusIndex ? "var(--viz-series)" : "var(--viz-bar-soft)"} className="transition-[fill] duration-150" />
             ))}
             <LabelList dataKey="value" content={renderValuePill} />
           </Bar>

@@ -84,19 +84,23 @@
     --frame-c: 0.1;
     --tint-c: 0.014;
 
-    /* Shell surfaces: the deep frame/sidebar, the tinted canvas the cards sit on, and the frame's
-       text. Light and dark each pick their own steps; the derived tokens further down resolve
-       against whichever set is active. */
-    --canvas: oklch(0.972 var(--tint-c) var(--brand-h));
+    /* Shell surfaces: the deep frame/sidebar (the one place the brand hue shows at scale), a
+       neutral cool canvas the cards sit on, and the frame's text. The canvas deliberately does not
+       follow the brand: a red or orange brand tinted it pink/peach, and the reference look is a
+       calm light grey with white cards. Light and dark each pick their own steps; the derived
+       tokens further down resolve against whichever set is active. */
+    --canvas: oklch(0.972 0.005 255);
     --frame: oklch(0.255 var(--frame-c) var(--brand-h));
     --frame-foreground: oklch(0.985 0.004 var(--brand-h));
     --frame-brand: oklch(0.84 min(var(--brand-c), 0.13) var(--brand-h));
-    --card-shadow: 0 1px 2px oklch(0.3 0.04 var(--brand-h) / 0.05), 0 10px 28px -14px oklch(0.3 0.06 var(--brand-h) / 0.2);
+    --card-shadow: 0 1px 2px oklch(0.3 0.02 255 / 0.05), 0 10px 28px -14px oklch(0.3 0.03 255 / 0.18);
 
     /* Chart marks. Status hues are fixed (validated categorical steps), never the brand, so a red
-       brand's charts don't read as errors; brand is reserved for single-series bars. */
+       brand's charts don't read as errors. Single-series bars and progress meters use a calm
+       fixed blue too (--viz-series): the brand is kept for the frame and primary actions. */
     --viz-grid: color-mix(in oklab, var(--foreground) 7%, transparent);
-    --viz-bar-soft: color-mix(in oklab, var(--primary) 26%, var(--card));
+    --viz-series: var(--viz-blue);
+    --viz-bar-soft: color-mix(in oklab, var(--viz-series) 26%, var(--card));
     --viz-blue: #2a78d6;
     --viz-aqua: #1baf7a;
     --viz-yellow: #eda100;
@@ -142,13 +146,13 @@
     --org-primary: #3b82f6;
     --org-accent: #a78bfa;
 
-    --canvas: oklch(0.158 var(--tint-c) var(--brand-h));
+    --canvas: oklch(0.158 0.006 255);
     --frame: oklch(0.12 min(var(--frame-c), 0.035) var(--brand-h));
     --frame-foreground: oklch(0.97 0.004 var(--brand-h));
     --frame-brand: oklch(0.8 min(var(--brand-c), 0.13) var(--brand-h));
     --card-shadow: 0 1px 2px oklch(0 0 0 / 0.35), 0 12px 28px -16px oklch(0 0 0 / 0.6);
 
-    --viz-bar-soft: color-mix(in oklab, var(--primary) 40%, var(--card));
+    --viz-bar-soft: color-mix(in oklab, var(--viz-series) 40%, var(--card));
     --viz-blue: #3987e5;
     --viz-aqua: #199e70;
     --viz-yellow: #c98500;
@@ -158,9 +162,9 @@
 
     --background: oklch(0.13 0 0);
     --foreground: oklch(0.97 0 0);
-    --card: oklch(0.198 var(--tint-c) var(--brand-h));
+    --card: oklch(0.198 0.006 255);
     --card-foreground: oklch(0.97 0 0);
-    --popover: oklch(0.215 var(--tint-c) var(--brand-h));
+    --popover: oklch(0.215 0.006 255);
     --popover-foreground: oklch(0.97 0 0);
     /* A brand too dark to read on dark surfaces (navy, near-black) gets a lifted variant from
        applyOrgTheme; brands already light enough leave --org-primary-dark unset and pass through. */

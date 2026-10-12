@@ -61,7 +61,7 @@ export function brandSurfaceParams(hex: string): { hue: number; chroma: number; 
   if (!lch) return null;
   const isNearGray = lch.c < 0.04;
   const isMuddyWhenDark = lch.h >= 55 && lch.h <= 135;
-  const frameChroma = isNearGray ? lch.c * 0.5 : isMuddyWhenDark ? 0.022 : Math.min(lch.c * 0.55, 0.1);
+  const frameChroma = isNearGray ? lch.c * 0.5 : isMuddyWhenDark ? 0.022 : Math.min(lch.c * 0.55, 0.085);
   const tintChroma = isNearGray ? lch.c * 0.3 : Math.min(lch.c * 0.1, 0.014);
   return { hue: lch.h, chroma: Math.min(lch.c, 0.2), frameChroma, tintChroma };
 }

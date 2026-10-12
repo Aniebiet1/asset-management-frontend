@@ -14,7 +14,7 @@ interface RankedBarsProps {
 /**
  * Horizontal bars ranked largest first, drawn as plain HTML: the category name sits above its bar,
  * so long names never collide with an axis and the layout is identical on a phone. Single series,
- * so every bar is the brand color and the value is printed at the end of the row.
+ * so every bar is the series color and the value is printed at the end of the row.
  */
 export function RankedBars({ data, maxRows = 6, emptyText = "Nothing to show yet." }: RankedBarsProps) {
   const sorted = [...data].filter((d) => d.value > 0).sort((a, b) => b.value - a.value);
@@ -45,7 +45,7 @@ export function RankedBars({ data, maxRows = 6, emptyText = "Nothing to show yet
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-muted">
               <div
-                className={row.key === "__other" ? "h-full rounded-full bg-muted-foreground/40" : "h-full rounded-full bg-primary"}
+                className={row.key === "__other" ? "h-full rounded-full bg-muted-foreground/40" : "h-full rounded-full bg-(--viz-series)"}
                 style={{ width: `${Math.max(2, (row.value / max) * 100)}%` }}
               />
             </div>
