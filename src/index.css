@@ -6,6 +6,26 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+    --color-canvas: var(--canvas);
+    --color-frame: var(--frame);
+    --color-frame-foreground: var(--frame-foreground);
+    --color-frame-muted: var(--frame-muted);
+    --color-frame-hover: var(--frame-hover);
+    --color-frame-brand: var(--frame-brand);
+    --color-nav: var(--nav-bg);
+    --color-nav-foreground: var(--nav-fg);
+    --color-nav-muted: var(--nav-muted);
+    --color-nav-hover: var(--nav-hover);
+    --color-nav-active: var(--nav-active-bg);
+    --color-nav-active-foreground: var(--nav-active-fg);
+    --color-nav-active-icon: var(--nav-active-icon);
+    --color-nav-divider: var(--nav-divider);
+    --color-tb: var(--tb-bg);
+    --color-tb-foreground: var(--tb-fg);
+    --color-tb-muted: var(--tb-muted);
+    --color-tb-hover: var(--tb-hover);
+    --color-tb-field: var(--tb-field);
+    --color-tb-field-border: var(--tb-field-border);
     --font-heading: var(--font-sans);
     --font-sans: 'Geist Variable', sans-serif;
     --color-sidebar-ring: var(--sidebar-ring);
@@ -56,6 +76,34 @@
     --org-primary: #2563eb;
     --org-accent: #7c3aed;
 
+    /* Brand hue/chroma as plain numbers, so surfaces can keep the brand's hue at a lightness we
+       choose. applyOrgTheme overwrites all four from the org's primary color (see
+       brandSurfaceParams in lib/color.ts for the chroma caps); these defaults match #2563eb. */
+    --brand-h: 262.9;
+    --brand-c: 0.2;
+    --frame-c: 0.1;
+    --tint-c: 0.014;
+
+    /* Shell surfaces: the deep frame/sidebar, the tinted canvas the cards sit on, and the frame's
+       text. Light and dark each pick their own steps; the derived tokens further down resolve
+       against whichever set is active. */
+    --canvas: oklch(0.972 var(--tint-c) var(--brand-h));
+    --frame: oklch(0.255 var(--frame-c) var(--brand-h));
+    --frame-foreground: oklch(0.985 0.004 var(--brand-h));
+    --frame-brand: oklch(0.84 min(var(--brand-c), 0.13) var(--brand-h));
+    --card-shadow: 0 1px 2px oklch(0.3 0.04 var(--brand-h) / 0.05), 0 10px 28px -14px oklch(0.3 0.06 var(--brand-h) / 0.2);
+
+    /* Chart marks. Status hues are fixed (validated categorical steps), never the brand, so a red
+       brand's charts don't read as errors; brand is reserved for single-series bars. */
+    --viz-grid: color-mix(in oklab, var(--foreground) 7%, transparent);
+    --viz-bar-soft: color-mix(in oklab, var(--primary) 26%, var(--card));
+    --viz-blue: #2a78d6;
+    --viz-aqua: #1baf7a;
+    --viz-yellow: #eda100;
+    --viz-violet: #6250d6;
+    --viz-red: #e34948;
+    --viz-gray: oklch(0.72 0 0);
+
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);
     --card: oklch(1 0 0);
@@ -63,7 +111,7 @@
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.145 0 0);
     --primary: var(--org-primary);
-    --primary-foreground: oklch(0.985 0 0);
+    --primary-foreground: var(--org-primary-fg, oklch(0.985 0 0));
     --secondary: oklch(0.97 0 0);
     --secondary-foreground: oklch(0.205 0 0);
     --muted: oklch(0.97 0 0);
@@ -79,11 +127,11 @@
     --chart-3: oklch(0.7 0.15 160);
     --chart-4: oklch(0.75 0.15 70);
     --chart-5: oklch(0.6 0.2 25);
-    --radius: 0.625rem;
+    --radius: 0.75rem;
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
     --sidebar-primary: var(--org-primary);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-primary-foreground: var(--org-primary-fg, oklch(0.985 0 0));
     --sidebar-accent: oklch(0.97 0 0);
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
@@ -94,33 +142,49 @@
     --org-primary: #3b82f6;
     --org-accent: #a78bfa;
 
+    --canvas: oklch(0.158 var(--tint-c) var(--brand-h));
+    --frame: oklch(0.12 min(var(--frame-c), 0.035) var(--brand-h));
+    --frame-foreground: oklch(0.97 0.004 var(--brand-h));
+    --frame-brand: oklch(0.8 min(var(--brand-c), 0.13) var(--brand-h));
+    --card-shadow: 0 1px 2px oklch(0 0 0 / 0.35), 0 12px 28px -16px oklch(0 0 0 / 0.6);
+
+    --viz-bar-soft: color-mix(in oklab, var(--primary) 40%, var(--card));
+    --viz-blue: #3987e5;
+    --viz-aqua: #199e70;
+    --viz-yellow: #c98500;
+    --viz-violet: #9085e9;
+    --viz-red: #e66767;
+    --viz-gray: oklch(0.5 0 0);
+
     --background: oklch(0.13 0 0);
     --foreground: oklch(0.97 0 0);
-    --card: oklch(0.17 0 0);
+    --card: oklch(0.198 var(--tint-c) var(--brand-h));
     --card-foreground: oklch(0.97 0 0);
-    --popover: oklch(0.18 0 0);
+    --popover: oklch(0.215 var(--tint-c) var(--brand-h));
     --popover-foreground: oklch(0.97 0 0);
-    --primary: var(--org-primary);
-    --primary-foreground: oklch(0.99 0 0);
-    --secondary: oklch(0.22 0 0);
+    /* A brand too dark to read on dark surfaces (navy, near-black) gets a lifted variant from
+       applyOrgTheme; brands already light enough leave --org-primary-dark unset and pass through. */
+    --primary: var(--org-primary-dark, var(--org-primary));
+    --primary-foreground: var(--org-primary-dark-fg, var(--org-primary-fg, oklch(0.99 0 0)));
+    --secondary: oklch(0.245 0 0);
     --secondary-foreground: oklch(0.97 0 0);
-    --muted: oklch(0.22 0 0);
-    --muted-foreground: oklch(0.65 0 0);
-    --accent: oklch(0.24 0 0);
+    --muted: oklch(0.245 0 0);
+    --muted-foreground: oklch(0.67 0 0);
+    --accent: oklch(0.26 0 0);
     --accent-foreground: oklch(0.97 0 0);
     --destructive: oklch(0.704 0.191 22.216);
     --border: oklch(1 0 0 / 9%);
     --input: oklch(1 0 0 / 12%);
-    --ring: var(--org-primary);
-    --chart-1: var(--org-primary);
+    --ring: var(--primary);
+    --chart-1: var(--primary);
     --chart-2: var(--org-accent);
     --chart-3: oklch(0.75 0.15 160);
     --chart-4: oklch(0.8 0.15 70);
     --chart-5: oklch(0.65 0.2 25);
     --sidebar: oklch(0.11 0 0);
     --sidebar-foreground: oklch(0.97 0 0);
-    --sidebar-primary: var(--org-primary);
-    --sidebar-primary-foreground: oklch(0.99 0 0);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
     --sidebar-accent: oklch(0.2 0 0);
     --sidebar-accent-foreground: oklch(0.97 0 0);
     --sidebar-border: oklch(1 0 0 / 8%);
@@ -140,6 +204,84 @@
     }
 }
 
+/* Derived from the active mode's --frame/--frame-foreground, so an org's explicit sidebarColor
+   (set inline by applyOrgTheme) re-derives these too, whatever its lightness. */
+:root {
+  --frame-muted: color-mix(in oklab, var(--frame-foreground) 62%, var(--frame));
+  --frame-hover: color-mix(in oklab, var(--frame-foreground) 8%, var(--frame));
+  --frame-active: color-mix(in oklab, var(--frame-foreground) 13%, var(--frame));
+  --frame-divider: color-mix(in oklab, var(--frame-foreground) 10%, var(--frame));
+}
+
+/* Shell navigation (sidebar, mobile drawer, bottom dock): it all sits on the deep brand frame. */
+.shell-nav {
+  --nav-bg: var(--frame);
+  --nav-fg: var(--frame-foreground);
+  --nav-muted: var(--frame-muted);
+  --nav-hover: var(--frame-hover);
+  --nav-active-bg: var(--frame-active);
+  --nav-active-fg: var(--frame-foreground);
+  --nav-active-icon: var(--frame-brand);
+  --nav-divider: var(--frame-divider);
+}
+
+/* Top bar: translucent canvas on desktop; on phones it becomes the frame color, so the brand
+   still leads the screen when the sidebar is gone. */
+.shell-topbar {
+  --tb-bg: color-mix(in oklab, var(--canvas) 84%, transparent);
+  --tb-fg: var(--foreground);
+  --tb-muted: var(--muted-foreground);
+  --tb-hover: color-mix(in oklab, var(--foreground) 7%, transparent);
+  --tb-field: var(--card);
+  --tb-field-border: color-mix(in oklab, var(--foreground) 9%, transparent);
+}
+@media (width < 64rem) {
+  .shell-topbar {
+    --tb-bg: var(--frame);
+    --tb-fg: var(--frame-foreground);
+    --tb-muted: var(--frame-muted);
+    --tb-hover: var(--frame-hover);
+    --tb-field: var(--frame-hover);
+    --tb-field-border: transparent;
+  }
+}
+
+/* Every card inside the app shell floats on the canvas with a soft, brand-tinted shadow instead
+   of relying on its ring alone. Sets Tailwind's own --tw-shadow, which the card's ring-1 utility
+   already composes into its box-shadow, so the ring stays and a page can still override both. */
+@layer components {
+  .app-canvas [data-slot="card"] {
+    --tw-shadow: var(--card-shadow);
+  }
+}
+
+/* Tables inside the shell: a quiet tinted header row with small muted labels, and a little more
+   room at the row ends so content doesn't hug the card edge. Unlayered on purpose, to win over
+   the table primitive's own utilities (text-foreground, h-10) without editing a CLI-managed file. */
+.app-canvas [data-slot="table-header"] [data-slot="table-row"] {
+  background-color: color-mix(in oklab, var(--muted) 60%, transparent);
+}
+.app-canvas [data-slot="table-head"] {
+  height: 2.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+.app-canvas [data-slot="table-head"]:first-child,
+.app-canvas [data-slot="table-cell"]:first-child {
+  padding-left: 1rem;
+}
+.app-canvas [data-slot="table-head"]:last-child,
+.app-canvas [data-slot="table-cell"]:last-child {
+  padding-right: 1rem;
+}
+
+/* Form fields sit on a solid surface rather than showing the tinted canvas through, so filter
+   bars outside a card read as controls. */
+.app-canvas :is([data-slot="input"], [data-slot="select-trigger"], [data-slot="textarea"]) {
+  background-color: var(--card);
+}
+
 /* Brand gradient utilities — built from --org-primary/--org-accent only, per the theming rules
    above, so they stay on-brand for every tenant instead of hardcoding Tecres's own blue. */
 .bg-brand-hero {
@@ -155,7 +297,7 @@
   color: transparent;
 }
 .bg-gradient-brand {
-  background-image: linear-gradient(135deg, var(--org-primary), var(--org-accent));
+  background-image: linear-gradient(135deg, var(--primary), var(--org-accent));
 }
 
 /* Tenant login card (BrandedAuthCard). Same rule as above: everything is derived from

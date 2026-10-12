@@ -2,11 +2,11 @@ import { statusColorMap, conditionColorMap, auditStatusColorMap, auditItemStatus
 import { cn } from "cn";
 
 function Dot({ visual, status, className }: { visual: Record<string, StatusVisual>; status: string; className?: string }) {
-  const info = visual[status] ?? { bg: "bg-muted", text: "text-muted-foreground", border: "border-border", label: status };
+  const info = visual[status] ?? { bg: "bg-muted", text: "text-muted-foreground", border: "ring-border", label: status };
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium",
+        "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ring-1 ring-inset",
         info.bg,
         info.text,
         info.border,

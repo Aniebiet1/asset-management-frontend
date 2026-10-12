@@ -1,71 +1,31 @@
-import { NavLink } from "react-router-dom";
-import {
-  LayoutDashboard,
-  Box,
-  ArrowLeftRight,
-  Wrench,
-  ClipboardCheck,
-  Users,
-  Building2,
-  BarChart3,
-  Tags,
-  Settings,
-} from "lucide-react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Logo } from "@/components/brand/Logo";
-import { hasPermission } from "@/lib/permissions";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { roleLabelMap } from "@/lib/status";
 import { useAuthStore } from "@/store/auth.store";
-import { cn } from "cn";
-
-const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard, end: true },
-  { name: "All Assets", href: "/assets", icon: Box },
-  { name: "Check-Out / Return", href: "/check-in-out", icon: ArrowLeftRight },
-  { name: "Maintenance", href: "/maintenance", icon: Wrench },
-  { name: "Audits", href: "/audits", icon: ClipboardCheck },
-  { name: "People", href: "/people", icon: Users, permission: "canManagePeople" },
-  { name: "Vendors", href: "/vendors", icon: Building2 },
-  { name: "Reports", href: "/reports", icon: BarChart3 },
-  { name: "Labels", href: "/labels", icon: Tags },
-  { name: "Settings", href: "/settings", icon: Settings },
-] as const;
+import { NavSheetBody } from "./shell/NavSheetBody";
+import { BrandMark } from "./shell/BrandMark";
+import { SETTINGS_ITEM, canSeeSettings, tenantNavSections } from "./tenantNav";
 
 export function MobileDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const org = useAuthStore((s) => s.org);
   const currentUser = useAuthStore((s) => s.currentUser);
+  const sections = tenantNavSections(currentUser?.role);
+  if (canSeeSettings(currentUser?.role)) sections.push({ label: "Workspace", items: [SETTINGS_ITEM] });
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="left" className="w-72 p-0">
-        <SheetHeader className="border-b border-border px-4 py-3">
-          <SheetTitle asChild>
-            <Logo logoUrl={org?.logoUrl} orgName={org?.name} />
-          </SheetTitle>
+      <SheetContent side="left" className="shell-nav w-[min(20rem,85vw)] gap-0 border-0 bg-nav p-0 text-nav-foreground">
+        <SheetHeader className="border-b border-nav-divider px-4 py-4">
+          <div className="flex items-center gap-3">
+            <BrandMark logoUrl={org?.logoUrl} name={org?.name ?? "Workspace"} />
+            <div className="min-w-0">
+              <SheetTitle className="truncate text-sm font-semibold text-nav-foreground">{org?.name ?? "Workspace"}</SheetTitle>
+              <SheetDescription className="truncate text-[11px] text-nav-muted">
+                {currentUser ? `${currentUser.name}, ${roleLabelMap[currentUser.role]}` : "Asset workspace"}
+              </SheetDescription>
+            </div>
+          </div>
         </SheetHeader>
-        <nav className="flex flex-col gap-0.5 p-2">
-          {navigation
-            .filter((item) => !("permission" in item) || hasPermission(currentUser?.role, item.permission))
-            .map((item) => {
-            const Icon = item.icon;
-            return (
-              <NavLink
-                key={item.name}
-                to={item.href}
-                end={"end" in item ? item.end : false}
-                onClick={onClose}
-                className={({ isActive }) =>
-                  cn(
-                    "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                    isActive ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-                  )
-                }
-              >
-                <Icon className="size-4" />
-                {item.name}
-              </NavLink>
-            );
-          })}
-        </nav>
+        <NavSheetBody sections={sections} onNavigate={onClose} />
       </SheetContent>
     </Sheet>
   );

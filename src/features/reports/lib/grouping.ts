@@ -20,12 +20,12 @@ export function depreciationBucketLabel(percentDepreciated: number): Depreciatio
 export function depreciationBucketBadgeClass(percentDepreciated: number): string {
   switch (depreciationBucketLabel(percentDepreciated)) {
     case "0-25%":
-      return "border-emerald-500/20 bg-emerald-500/10 text-emerald-400";
+      return "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
     case "25-50%":
-      return "border-blue-500/20 bg-blue-500/10 text-blue-400";
+      return "border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400";
     case "50-75%":
-      return "border-amber-500/20 bg-amber-500/10 text-amber-400";
+      return "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400";
     case "75-100%+":
-      return "border-rose-500/20 bg-rose-500/10 text-rose-400";
+      return "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400";
   }
 }

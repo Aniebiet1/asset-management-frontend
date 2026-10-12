@@ -48,11 +48,11 @@ import {
 import type { ActivityLogEntry, PersonInvite, User, UserRole } from "@/types";
 
 const LOGIN_ACTIVITY_VISUALS: Record<string, { label: string; icon: typeof CheckCircle2; className: string }> = {
-  login_success: { label: "Signed in successfully", icon: CheckCircle2, className: "text-emerald-400" },
-  login_failed: { label: "Failed sign-in attempt", icon: XCircle, className: "text-amber-400" },
-  login_failed_lockout: { label: "Failed sign-in, account locked", icon: Lock, className: "text-rose-400" },
-  login_blocked_locked: { label: "Sign-in blocked, account was locked", icon: Lock, className: "text-rose-400" },
-  totp_challenge_failed: { label: "Incorrect authentication code", icon: ShieldAlert, className: "text-amber-400" },
+  login_success: { label: "Signed in successfully", icon: CheckCircle2, className: "text-emerald-600 dark:text-emerald-400" },
+  login_failed: { label: "Failed sign-in attempt", icon: XCircle, className: "text-amber-600 dark:text-amber-400" },
+  login_failed_lockout: { label: "Failed sign-in, account locked", icon: Lock, className: "text-rose-600 dark:text-rose-400" },
+  login_blocked_locked: { label: "Sign-in blocked, account was locked", icon: Lock, className: "text-rose-600 dark:text-rose-400" },
+  totp_challenge_failed: { label: "Incorrect authentication code", icon: ShieldAlert, className: "text-amber-600 dark:text-amber-400" },
 };
 
 function LastSignIn({ person, onView }: { person: User; onView?: () => void }) {
@@ -61,7 +61,7 @@ function LastSignIn({ person, onView }: { person: User; onView?: () => void }) {
   const content = (
     <>
       {isLocked ? (
-        <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/20 bg-rose-500/10 px-2 py-0.5 text-[11px] font-medium text-rose-400">
+        <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/20 bg-rose-500/10 px-2 py-0.5 text-[11px] font-medium text-rose-600 dark:text-rose-400">
           <Lock className="size-3" />
           Locked
         </span>
@@ -73,7 +73,7 @@ function LastSignIn({ person, onView }: { person: User; onView?: () => void }) {
         <span className={cn("text-sm text-muted-foreground", onView && "group-hover:underline")}>Never signed in</span>
       )}
       {!isLocked && person.failedLoginAttempts > 0 && (
-        <span className="text-[11px] font-medium text-amber-400">{person.failedLoginAttempts} recent failed attempt(s)</span>
+        <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400">{person.failedLoginAttempts} recent failed attempt(s)</span>
       )}
     </>
   );
@@ -305,7 +305,7 @@ export function PeoplePage() {
                       {u.departmentId ? (departmentMap.get(u.departmentId) ?? "-") : "-"}
                     </TableCell>
                     <TableCell>
-                      <span className={"text-xs font-medium " + (u.isActive ? "text-emerald-400" : "text-muted-foreground")}>
+                      <span className={"text-xs font-medium " + (u.isActive ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
                         {u.isActive ? "Active" : "Inactive"}
                       </span>
                     </TableCell>
@@ -357,7 +357,7 @@ export function PeoplePage() {
                     <span
                       className={cn(
                         "shrink-0 text-xs font-medium",
-                        u.isActive ? "text-emerald-400" : "text-muted-foreground"
+                        u.isActive ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
                       )}
                     >
                       {u.isActive ? "Active" : "Inactive"}
@@ -448,7 +448,7 @@ export function PeoplePage() {
                         <TableCell className="text-sm text-muted-foreground">{invite.invitedByName ?? "-"}</TableCell>
                         <TableCell className="text-xs">
                           {isExpired ? (
-                            <span className="text-rose-400">Expired {formatDateTime(invite.expiresAt)}</span>
+                            <span className="text-rose-600 dark:text-rose-400">Expired {formatDateTime(invite.expiresAt)}</span>
                           ) : (
                             <span className="text-muted-foreground">{formatDateTime(invite.expiresAt)}</span>
                           )}

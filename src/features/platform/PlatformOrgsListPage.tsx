@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/components/common/PageHeader";
+import { Meter } from "@/components/common/DashboardCard";
 import { PlanStatusBadge } from "@/components/common/StatusBadge";
 import { BrandedLoader } from "@/components/brand/BrandedLoader";
 import { useFleetAnalyticsQuery, useOrgsQuery } from "./api";
@@ -83,11 +84,11 @@ export function PlatformOrgsListPage() {
                     <TableCell>
                       <PlanStatusBadge status={org.planStatus} />
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {org.userCount} / {org.userQuota}
+                    <TableCell className="w-[22%]">
+                      <QuotaCell used={org.userCount} quota={org.userQuota} />
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {org.assetCount} / {org.assetQuota}
+                    <TableCell className="w-[22%]">
+                      <QuotaCell used={org.assetCount} quota={org.assetQuota} />
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {org.lastActivityAt ? new Date(org.lastActivityAt).toLocaleDateString() : "-"}
@@ -111,13 +112,15 @@ export function PlatformOrgsListPage() {
                       </div>
                       <PlanStatusBadge status={org.planStatus} className="shrink-0" />
                     </div>
-                    <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-                      <span>
-                        Users {org.userCount}/{org.userQuota}
-                      </span>
-                      <span>
-                        Assets {org.assetCount}/{org.assetQuota}
-                      </span>
+                    <div className="mt-3 grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="mb-1 text-[11px] text-muted-foreground">Users</p>
+                        <QuotaCell used={org.userCount} quota={org.userQuota} />
+                      </div>
+                      <div>
+                        <p className="mb-1 text-[11px] text-muted-foreground">Assets</p>
+                        <QuotaCell used={org.assetCount} quota={org.assetQuota} />
+                      </div>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
                       Last activity {org.lastActivityAt ? new Date(org.lastActivityAt).toLocaleDateString() : "-"}
@@ -135,6 +138,19 @@ export function PlatformOrgsListPage() {
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+/** "used / quota" over a meter that turns amber at 75% and red at 90%, matching the dashboard. */
+function QuotaCell({ used, quota }: { used: number; quota: number }) {
+  const percent = quota > 0 ? (used / quota) * 100 : 0;
+  return (
+    <div className="min-w-0">
+      <p className="mb-1 text-xs text-muted-foreground tabular-nums">
+        <span className="font-medium text-foreground">{used.toLocaleString()}</span> / {quota.toLocaleString()}
+      </p>
+      <Meter percent={percent} tone={percent >= 90 ? "critical" : percent >= 75 ? "warning" : "brand"} />
     </div>
   );
 }

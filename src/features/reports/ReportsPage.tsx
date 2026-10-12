@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
+  Boxes,
+  CalendarRange,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -9,20 +11,28 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
+  Layers,
+  ListFilter,
   Lock,
+  Receipt,
   RotateCcw,
   SlidersHorizontal,
+  TrendingDown,
+  Wallet,
+  X,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "cn";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/components/ui/input-group";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/components/common/PageHeader";
+import { IconTile, StatTile } from "@/components/common/DashboardCard";
 import { useCategoriesQuery, useLocationsQuery } from "@/features/catalog/api";
 import {
   useAssetReportQuery,
@@ -39,7 +49,7 @@ import {
 } from "@/features/reports/lib/grouping";
 import { ApiError } from "@/lib/http-error";
 import { computeDepreciation } from "@/lib/depreciation";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCompactCurrency, formatCurrency, formatDate } from "@/lib/format";
 import { hasPermission } from "@/lib/permissions";
 import { resolveLogoDataUrl } from "@/lib/pdfLogo";
 import { useResolvedLogoSrc } from "@/lib/useResolvedLogoSrc";
@@ -62,6 +72,48 @@ interface DisplayRow {
   custodianName: string;
   currentValue: number | undefined;
   percentDepreciated: number | undefined;
+}
+
+/** Local yyyy-mm-dd (what <input type="date"> holds), not UTC, so "today" matches the user's day. */
+function isoDay(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function daysAgo(days: number): Date {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d;
+}
+
+const DATE_PRESETS: { label: string; range: () => { from: string; to: string } }[] = [
+  { label: "Last 30 days", range: () => ({ from: isoDay(daysAgo(30)), to: isoDay(new Date()) }) },
+  { label: "Last 90 days", range: () => ({ from: isoDay(daysAgo(90)), to: isoDay(new Date()) }) },
+  { label: "This year", range: () => ({ from: `${new Date().getFullYear()}-01-01`, to: isoDay(new Date()) }) },
+  { label: "Last 12 months", range: () => ({ from: isoDay(daysAgo(365)), to: isoDay(new Date()) }) },
+];
+
+function BuilderSection({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children: React.ReactNode }) {
+  return (
+    <section className="min-w-0 space-y-3 px-4 py-4 sm:px-5">
+      <h3 className="flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.06em] text-muted-foreground uppercase">
+        <Icon className="size-3.5" />
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+function BuilderField({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <label htmlFor={htmlFor} className="mb-1.5 block text-[11px] font-medium text-muted-foreground">
+        {label}
+      </label>
+      {children}
+    </div>
+  );
 }
 
 function ReportsAccessDenied() {
@@ -255,6 +307,46 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
     exportRowsToPdf(displayRows, exportColumns, `${exportFilenameBase}.pdf`, "Asset Report", { orgName: org.name, logoDataUrl });
   };
 
+  const activeFilterChips = [
+    categoryId !== "all" && {
+      key: "category",
+      label: "Asset type",
+      value: categoryById.get(categoryId)?.name ?? "Selected",
+      clear: () => {
+        setCategoryId("all");
+        setPage(1);
+      },
+    },
+    locationId !== "all" && {
+      key: "location",
+      label: "Location",
+      value: locationById.get(locationId)?.name ?? "Selected",
+      clear: () => {
+        setLocationId("all");
+        setPage(1);
+      },
+    },
+    custodianId !== "all" && {
+      key: "custodian",
+      label: "Custodian",
+      value: personById.get(custodianId)?.name ?? "Selected",
+      clear: () => {
+        setCustodianId("all");
+        setPage(1);
+      },
+    },
+    (dateFrom || dateTo) && {
+      key: "dates",
+      label: dateField === "purchaseDate" ? "Purchase date" : "Depreciation date",
+      value: dateFrom && dateTo ? `${formatDate(dateFrom)} to ${formatDate(dateTo)}` : dateFrom ? `From ${formatDate(dateFrom)}` : `Until ${formatDate(dateTo)}`,
+      clear: () => {
+        setDateFrom("");
+        setDateTo("");
+        setPage(1);
+      },
+    },
+  ].filter(Boolean) as { key: string; label: string; value: string; clear: () => void }[];
+
   const handleResetFilters = () => {
     setCategoryId("all");
     setLocationId("all");
@@ -264,6 +356,7 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
     setDateTo("");
     setSortBy("purchaseDate");
     setSortDir("desc");
+    setGroupBy("none");
     setPage(1);
   };
 
@@ -306,273 +399,318 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
       <PageHeader title="Reports" description="Filterable asset reports with CSV, Excel and PDF export." />
 
       {canViewValuation && valuationSummary && (
-        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Card>
-            <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground">Assets valued</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{valuationSummary.assetCount}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground">Total purchase value</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">
-                {formatCurrency(valuationSummary.totalPurchase, org.currency, org.currencySymbol)}
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground">Total current value</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">
-                {formatCurrency(valuationSummary.totalCurrent, org.currency, org.currencySymbol)}
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground">Avg. percent depreciated</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{valuationSummary.avgPercentDepreciated.toFixed(1)}%</p>
-            </CardContent>
-          </Card>
+        <div className="mb-4 grid grid-cols-2 gap-3 sm:mb-5 sm:gap-4 xl:grid-cols-4">
+          <StatTile label="Assets valued" value={valuationSummary.assetCount.toLocaleString()} icon={Boxes} />
+          <StatTile
+            label="Total purchase value"
+            value={formatCompactCurrency(valuationSummary.totalPurchase, org.currency, org.currencySymbol)}
+            hint={formatCurrency(valuationSummary.totalPurchase, org.currency, org.currencySymbol)}
+            icon={Receipt}
+          />
+          <StatTile
+            label="Total current value"
+            value={formatCompactCurrency(valuationSummary.totalCurrent, org.currency, org.currencySymbol)}
+            hint={formatCurrency(valuationSummary.totalCurrent, org.currency, org.currencySymbol)}
+            icon={Wallet}
+          />
+          <StatTile label="Avg. depreciated" value={`${valuationSummary.avgPercentDepreciated.toFixed(1)}%`} icon={TrendingDown} />
         </div>
       )}
 
-      <div className="mb-4 space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setFiltersOpen((v) => !v)}
-            aria-expanded={filtersOpen}
-            className="h-8 gap-1.5 text-xs sm:hidden"
-          >
-            <SlidersHorizontal className="size-3.5" />
-            Filters
-            {activeFilterCount > 0 && (
-              <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
-                {activeFilterCount}
-              </Badge>
-            )}
-            {filtersOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
-          </Button>
-          <p className="hidden text-xs font-medium uppercase tracking-wide text-muted-foreground sm:block">
-            Filter, group and sort
-          </p>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" disabled={displayRows.length === 0}>
-                <Download className="size-3.5" />
-                Export
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={handleExportCsv}>
-                <FileText className="size-3.5" />
-                CSV
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={handleExportExcel}>
-                <FileSpreadsheet className="size-3.5" />
-                Excel
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={handleExportPdf}>
-                <FileText className="size-3.5" />
-                PDF
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+      <Card className="mb-3 gap-0 p-0 ring-foreground/[0.06]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3.5 sm:px-5">
+          <div className="flex min-w-0 items-center gap-3">
+            <IconTile icon={SlidersHorizontal} className="size-9" />
+            <div className="min-w-0">
+              <h2 className="text-[15px] font-semibold tracking-tight text-foreground">Build your report</h2>
+              <p className="truncate text-xs text-muted-foreground">
+                {report.isLoading ? "Loading assets..." : `${displayRows.length.toLocaleString()} asset${displayRows.length === 1 ? "" : "s"} on this page`}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setFiltersOpen((v) => !v)}
+              aria-expanded={filtersOpen}
+              className="h-8 gap-1.5 rounded-full text-xs lg:hidden"
+            >
+              {filtersOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+              {filtersOpen ? "Hide options" : "Options"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleResetFilters}
+              disabled={activeFilterCount === 0 && sortBy === "purchaseDate" && sortDir === "desc" && groupBy === "none" && dateField === "purchaseDate"}
+              className="h-8 gap-1.5 rounded-full text-xs"
+            >
+              <RotateCcw className="size-3.5" />
+              Reset
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" className="h-8 gap-1.5 rounded-full px-3.5 text-xs" disabled={displayRows.length === 0}>
+                  <Download className="size-3.5" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={handleExportCsv}>
+                  <FileText className="size-3.5" />
+                  CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleExportExcel}>
+                  <FileSpreadsheet className="size-3.5" />
+                  Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleExportPdf}>
+                  <FileText className="size-3.5" />
+                  PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
-        <div className={cn(!filtersOpen && "hidden", "space-y-3 sm:block")}>
-      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:flex-wrap sm:items-center">
-        <Select
-          value={categoryId}
-          onValueChange={(v) => {
-            setCategoryId(v);
-            setPage(1);
-          }}
+        <div
+          className={cn(
+            "grid grid-cols-1 divide-y divide-border lg:grid-cols-[1fr_1.15fr_1fr] lg:divide-x lg:divide-y-0",
+            !filtersOpen && "hidden lg:grid"
+          )}
         >
-          <SelectTrigger className="order-1 h-8 w-full text-xs sm:order-none sm:w-40">
-            <SelectValue placeholder="All asset types" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All asset types</SelectItem>
-            {(categories.data ?? []).map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <BuilderSection icon={ListFilter} title="Filter">
+            <BuilderField label="Asset type" htmlFor="report-category">
+              <Select
+                value={categoryId}
+                onValueChange={(v) => {
+                  setCategoryId(v);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger id="report-category" className="h-9 w-full text-[13px]">
+                  <SelectValue placeholder="All asset types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All asset types</SelectItem>
+                  {(categories.data ?? []).map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </BuilderField>
+            <BuilderField label="Location" htmlFor="report-location">
+              <Select
+                value={locationId}
+                onValueChange={(v) => {
+                  setLocationId(v);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger id="report-location" className="h-9 w-full text-[13px]">
+                  <SelectValue placeholder="All locations" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All locations</SelectItem>
+                  {(locations.data ?? []).map((l) => (
+                    <SelectItem key={l.id} value={l.id}>
+                      {l.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </BuilderField>
+            <BuilderField label="Custodian" htmlFor="report-custodian">
+              <Select
+                value={custodianId}
+                onValueChange={(v) => {
+                  setCustodianId(v);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger id="report-custodian" className="h-9 w-full text-[13px]">
+                  <SelectValue placeholder="All custodians" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All custodians</SelectItem>
+                  {(people.data ?? []).map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </BuilderField>
+          </BuilderSection>
 
-        <Select
-          value={locationId}
-          onValueChange={(v) => {
-            setLocationId(v);
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="order-2 h-8 w-full text-xs sm:order-none sm:w-40">
-            <SelectValue placeholder="All locations" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All locations</SelectItem>
-            {(locations.data ?? []).map((l) => (
-              <SelectItem key={l.id} value={l.id}>
-                {l.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <BuilderSection icon={CalendarRange} title="Date range">
+            <div>
+              <p className="mb-1.5 text-[11px] font-medium text-muted-foreground">Filter by</p>
+              <div role="radiogroup" aria-label="Date to filter by" className="grid grid-cols-2 gap-0.5 rounded-full bg-muted p-1">
+                {(
+                  [
+                    ["purchaseDate", "Purchase date"],
+                    ["depreciationDate", "Depreciation date"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={dateField === value}
+                    onClick={() => {
+                      setDateField(value);
+                      setPage(1);
+                    }}
+                    className={cn(
+                      "rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all",
+                      dateField === value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1.5 text-[11px] text-muted-foreground">One date at a time. Depreciation still shows as a column either way.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <BuilderField label="From" htmlFor="report-date-from">
+                <Input
+                  id="report-date-from"
+                  type="date"
+                  value={dateFrom}
+                  max={dateTo || undefined}
+                  onChange={(e) => {
+                    setDateFrom(e.target.value);
+                    setPage(1);
+                  }}
+                  className="h-9 text-[13px]"
+                />
+              </BuilderField>
+              <BuilderField label="To" htmlFor="report-date-to">
+                <Input
+                  id="report-date-to"
+                  type="date"
+                  value={dateTo}
+                  min={dateFrom || undefined}
+                  onChange={(e) => {
+                    setDateTo(e.target.value);
+                    setPage(1);
+                  }}
+                  className="h-9 text-[13px]"
+                />
+              </BuilderField>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {DATE_PRESETS.map((preset) => {
+                const range = preset.range();
+                const isActive = dateFrom === range.from && dateTo === range.to;
+                return (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    aria-pressed={isActive}
+                    onClick={() => {
+                      setDateFrom(range.from);
+                      setDateTo(range.to);
+                      setPage(1);
+                    }}
+                    className={cn(
+                      "rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 transition-colors ring-inset",
+                      isActive ? "bg-primary/12 text-brand-link ring-primary/30" : "text-muted-foreground ring-border hover:text-foreground"
+                    )}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
+          </BuilderSection>
 
-        <Select
-          value={custodianId}
-          onValueChange={(v) => {
-            setCustodianId(v);
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="order-3 h-8 w-full text-xs sm:order-none sm:w-44">
-            <SelectValue placeholder="All custodians" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All custodians</SelectItem>
-            {(people.data ?? []).map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                {p.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleResetFilters}
-          className="order-4 h-8 gap-1.5 text-xs sm:order-none sm:h-8 sm:w-auto"
-        >
-          <RotateCcw className="size-3.5" />
-          Reset
-        </Button>
-
-        <div className="order-5 col-span-2 flex items-center gap-1 rounded-lg border border-input p-0.5 sm:order-none sm:col-span-1 sm:w-fit">
-          <button
-            type="button"
-            onClick={() => {
-              setDateField("purchaseDate");
-              setPage(1);
-            }}
-            className={cn(
-              "flex-1 rounded-md px-2 py-1.5 text-xs transition-colors sm:flex-none",
-              dateField === "purchaseDate" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Purchase date
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setDateField("depreciationDate");
-              setPage(1);
-            }}
-            className={cn(
-              "flex-1 rounded-md px-2 py-1.5 text-xs transition-colors sm:flex-none",
-              dateField === "depreciationDate" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Depreciation date
-          </button>
+          <BuilderSection icon={Layers} title="Arrange">
+            <BuilderField label="Group rows" htmlFor="report-group">
+              <Select
+                value={groupBy}
+                onValueChange={(v) => {
+                  setGroupBy(v as GroupByMode);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger id="report-group" className="h-9 w-full text-[13px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No grouping</SelectItem>
+                  <SelectItem value="category">By asset type</SelectItem>
+                  <SelectItem value="location">By location</SelectItem>
+                  <SelectItem value="depreciationBucket" disabled={!canViewValuation}>
+                    By depreciation bucket
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </BuilderField>
+            <BuilderField label="Sort by" htmlFor="report-sort">
+              <div className="flex gap-2">
+                <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortByMode)}>
+                  <SelectTrigger id="report-sort" className="h-9 w-full min-w-0 text-[13px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="purchaseDate">Purchase date</SelectItem>
+                    <SelectItem value="depreciationDate">Depreciation date</SelectItem>
+                    <SelectItem value="name">Name</SelectItem>
+                    <SelectItem value="assetTag">Asset tag</SelectItem>
+                    <SelectItem value="currentValue" disabled={!canViewValuation}>
+                      Current value
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+                  className="size-9 shrink-0 bg-card"
+                  aria-label={sortDir === "asc" ? "Sorted ascending, switch to descending" : "Sorted descending, switch to ascending"}
+                  title={sortDir === "asc" ? "Ascending" : "Descending"}
+                >
+                  {sortDir === "asc" ? <ArrowUp className="size-4" /> : <ArrowDown className="size-4" />}
+                </Button>
+              </div>
+            </BuilderField>
+            <p className="text-[11px] text-muted-foreground">
+              {sortDir === "asc" ? "Oldest and A to Z first." : "Newest and Z to A first."}
+              {groupBy !== "none" && " Grouped views show up to 500 rows on one page."}
+            </p>
+          </BuilderSection>
         </div>
+      </Card>
 
-        {/* From/To stay in one wrapper so the range never gets split across two rows when the
-            filter bar wraps. */}
-        <div className="order-6 col-span-2 flex items-center gap-2 sm:order-none sm:col-span-1 sm:w-auto">
-          <InputGroup className="w-full sm:w-44">
-            <InputGroupAddon align="inline-start">
-              <InputGroupText className="text-xs">From</InputGroupText>
-            </InputGroupAddon>
-            <InputGroupInput
-              type="date"
-              value={dateFrom}
-              onChange={(e) => {
-                setDateFrom(e.target.value);
-                setPage(1);
-              }}
-              className="text-xs"
-              aria-label="Date from"
-            />
-          </InputGroup>
-          <InputGroup className="w-full sm:w-44">
-            <InputGroupAddon align="inline-start">
-              <InputGroupText className="text-xs">To</InputGroupText>
-            </InputGroupAddon>
-            <InputGroupInput
-              type="date"
-              value={dateTo}
-              onChange={(e) => {
-                setDateTo(e.target.value);
-                setPage(1);
-              }}
-              className="text-xs"
-              aria-label="Date to"
-            />
-          </InputGroup>
+      {activeFilterChips.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">Showing</span>
+          {activeFilterChips.map((chip) => (
+            <span
+              key={chip.key}
+              className="inline-flex items-center gap-1 rounded-full bg-card py-1 pr-1 pl-3 text-xs text-foreground shadow-sm ring-1 ring-foreground/[0.08]"
+            >
+              <span className="text-muted-foreground">{chip.label}:</span>
+              <span className="max-w-48 truncate font-medium">{chip.value}</span>
+              <button
+                type="button"
+                onClick={chip.clear}
+                aria-label={`Remove ${chip.label} filter`}
+                className="ml-0.5 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <X className="size-3" />
+              </button>
+            </span>
+          ))}
         </div>
-      </div>
-      <p className="text-[11px] text-muted-foreground">
-        Purchase date and depreciation date can't be filtered together, pick one above. Depreciation still shows as
-        a column and can be grouped below.
-      </p>
-
-      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:flex-wrap sm:items-center">
-        <Select
-          value={groupBy}
-          onValueChange={(v) => {
-            setGroupBy(v as GroupByMode);
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="h-8 w-full text-xs sm:w-52">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">No grouping</SelectItem>
-            <SelectItem value="category">Group by asset type</SelectItem>
-            <SelectItem value="location">Group by location</SelectItem>
-            <SelectItem value="depreciationBucket" disabled={!canViewValuation}>
-              Group by depreciation bucket
-            </SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortByMode)}>
-          <SelectTrigger className="h-8 w-full text-xs sm:w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="purchaseDate">Sort: Purchase date</SelectItem>
-            <SelectItem value="depreciationDate">Sort: Depreciation date</SelectItem>
-            <SelectItem value="name">Sort: Name</SelectItem>
-            <SelectItem value="assetTag">Sort: Asset tag</SelectItem>
-            <SelectItem value="currentValue" disabled={!canViewValuation}>
-              Sort: Current value
-            </SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
-          className="h-8 w-full gap-1.5 text-xs sm:w-auto"
-        >
-          {sortDir === "asc" ? <ArrowUp className="size-3.5" /> : <ArrowDown className="size-3.5" />}
-          {sortDir === "asc" ? "Ascending" : "Descending"}
-        </Button>
-      </div>
-        </div>
-      </div>
+      )}
+      {activeFilterChips.length === 0 && <div className="mb-4" />}
 
       {report.isError && (
         <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">

@@ -144,9 +144,9 @@ export function AuditDetailPage() {
             <CardContent className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-5">
               <Stat label="Expected" value={audit.totalExpected} />
               <Stat label="Scanned" value={audit.totalScanned} />
-              <Stat label="Matched" value={audit.totalMatched} className="text-emerald-400" />
-              <Stat label="Missing" value={audit.totalMissing} className="text-rose-400" />
-              <Stat label="Discrepant" value={audit.totalDiscrepant} className="text-amber-400" />
+              <Stat label="Matched" value={audit.totalMatched} className="text-emerald-600 dark:text-emerald-400" />
+              <Stat label="Missing" value={audit.totalMissing} className="text-rose-600 dark:text-rose-400" />
+              <Stat label="Discrepant" value={audit.totalDiscrepant} className="text-amber-600 dark:text-amber-400" />
             </CardContent>
           </Card>
 
@@ -341,7 +341,6 @@ function ScanAndSubmitPanel({
   const [condition, setCondition] = useState(NONE);
   const [staffRemark, setStaffRemark] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
-  const [scannerSessionKey, setScannerSessionKey] = useState(0);
   const tagInputRef = useRef<HTMLInputElement>(null);
 
   const scanAudit = useScanAuditMutation(auditId);
@@ -369,13 +368,12 @@ function ScanAndSubmitPanel({
     tagInputRef.current?.focus();
   }
 
+  // The scanner runs in continuous mode (audits are scanned item by item in one sitting): it
+  // pauses while this resolves, then resumes for the next label without restarting the camera.
   async function handleCameraDetected(text: string) {
     const tag = text.trim();
     if (!tag) return;
     await performScan(tag);
-    // Re-mount the scanner so it keeps reading the next tag instead of stopping
-    // after one hit - audits are usually scanned item-by-item in one sitting.
-    setScannerSessionKey((k) => k + 1);
   }
 
   async function handleSubmit() {
@@ -455,7 +453,7 @@ function ScanAndSubmitPanel({
               </Button>
             </div>
             <BarcodeScanner
-              key={scannerSessionKey}
+              continuous
               onDetected={handleCameraDetected}
               onError={(message) => {
                 toast.error(message);
@@ -729,15 +727,15 @@ function ReportPanel({
               <p className="text-[11px] text-muted-foreground">Scanned</p>
             </div>
             <div>
-              <p className="font-semibold text-emerald-400">{summary.totalMatched}</p>
+              <p className="font-semibold text-emerald-600 dark:text-emerald-400">{summary.totalMatched}</p>
               <p className="text-[11px] text-muted-foreground">Matched</p>
             </div>
             <div>
-              <p className="font-semibold text-rose-400">{summary.totalMissing}</p>
+              <p className="font-semibold text-rose-600 dark:text-rose-400">{summary.totalMissing}</p>
               <p className="text-[11px] text-muted-foreground">Missing</p>
             </div>
             <div>
-              <p className="font-semibold text-amber-400">{summary.totalDiscrepant}</p>
+              <p className="font-semibold text-amber-600 dark:text-amber-400">{summary.totalDiscrepant}</p>
               <p className="text-[11px] text-muted-foreground">Discrepant</p>
             </div>
           </div>

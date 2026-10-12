@@ -28,6 +28,23 @@ export function formatCurrency(
   }
 }
 
+/** Short currency for tight spaces (e.g. "₦48.3M"); the full figure belongs in a title/tooltip. */
+export function formatCompactCurrency(amount: number | string | null | undefined, currency = "NGN", currencySymbol = "₦"): string {
+  const num = Number(amount ?? 0);
+  if (isNaN(num)) return `${currencySymbol}0`;
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      currencyDisplay: "narrowSymbol",
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(num);
+  } catch {
+    return `${currencySymbol}${new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(num)}`;
+  }
+}
+
 export function formatDate(date: string | Date | null | undefined, dateFormat = "MMM dd, yyyy"): string {
   if (!date) return "-";
   try {

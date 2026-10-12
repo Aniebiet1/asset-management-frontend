@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PlanStatusBadge } from "@/components/common/StatusBadge";
+import { Meter } from "@/components/common/DashboardCard";
 import { BrandedLoader } from "@/components/brand/BrandedLoader";
 import { formatDate, formatDateTime, getInitials } from "@/lib/format";
 import { roleLabelMap } from "@/lib/status";
@@ -129,18 +130,21 @@ export function PlatformOrgDetailPage() {
                 <CardTitle className="text-sm font-semibold">Usage</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-muted-foreground">Users</p>
-                  <p className="mt-1 text-lg font-semibold text-foreground">
-                    {usage.userCount} / {org.userQuota}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Assets</p>
-                  <p className="mt-1 text-lg font-semibold text-foreground">
-                    {usage.assetCount} / {org.assetQuota}
-                  </p>
-                </div>
+                {[
+                  { label: "Users", used: usage.userCount, quota: org.userQuota },
+                  { label: "Assets", used: usage.assetCount, quota: org.assetQuota },
+                ].map(({ label, used, quota }) => {
+                  const percent = quota > 0 ? (used / quota) * 100 : 0;
+                  return (
+                    <div key={label}>
+                      <p className="text-xs text-muted-foreground">{label}</p>
+                      <p className="mt-1 mb-2 text-lg font-semibold text-foreground tabular-nums">
+                        {used.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">/ {quota.toLocaleString()}</span>
+                      </p>
+                      <Meter percent={percent} tone={percent >= 90 ? "critical" : percent >= 75 ? "warning" : "brand"} />
+                    </div>
+                  );
+                })}
                 <div>
                   <p className="text-xs text-muted-foreground">Last activity</p>
                   <p className="mt-1 text-sm font-medium text-foreground">{org.lastActivityAt ? formatDate(org.lastActivityAt) : "-"}</p>
@@ -216,7 +220,7 @@ export function PlatformOrgDetailPage() {
                           <span
                             className={
                               u.isActive
-                                ? "inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400"
+                                ? "inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400"
                                 : "inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
                             }
                           >
@@ -260,7 +264,7 @@ export function PlatformOrgDetailPage() {
                           className={cn(
                             "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium",
                             u.isActive
-                              ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                              ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                               : "border-border bg-muted text-muted-foreground"
                           )}
                         >

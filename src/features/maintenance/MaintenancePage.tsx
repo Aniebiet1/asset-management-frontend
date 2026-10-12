@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Loader2, Plus, Wrench, Pencil, Trash2 } from "lucide-react";
+import { AlarmClock, CalendarClock, Loader2, PackageSearch, Plus, Wrench, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/common/PageHeader";
+import { StatTile } from "@/components/common/DashboardCard";
 import { MaintenanceStatusBadge, PriorityBadge } from "@/components/common/StatusBadge";
 import { hasPermission } from "@/lib/permissions";
 import { formatDate } from "@/lib/format";
@@ -86,6 +87,10 @@ export function MaintenancePage() {
   }
 
   const isLoading = maintenance.isLoading || assets.isLoading;
+  const all = maintenance.data ?? [];
+  const countOf = (status: MaintenanceStatus) => all.filter((r) => r.status === status).length;
+  const overdueCount = all.filter(isOverdue).length;
+  const tileValue = (n: number) => (maintenance.isLoading ? "-" : n);
 
   return (
     <div>
@@ -101,6 +106,18 @@ export function MaintenancePage() {
           )
         }
       />
+
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:mb-5 sm:gap-4 xl:grid-cols-4">
+        <StatTile label="Scheduled" value={tileValue(countOf("scheduled"))} icon={CalendarClock} />
+        <StatTile label="In progress" value={tileValue(countOf("in_progress"))} icon={Wrench} />
+        <StatTile
+          label="Waiting on parts"
+          value={tileValue(countOf("waiting_parts"))}
+          icon={PackageSearch}
+          tone={countOf("waiting_parts") > 0 ? "warning" : "brand"}
+        />
+        <StatTile label="Overdue" value={tileValue(overdueCount)} icon={AlarmClock} tone={overdueCount > 0 ? "critical" : "brand"} />
+      </div>
 
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as MaintenanceStatus | "all")}>
@@ -173,7 +190,7 @@ export function MaintenancePage() {
                         <MaintenanceStatusBadge status={record.status} />
                       </TableCell>
                       <TableCell className="text-sm">
-                        <span className={isOverdue(record) ? "font-medium text-rose-400" : "text-muted-foreground"}>
+                        <span className={isOverdue(record) ? "font-medium text-rose-600 dark:text-rose-400" : "text-muted-foreground"}>
                           {formatDate(record.scheduledDate)}
                           {isOverdue(record) && " (overdue)"}
                         </span>
@@ -217,7 +234,7 @@ export function MaintenancePage() {
                     <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       <PriorityBadge priority={record.priority} />
                       <span>{MAINTENANCE_TYPE_LABELS[record.maintenanceType] ?? record.maintenanceType}</span>
-                      <span className={isOverdue(record) ? "font-medium text-rose-400" : ""}>
+                      <span className={isOverdue(record) ? "font-medium text-rose-600 dark:text-rose-400" : ""}>
                         Due {formatDate(record.scheduledDate)}
                         {isOverdue(record) && " (overdue)"}
                       </span>

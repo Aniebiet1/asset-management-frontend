@@ -50,9 +50,12 @@ export function useDeactivatePersonMutation() {
 }
 
 export function useInvitePersonMutation() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: { email: string; role: string }) =>
       apiFetch<{ message: string }>("/people/invite", { method: "POST", body: JSON.stringify(input) }),
+    // Without this the new invite only showed up under "Pending invitations" after a reload.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["people", "invites"] }),
   });
 }
 

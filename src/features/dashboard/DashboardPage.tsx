@@ -1,42 +1,36 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Box, CheckCircle2, Wrench, Users2, Wallet, ArrowUpRight, Plus, ScanLine } from "lucide-react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip as RechartsTooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Box, Wrench, Users2, Wallet, Plus, ScanLine, ArrowLeftRight, AlarmClock, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/common/PageHeader";
-import { StatusBadge, MaintenanceStatusBadge } from "@/components/common/StatusBadge";
+import { DashboardCard, MiniStat, StatTile, ViewAllLink } from "@/components/common/DashboardCard";
+import { DonutChart } from "@/components/charts/DonutChart";
+import { RankedBars } from "@/components/charts/RankedBars";
 import { hasPermission } from "@/lib/permissions";
-import { formatCurrency, formatDateTime, getInitials } from "@/lib/format";
+import { assetStatusVizColor, assetStatusVizOrder, statusColorMap } from "@/lib/status";
+import { formatCompactCurrency, formatCurrency, formatRelativeTime, getInitials } from "@/lib/format";
 import { useAuthStore } from "@/store/auth.store";
 import { BrandedLoader } from "@/components/brand/BrandedLoader";
 import { useAssetsQuery } from "@/features/assets/api";
 import { useMaintenanceQuery } from "@/features/maintenance/api";
+import { useActiveAssignmentsQuery } from "@/features/check-in-out/api";
 import { useDashboardStatsQuery, useDashboardChartsQuery, useDashboardActivityQuery } from "./api";
+import { AssetActivityCard } from "./AssetActivityCard";
 
 const UPCOMING_MAINTENANCE_STATUSES = new Set(["scheduled", "in_progress", "waiting_parts"]);
-const MAINTENANCE_DUE_LIMIT = 5;
-
-const CHART_COLORS = ["var(--color-chart-1)", "var(--color-chart-2)", "var(--color-chart-3)", "var(--color-chart-4)", "var(--color-chart-5)"];
+const ACTIVITY_LIMIT = 6;
 
 function CardSpinner() {
   const org = useAuthStore((s) => s.org);
   return (
-    <div className="flex h-full min-h-24 items-center justify-center">
+    <div className="flex h-full min-h-40 items-center justify-center">
       <BrandedLoader size="sm" logoUrl={org?.logoUrl} orgName={org?.name} />
     </div>
   );
+}
+
+function describeAction(action: string): string {
+  return action.replace(/[._]/g, " ").toLowerCase();
 }
 
 export function DashboardPage() {
@@ -46,49 +40,59 @@ export function DashboardPage() {
   const { data: charts, isLoading: chartsLoading } = useDashboardChartsQuery();
   const { data: activity, isLoading: activityLoading } = useDashboardActivityQuery();
   const { data: maintenance, isLoading: maintenanceLoading } = useMaintenanceQuery();
+  const { data: assignments } = useActiveAssignmentsQuery();
   const assets = useAssetsQuery({ pageSize: 200 });
   const canViewValuation = hasPermission(currentUser?.role, "canViewAssetValuation");
   const canCreate = hasPermission(currentUser?.role, "canCreateAsset");
 
   const assetById = useMemo(() => {
     const map = new Map<string, { name: string; assetTag: string }>();
-    for (const a of assets.data?.data ?? []) {
-      map.set(a.id, { name: a.name, assetTag: a.assetTag });
-    }
+    for (const a of assets.data?.data ?? []) map.set(a.id, { name: a.name, assetTag: a.assetTag });
     return map;
   }, [assets.data]);
 
-  const upcomingMaintenance = useMemo(() => {
-    return (maintenance ?? [])
-      .filter((m) => UPCOMING_MAINTENANCE_STATUSES.has(m.status))
-      .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())
-      .slice(0, MAINTENANCE_DUE_LIMIT);
-  }, [maintenance]);
+  const upcomingMaintenance = useMemo(
+    () =>
+      (maintenance ?? [])
+        .filter((m) => UPCOMING_MAINTENANCE_STATUSES.has(m.status))
+        .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime()),
+    [maintenance]
+  );
 
-  const kpis = stats
-    ? [
-        { label: "Total Assets", value: stats.assets.total, icon: Box, href: "/assets" },
-        { label: "Available", value: stats.assets.available, icon: CheckCircle2, href: "/assets?status=available" },
-        { label: "In Maintenance", value: stats.assets.inMaintenance, icon: Wrench, href: "/maintenance" },
-        { label: "Active Users", value: stats.activeUsers, icon: Users2, href: "/people" },
-      ]
-    : [];
+  const statusSegments = useMemo(() => {
+    const counts = new Map((charts?.byStatus ?? []).map((s) => [s.status, s.count]));
+    return assetStatusVizOrder.map((status) => ({
+      key: status,
+      label: statusColorMap[status]?.label ?? status,
+      value: counts.get(status) ?? 0,
+      color: assetStatusVizColor[status],
+    }));
+  }, [charts]);
+
+  const categoryBars = (charts?.byCategory ?? []).map((c) => ({
+    key: c.categoryId ?? "none",
+    label: c.categoryName ?? "Uncategorized",
+    value: c.count,
+  }));
+
+  const overdueCount = assignments?.overdue.length;
+  const firstName = currentUser?.name.split(" ")[0];
 
   return (
-    <div>
+    <div className="space-y-4 sm:space-y-5">
       <PageHeader
-        title={`Welcome back, ${currentUser?.name.split(" ")[0]}`}
+        title={`Welcome back, ${firstName}`}
         description={`Here's what's happening across ${org?.name} today.`}
         actions={
           <>
-            <Button variant="outline" size="sm" className="gap-1.5" asChild>
+            <Button variant="outline" size="sm" className="h-9 gap-1.5 rounded-full bg-card px-4" asChild>
               <Link to="/check-in-out">
                 <ScanLine className="size-3.5" />
                 Scan Asset
               </Link>
             </Button>
             {canCreate && (
-              <Button size="sm" className="gap-1.5" asChild>
+              <Button size="sm" className="h-9 gap-1.5 rounded-full px-4 shadow-sm shadow-primary/25" asChild>
                 <Link to="/assets/new">
                   <Plus className="size-3.5" />
                   New Asset
@@ -100,178 +104,94 @@ export function DashboardPage() {
       />
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        {statsLoading ? (
-          <Card className="col-span-2 lg:col-span-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        <StatTile label="Total assets" value={statsLoading ? "-" : (stats?.assets.total ?? 0)} icon={Box} href="/assets" />
+        <StatTile label="In use" value={statsLoading ? "-" : (stats?.assets.inUse ?? 0)} icon={ArrowLeftRight} href="/check-in-out" />
+        <StatTile
+          label="Overdue returns"
+          value={overdueCount ?? "-"}
+          icon={AlarmClock}
+          tone={(overdueCount ?? 0) > 0 ? "critical" : "brand"}
+          href="/check-in-out"
+        />
+        <StatTile
+          label="Maintenance due"
+          value={statsLoading ? "-" : (stats?.maintenanceDue ?? 0)}
+          icon={Wrench}
+          tone={(stats?.maintenanceDue ?? 0) > 0 ? "warning" : "brand"}
+          href="/maintenance"
+        />
+      </div>
+
+      {/* Lead row: activity table + status breakdown */}
+      <div className="grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-12">
+        <div className="min-w-0 lg:col-span-8">
+          <AssetActivityCard knownAssets={assetById} upcomingMaintenance={upcomingMaintenance} maintenanceLoading={maintenanceLoading} />
+        </div>
+
+        <DashboardCard title="Asset status" description="Where every asset is right now." className="lg:col-span-4">
+          {chartsLoading ? (
             <CardSpinner />
-          </Card>
-        ) : (
-          <>
-            {kpis.map((kpi) => (
-              <Link key={kpi.label} to={kpi.href}>
-                <Card className="transition-colors hover:border-input">
-                  <CardContent className="flex items-start justify-between p-4">
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground">{kpi.label}</p>
-                      <p className="mt-1.5 text-2xl font-semibold tracking-tight text-foreground">{kpi.value}</p>
-                    </div>
-                    <div className="flex size-8 items-center justify-center rounded-lg bg-muted">
-                      <kpi.icon className="size-4 text-muted-foreground" />
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-
-            {canViewValuation && stats?.assets.totalValue !== undefined && (
-              <Link to="/reports" className="col-span-2 lg:col-span-4">
-                <Card className="border-primary/20 bg-primary/5 transition-colors hover:border-primary/40">
-                  <CardContent className="flex items-center justify-between p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10">
-                        <Wallet className="size-4 text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground">Total Fleet Value</p>
-                        <p className="text-xl font-semibold tracking-tight text-foreground">
-                          {formatCurrency(stats.assets.totalValue, org?.currency, org?.currencySymbol)}
-                        </p>
-                      </div>
-                    </div>
-                    <ArrowUpRight className="size-4 text-muted-foreground" />
-                  </CardContent>
-                </Card>
-              </Link>
+          ) : (
+            <DonutChart
+              segments={statusSegments}
+              centerValue={(stats?.assets.total ?? statusSegments.reduce((sum, s) => sum + s.value, 0)).toLocaleString()}
+              centerLabel="assets"
+              emptyText="No assets yet."
+            />
+          )}
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <MiniStat icon={Users2} label="Active users" value={stats?.activeUsers ?? "-"} />
+            {canViewValuation && stats?.assets.totalValue !== undefined ? (
+              <MiniStat
+                icon={Wallet}
+                label="Fleet value"
+                value={formatCompactCurrency(stats.assets.totalValue, org?.currency, org?.currencySymbol)}
+                title={formatCurrency(stats.assets.totalValue, org?.currency, org?.currencySymbol)}
+              />
+            ) : (
+              <MiniStat icon={CheckCircle2} label="Available" value={stats?.assets.available ?? "-"} />
             )}
-          </>
-        )}
+          </div>
+        </DashboardCard>
       </div>
 
-      {/* Charts */}
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-5">
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold">Assets by Asset Type</CardTitle>
-          </CardHeader>
-          <CardContent className="h-64 pl-0">
-            {chartsLoading ? (
-              <CardSpinner />
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={charts?.byCategory ?? []} margin={{ left: 0, right: 16 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                  <XAxis dataKey="categoryName" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} allowDecimals={false} width={24} />
-                  <RechartsTooltip
-                    cursor={{ fill: "var(--muted)" }}
-                    contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
-                  />
-                  <Bar dataKey="count" radius={[4, 4, 0, 0]} fill="var(--color-chart-1)" maxBarSize={40} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
+      {/* Second row: assets by type + recent activity */}
+      <div className="grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-12">
+        <DashboardCard
+          title="Assets by type"
+          description="How the fleet splits across asset types."
+          className="lg:col-span-7"
+          action={<ViewAllLink to="/reports" label="Reports" />}
+        >
+          {chartsLoading ? <CardSpinner /> : <RankedBars data={categoryBars} emptyText="No assets yet." />}
+        </DashboardCard>
 
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold">Assets by Status</CardTitle>
-          </CardHeader>
-          <CardContent className="flex h-64 items-center gap-4">
-            {chartsLoading ? (
-              <CardSpinner />
-            ) : (
-              <>
-                <div className="h-full w-[55%] shrink-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={charts?.byStatus ?? []} dataKey="count" nameKey="status" innerRadius={45} outerRadius={70} paddingAngle={2}>
-                        {(charts?.byStatus ?? []).map((entry, i) => (
-                          <Cell key={entry.status} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <RechartsTooltip contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="flex flex-1 flex-col gap-1.5">
-                  {(charts?.byStatus ?? []).map((entry) => (
-                    <div key={entry.status} className="flex items-center justify-between text-xs">
-                      <StatusBadge status={entry.status} className="border-0 bg-transparent px-0" />
-                      <span className="font-medium text-foreground">{entry.count}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Activity + maintenance */}
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-5">
-        <Card className="lg:col-span-3">
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle className="text-sm font-semibold">Recent Activity</CardTitle>
-            <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
-              <Link to="/reports">View all</Link>
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {activityLoading ? (
-              <CardSpinner />
-            ) : activity && activity.length > 0 ? (
-              activity.map((entry) => (
-                <div key={entry.id} className="flex items-start gap-3 text-sm">
-                  <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-foreground">
+        <DashboardCard title="Recent activity" description="Latest changes across the workspace." className="lg:col-span-5">
+          {activityLoading ? (
+            <CardSpinner />
+          ) : activity && activity.length > 0 ? (
+            <ul className="-mx-2 space-y-0.5">
+              {activity.slice(0, ACTIVITY_LIMIT).map((entry) => (
+                <li key={entry.id} className="flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-muted/60">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/12 text-[11px] font-semibold text-brand-link">
                     {getInitials(entry.userName ?? "?")}
-                  </div>
+                  </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-foreground">
-                      <span className="font-medium">{entry.userName ?? "Someone"}</span>{" "}
-                      <span className="text-muted-foreground">{entry.action.replace(/\./g, " ").replace("_", " ")}</span>{" "}
-                      <span className="font-medium">{entry.entityName}</span>
+                    <p className="truncate text-[13px] text-foreground">
+                      <span className="font-semibold">{entry.userName ?? "Someone"}</span>{" "}
+                      <span className="text-muted-foreground">{describeAction(entry.action)}</span>
                     </p>
-                    <p className="text-xs text-muted-foreground">{formatDateTime(entry.createdAt)}</p>
+                    <p className="truncate text-xs text-muted-foreground">{entry.entityName ?? entry.entityType}</p>
                   </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground">No activity yet.</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle className="text-sm font-semibold">Maintenance Due</CardTitle>
-            <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
-              <Link to="/maintenance">View all</Link>
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {maintenanceLoading ? (
-              <CardSpinner />
-            ) : upcomingMaintenance.length > 0 ? (
-              upcomingMaintenance.map((m) => {
-                const asset = assetById.get(m.assetId);
-                return (
-                  <div key={m.id} className="flex items-start justify-between gap-2 rounded-lg border border-border p-2.5 text-sm">
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-foreground">{m.title}</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {asset?.name ?? m.assetName ?? "Unknown asset"} · {asset?.assetTag ?? m.assetTag ?? m.assetId}
-                      </p>
-                    </div>
-                    <MaintenanceStatusBadge status={m.status} className="shrink-0" />
-                  </div>
-                );
-              })
-            ) : (
-              <p className="text-sm text-muted-foreground">Nothing due right now.</p>
-            )}
-          </CardContent>
-        </Card>
+                  <span className="shrink-0 text-[11px] text-muted-foreground">{formatRelativeTime(entry.createdAt)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="py-10 text-center text-sm text-muted-foreground">No activity yet.</p>
+          )}
+        </DashboardCard>
       </div>
     </div>
   );

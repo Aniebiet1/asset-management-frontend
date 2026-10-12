@@ -13,6 +13,7 @@ import { StatusBadge, ConditionBadge } from "@/components/common/StatusBadge";
 import { hasPermission } from "@/lib/permissions";
 import { formatCurrency } from "@/lib/format";
 import { useAssetsQuery } from "@/features/assets/api";
+import { useAssetValue } from "@/features/assets/useAssetValue";
 import { useCategoriesQuery, useLocationsQuery } from "@/features/catalog/api";
 import { useAuthStore } from "@/store/auth.store";
 import type { AssetStatus } from "@/types";
@@ -33,6 +34,7 @@ export function AssetsListPage() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const org = useAuthStore((s) => s.org);
   const canViewValuation = hasPermission(currentUser?.role, "canViewAssetValuation");
+  const valueOf = useAssetValue();
   const canCreate = hasPermission(currentUser?.role, "canCreateAsset");
 
   const [search, setSearch] = useState("");
@@ -197,7 +199,15 @@ export function AssetsListPage() {
                     <TableCell className="text-sm text-muted-foreground">{asset.custodianName ?? "Unassigned"}</TableCell>
                     {canViewValuation && (
                       <TableCell className="text-right text-sm font-medium text-foreground">
-                        {formatCurrency(asset.currentValue, org?.currency, org?.currencySymbol)}
+                        {(() => {
+                          const { value, estimated } = valueOf(asset);
+                          if (value == null) return "-";
+                          return (
+                            <span title={estimated ? "Estimated from straight-line depreciation" : undefined}>
+                              {formatCurrency(value, org?.currency, org?.currencySymbol)}
+                            </span>
+                          );
+                        })()}
                       </TableCell>
                     )}
                     <TableCell>

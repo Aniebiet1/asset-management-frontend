@@ -16,6 +16,8 @@ export function useTecresBrandTheme() {
     applyOrgTheme({
       primaryColor: TECRES_BRAND_PRIMARY_COLOR,
       accentColor: TECRES_BRAND_ACCENT_COLOR,
+      // Clears any sidebar override a tenant session left on this tab, so the frame is Tecres's.
+      sidebarColor: null,
       logoUrl: TECRES_DEFAULT_LOGO_URL,
     });
   }, [applyOrgTheme]);

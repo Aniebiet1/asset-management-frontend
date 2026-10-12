@@ -1,5 +1,5 @@
 ﻿import { useState } from "react";
-import { Box, Camera, ExternalLink, Loader2, Printer, Search, X } from "lucide-react";
+import { AlarmClock, ArrowLeftRight, Box, CalendarClock, Camera, ExternalLink, Loader2, Printer, Search, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
@@ -21,9 +21,10 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormField } from "@/components/ui/form";
 import { PageHeader } from "@/components/common/PageHeader";
+import { DashboardCard, Meter, StatTile } from "@/components/common/DashboardCard";
 import { ConditionBadge, StatusBadge } from "@/components/common/StatusBadge";
 import { hasPermission } from "@/lib/permissions";
-import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
+import { formatCurrency, formatDate, formatDateTime, getInitials } from "@/lib/format";
 import { ApiError } from "@/lib/http-error";
 import { resolveLogoDataUrl } from "@/lib/pdfLogo";
 import { hexToRgb, readableForeground } from "@/lib/color";
@@ -38,6 +39,8 @@ import {
   usePeopleQuery,
 } from "@/features/check-in-out/api";
 import { BarcodeScanner } from "@/features/check-in-out/components/BarcodeScanner";
+import { loanStatus } from "@/features/check-in-out/loanStatus";
+import { useAssetValue } from "@/features/assets/useAssetValue";
 import { useAuthStore } from "@/store/auth.store";
 import type { AssetAssignment, AssetCondition } from "@/types";
 
@@ -91,9 +94,21 @@ export function CheckInOutPage() {
   const overdueIds = new Set((assignmentsQuery.data?.overdue ?? []).map((a) => a.id));
   const { byId: assetsById } = useAssetsByIdsQuery(activeAssignments.map((a) => a.assetId));
   const peopleById = new Map((peopleQuery.data ?? []).map((u) => [u.id, u]));
+  const valueOf = useAssetValue();
+  // Captured once per mount so loan bars and the "due this week" count don't shift between renders.
+  const [now] = useState(() => Date.now());
+  const loans = activeAssignments
+    .map((assignment) => ({ assignment, status: loanStatus(assignment, now, overdueIds.has(assignment.id)) }))
+    // Late first, then soonest due, then open-ended loans last.
+    .sort((a, b) => Number(b.status.overdue) - Number(a.status.overdue) || (a.status.daysLeft ?? Infinity) - (b.status.daysLeft ?? Infinity));
+  const dueThisWeek = loans.filter((l) => !l.status.overdue && l.status.daysLeft != null && l.status.daysLeft <= 7).length;
 
   const matches = assetsQuery.data?.data ?? [];
-  const selectedAsset = matches.find((a) => a.id === selectedAssetId) ?? (matches.length === 1 ? matches[0] : null);
+  // A scan (or a typed full tag) is an exact identifier: when one result's tag matches it exactly,
+  // take that one even if the contains-search also returned batch siblings (TAG-004-A, ...).
+  const exactTagMatch = matches.find((a) => a.assetTag.toLowerCase() === activeQuery.trim().toLowerCase()) ?? null;
+  const selectedAsset =
+    matches.find((a) => a.id === selectedAssetId) ?? exactTagMatch ?? (matches.length === 1 ? matches[0] : null);
   const assignmentForSelected = selectedAsset
     ? activeAssignments.find((a) => a.assetId === selectedAsset.id) ?? null
     : null;
@@ -322,7 +337,25 @@ export function CheckInOutPage() {
         description="Scan or search an asset to check it out to a custodian, or process a return."
       />
 
-      <Card className="mb-4">
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:mb-5 sm:grid-cols-3 sm:gap-4">
+        <StatTile label="Checked out" value={assignmentsQuery.isLoading ? "-" : activeAssignments.length} icon={ArrowLeftRight} />
+        <StatTile
+          label="Overdue returns"
+          value={assignmentsQuery.isLoading ? "-" : overdueIds.size}
+          icon={AlarmClock}
+          tone={overdueIds.size > 0 ? "critical" : "brand"}
+        />
+        <div className="col-span-2 sm:col-span-1">
+          <StatTile
+            label="Due in the next 7 days"
+            value={assignmentsQuery.isLoading ? "-" : dueThisWeek}
+            icon={CalendarClock}
+            tone={dueThisWeek > 0 ? "warning" : "brand"}
+          />
+        </div>
+      </div>
+
+      <Card className="mb-4 sm:mb-5">
         <CardContent className="space-y-3 p-4">
           <form onSubmit={handleSearchSubmit} className="flex flex-col gap-2 sm:flex-row">
             <Input
@@ -444,7 +477,11 @@ export function CheckInOutPage() {
                     {canViewValuation && (
                       <AssetDetail
                         label="Current value"
-                        value={formatCurrency(selectedAsset.currentValue, org?.currency, org?.currencySymbol)}
+                        value={(() => {
+                          const { value, estimated } = valueOf(selectedAsset);
+                          if (value == null) return null;
+                          return `${formatCurrency(value, org?.currency, org?.currencySymbol)}${estimated ? " (est.)" : ""}`;
+                        })()}
                       />
                     )}
                     {assignmentForSelected && (
@@ -512,72 +549,87 @@ export function CheckInOutPage() {
         </CardContent>
       </Card>
 
-      <div>
-        <h2 className="mb-3 text-base font-semibold text-foreground">Active check-outs</h2>
+      <DashboardCard title="Active check-outs" description="Late returns first, then whatever is due back soonest.">
         {assignmentsQuery.isLoading ? (
           <div className="space-y-2">
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-14 w-full" />
+            <Skeleton className="h-14 w-full" />
           </div>
-        ) : activeAssignments.length === 0 ? (
-          <Card>
-            <CardContent className="py-10 text-center text-sm text-muted-foreground">
-              No assets are currently checked out.
-            </CardContent>
-          </Card>
+        ) : loans.length === 0 ? (
+          <p className="py-10 text-center text-sm text-muted-foreground">No assets are currently checked out.</p>
         ) : (
-          <div className="space-y-2">
-            {activeAssignments.map((assignment) => {
+          <ul className="-mx-4 divide-y divide-border sm:-mx-5">
+            {loans.map(({ assignment, status }) => {
               const asset = assetsById.get(assignment.assetId);
               const person = peopleById.get(assignment.userId);
-              const isOverdue = overdueIds.has(assignment.id);
+              const personName = person?.name ?? assignment.userName ?? "Unknown custodian";
               return (
-                <Card key={assignment.id} className={cn(isOverdue && "ring-1 ring-rose-500/40")}>
-                  <CardContent className="flex flex-wrap items-center justify-between gap-3 p-3.5">
+                <li
+                  key={assignment.id}
+                  className="grid grid-cols-1 gap-3 px-4 py-3.5 sm:px-5 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1.1fr)_auto] md:items-center md:gap-5"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                      <Box className="size-[18px]" />
+                    </span>
                     <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate font-medium text-foreground">{asset ? asset.name : "Loading asset..."}</p>
-                        {asset && <span className="font-mono text-xs text-muted-foreground">{asset.assetTag}</span>}
-                        {isOverdue && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/20 bg-rose-500/10 px-2 py-0.5 text-xs font-medium text-rose-400">
-                            Overdue
-                          </span>
-                        )}
-                      </div>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {person ? person.name : "Unknown custodian"} · Checked out {formatDateTime(assignment.assignedAt)}
-                        {assignment.expectedReturnDate && ` · Due ${formatDate(assignment.expectedReturnDate)}`}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5"
-                        disabled={printingId === assignment.id}
-                        onClick={() => handlePrintReceipt(assignment)}
-                      >
-                        {printingId === assignment.id ? (
-                          <Loader2 className="size-3.5 animate-spin" />
-                        ) : (
-                          <Printer className="size-3.5" />
-                        )}
-                        Receipt
-                      </Button>
-                      {canCheckInOut && (
-                        <Button type="button" size="sm" onClick={() => openCheckinDialog(assignment)}>
-                          Check In
-                        </Button>
+                      {asset ? (
+                        <Link to={`/assets/${asset.id}`} className="block truncate font-medium text-foreground hover:underline">
+                          {asset.name}
+                        </Link>
+                      ) : (
+                        <p className="truncate font-medium text-muted-foreground">Loading asset...</p>
                       )}
+                      <p className="truncate font-mono text-[11px] text-muted-foreground">{asset?.assetTag ?? ""}</p>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+
+                  <div className="flex min-w-0 items-center gap-2 text-[13px]">
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/12 text-[10px] font-semibold text-brand-link">
+                      {getInitials(personName)}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-foreground">{personName}</p>
+                      <p className="truncate text-[11px] text-muted-foreground">Out since {formatDate(assignment.assignedAt)}</p>
+                    </div>
+                  </div>
+
+                  <div className="min-w-0">
+                    <div className="mb-1.5 flex items-baseline justify-between gap-2 text-[11px]">
+                      <span className={status.overdue ? "font-medium text-rose-600 dark:text-rose-400" : "text-muted-foreground"}>{status.text}</span>
+                      {assignment.expectedReturnDate && <span className="text-muted-foreground">Due {formatDate(assignment.expectedReturnDate)}</span>}
+                    </div>
+                    {status.percent == null ? (
+                      <p className="text-xs text-muted-foreground">Open-ended loan</p>
+                    ) : (
+                      <Meter percent={status.percent} tone={status.overdue ? "critical" : "brand"} label={status.overdue ? "Late" : undefined} />
+                    )}
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-2 md:justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 gap-1.5 md:flex-none"
+                      disabled={printingId === assignment.id}
+                      onClick={() => handlePrintReceipt(assignment)}
+                    >
+                      {printingId === assignment.id ? <Loader2 className="size-3.5 animate-spin" /> : <Printer className="size-3.5" />}
+                      Receipt
+                    </Button>
+                    {canCheckInOut && (
+                      <Button type="button" size="sm" className="flex-1 md:flex-none" onClick={() => openCheckinDialog(assignment)}>
+                        Check In
+                      </Button>
+                    )}
+                  </div>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
-      </div>
+      </DashboardCard>
 
       <Dialog open={checkoutOpen} onOpenChange={setCheckoutOpen}>
         <DialogContent>

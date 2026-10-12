@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Search, Menu, LogOut, Moon, Sun, Bell, PanelLeftOpen } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Search, Menu, LogOut, Bell, ChevronDown } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,10 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
-import { Logo } from "@/components/brand/Logo";
 import { useAuthStore } from "@/store/auth.store";
-import { useThemeStore } from "@/store/theme.store";
 import {
   useMarkAllNotificationsReadMutation,
   useMarkNotificationReadMutation,
@@ -20,7 +16,10 @@ import {
 } from "@/features/notifications/api";
 import type { AppNotification } from "@/types";
 import { getInitials, formatRelativeTime } from "@/lib/format";
+import { roleLabelMap } from "@/lib/status";
 import { toast } from "sonner";
+import { BrandMark } from "./shell/BrandMark";
+import { ThemeToggleButton, Topbar, TopbarIconButton } from "./shell/Topbar";
 
 interface HeaderProps {
   onOpenCommandPalette: () => void;
@@ -32,10 +31,6 @@ export function Header({ onOpenCommandPalette, onOpenMobileMenu }: HeaderProps) 
   const currentUser = useAuthStore((s) => s.currentUser);
   const org = useAuthStore((s) => s.org);
   const logout = useAuthStore((s) => s.logout);
-  const isDark = useThemeStore((s) => s.isDark);
-  const toggleDark = useThemeStore((s) => s.toggleDark);
-  const isSidebarCollapsed = useThemeStore((s) => s.isSidebarCollapsed);
-  const toggleSidebar = useThemeStore((s) => s.toggleSidebar);
 
   const { data: notifications = [] } = useNotificationsQuery();
   const markNotificationRead = useMarkNotificationReadMutation();
@@ -54,116 +49,110 @@ export function Header({ onOpenCommandPalette, onOpenMobileMenu }: HeaderProps) 
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-border bg-background px-3 sm:px-6">
-      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-        <button
-          type="button"
-          onClick={onOpenMobileMenu}
-          aria-label="Open navigation menu"
-          className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted lg:hidden"
-        >
-          <Menu className="size-5" />
-        </button>
+    <Topbar
+      start={
+        <>
+          <TopbarIconButton onClick={onOpenMobileMenu} aria-label="Open navigation menu" className="-ml-1.5 lg:hidden">
+            <Menu className="size-5" />
+          </TopbarIconButton>
+          <BrandMark logoUrl={org?.logoUrl} name={org?.name ?? "Workspace"} className="size-8 rounded-lg lg:hidden" />
 
-        {isSidebarCollapsed && (
           <button
             type="button"
-            onClick={toggleSidebar}
-            aria-label="Open sidebar"
-            title="Open sidebar"
-            className="hidden shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:flex"
+            onClick={onOpenCommandPalette}
+            className="hidden h-10 w-full max-w-sm items-center gap-2.5 rounded-full border border-tb-field-border bg-tb-field px-4 text-[13px] text-tb-muted shadow-xs transition-colors hover:text-tb-foreground sm:flex"
           >
-            <PanelLeftOpen className="size-5" />
+            <Search className="size-4 shrink-0" />
+            <span className="truncate">Search assets, people...</span>
+            <kbd className="ml-auto hidden rounded-md border border-tb-field-border px-1.5 py-0.5 font-sans text-[10px] font-medium lg:inline">
+              Ctrl K
+            </kbd>
           </button>
-        )}
+        </>
+      }
+      end={
+        <>
+          <TopbarIconButton onClick={onOpenCommandPalette} aria-label="Search" className="sm:hidden">
+            <Search className="size-[18px]" />
+          </TopbarIconButton>
+          <ThemeToggleButton />
 
-        <div className="shrink-0 lg:hidden">
-          <Logo variant="icon" size="sm" logoUrl={org?.logoUrl} orgName={org?.name} />
-        </div>
-
-        <button
-          type="button"
-          onClick={onOpenCommandPalette}
-          className="flex w-full max-w-xs items-center gap-2 truncate rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-input hover:text-foreground sm:max-w-sm"
-        >
-          <Search className="size-3.5 shrink-0" />
-          <span className="truncate">Search assets, people...</span>
-        </button>
-      </div>
-
-      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-        <Button variant="ghost" size="icon" onClick={toggleDark} aria-label="Toggle theme" title="Toggle theme">
-          {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
-        </Button>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="Notifications" className="relative">
-              <Bell className="size-4" />
-              {unreadCount > 0 && (
-                <Badge className="absolute -right-0.5 -top-0.5 h-4 min-w-4 justify-center rounded-full px-1 text-[10px]">
-                  {unreadCount}
-                </Badge>
-              )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80 text-xs">
-            <div className="flex items-center justify-between gap-2 px-2 py-1.5">
-              <DropdownMenuLabel className="p-0 font-semibold">Notifications</DropdownMenuLabel>
-              {unreadCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => markAllNotificationsRead.mutate()}
-                  className="shrink-0 text-[11px] font-medium text-primary hover:underline"
-                >
-                  Mark all as read
-                </button>
-              )}
-            </div>
-            <DropdownMenuSeparator />
-            {notifications.length === 0 ? (
-              <div className="px-2 py-6 text-center text-muted-foreground">No notifications yet</div>
-            ) : (
-              notifications.map((n) => (
-                <DropdownMenuItem
-                  key={n.id}
-                  onClick={() => handleNotificationClick(n)}
-                  className="flex flex-col items-start gap-0.5 whitespace-normal px-2 py-2"
-                >
-                  <div className="flex w-full items-center justify-between gap-2">
-                    <span className="font-medium text-foreground">{n.title}</span>
-                    {!n.isRead && <span className="size-1.5 shrink-0 rounded-full bg-primary" />}
-                  </div>
-                  <span className="text-[11px] text-muted-foreground">{n.message}</span>
-                  <span className="text-[10px] text-muted-foreground/70">{formatRelativeTime(n.createdAt)}</span>
-                </DropdownMenuItem>
-              ))
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-1.5 px-1.5 sm:pl-1.5 sm:pr-2">
-              <div className="flex size-6 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-foreground">
-                {currentUser ? getInitials(currentUser.name) : "?"}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <TopbarIconButton aria-label="Notifications">
+                <Bell className="size-[18px]" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-primary-foreground ring-2 ring-tb">
+                    {unreadCount}
+                  </span>
+                )}
+              </TopbarIconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80 text-xs">
+              <div className="flex items-center justify-between gap-2 px-2 py-1.5">
+                <DropdownMenuLabel className="p-0 font-semibold">Notifications</DropdownMenuLabel>
+                {unreadCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => markAllNotificationsRead.mutate()}
+                    className="shrink-0 text-[11px] font-medium text-brand-link hover:underline"
+                  >
+                    Mark all as read
+                  </button>
+                )}
               </div>
-              <span className="hidden font-medium sm:inline-block">{currentUser?.name}</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 text-xs">
-            <DropdownMenuLabel className="p-2 font-normal">
-              <div className="truncate font-semibold text-foreground">{currentUser?.name}</div>
-              <div className="truncate text-[11px] text-muted-foreground">{currentUser?.email}</div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:text-destructive">
-              <LogOut className="mr-2 size-3.5" />
-              Sign out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </header>
+              <DropdownMenuSeparator />
+              {notifications.length === 0 ? (
+                <div className="px-2 py-6 text-center text-muted-foreground">No notifications yet</div>
+              ) : (
+                notifications.map((n) => (
+                  <DropdownMenuItem
+                    key={n.id}
+                    onClick={() => handleNotificationClick(n)}
+                    className="flex flex-col items-start gap-0.5 px-2 py-2 whitespace-normal"
+                  >
+                    <div className="flex w-full items-center justify-between gap-2">
+                      <span className="font-medium text-foreground">{n.title}</span>
+                      {!n.isRead && <span className="size-1.5 shrink-0 rounded-full bg-primary" />}
+                    </div>
+                    <span className="text-[11px] text-muted-foreground">{n.message}</span>
+                    <span className="text-[10px] text-muted-foreground/70">{formatRelativeTime(n.createdAt)}</span>
+                  </DropdownMenuItem>
+                ))
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="ml-1 flex items-center gap-2.5 rounded-full p-0.5 transition-colors hover:bg-tb-hover sm:pr-2.5"
+              >
+                <span className="flex size-9 items-center justify-center rounded-full bg-gradient-brand text-xs font-semibold text-primary-foreground">
+                  {currentUser ? getInitials(currentUser.name) : "?"}
+                </span>
+                <span className="hidden min-w-0 flex-col text-left leading-tight md:flex">
+                  <span className="max-w-[10rem] truncate text-[13px] font-semibold text-tb-foreground">{currentUser?.name}</span>
+                  <span className="text-[11px] text-tb-muted">{currentUser ? roleLabelMap[currentUser.role] : ""}</span>
+                </span>
+                <ChevronDown className="hidden size-3.5 text-tb-muted sm:block" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 text-xs">
+              <DropdownMenuLabel className="p-2 font-normal">
+                <div className="truncate font-semibold text-foreground">{currentUser?.name}</div>
+                <div className="truncate text-[11px] text-muted-foreground">{currentUser?.email}</div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:text-destructive">
+                <LogOut className="mr-2 size-3.5" />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </>
+      }
+    />
   );
 }

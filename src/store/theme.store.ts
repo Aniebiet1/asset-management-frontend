@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { Organization } from "@/types";
-import { readableForeground } from "@/lib/color";
+import { brandSurfaceParams, darkModePrimary, readableForeground } from "@/lib/color";
 
 export type ThemePreference = "light" | "dark" | "system";
 
@@ -24,6 +24,8 @@ interface ThemeState {
    * only place per-tenant branding needs to be wired — no component needs conditional
    * styling (or a separate favicon update) for it.
    */
+  /** `sidebarColor: null` (explicit) clears a previously applied sidebar override; omitting it
+   * leaves whatever is there. */
   applyOrgTheme: (org: Partial<Pick<Organization, "primaryColor" | "accentColor" | "sidebarColor" | "logoUrl">>) => void;
 }
 
@@ -145,12 +147,39 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
       // invisible on a light pastel, so pick text-on-primary by actual contrast instead of
       // assuming a dark background. sidebar-primary mirrors org-primary (see index.css), so its
       // foreground needs the same treatment.
-      const primaryForeground = readableForeground(org.primaryColor);
-      root.setProperty("--primary-foreground", primaryForeground);
-      root.setProperty("--sidebar-primary-foreground", primaryForeground);
+      // index.css derives --primary-foreground/--sidebar-primary-foreground from this.
+      root.setProperty("--org-primary-fg", readableForeground(org.primaryColor));
+      const dark = darkModePrimary(org.primaryColor);
+      if (dark) {
+        root.setProperty("--org-primary-dark", dark.color);
+        root.setProperty("--org-primary-dark-fg", dark.foreground);
+      } else {
+        root.removeProperty("--org-primary-dark");
+        root.removeProperty("--org-primary-dark-fg");
+      }
+      // The shell's frame, canvas tint and card shadows are all built from these in index.css.
+      const surface = brandSurfaceParams(org.primaryColor);
+      if (surface) {
+        root.setProperty("--brand-h", surface.hue.toFixed(1));
+        root.setProperty("--brand-c", surface.chroma.toFixed(3));
+        root.setProperty("--frame-c", surface.frameChroma.toFixed(3));
+        root.setProperty("--tint-c", surface.tintChroma.toFixed(4));
+      }
     }
     if (org.accentColor) root.setProperty("--org-accent", org.accentColor);
-    if (org.sidebarColor) root.setProperty("--sidebar", org.sidebarColor);
+    if (org.sidebarColor) {
+      // An explicit sidebar color replaces the derived frame outright, in both modes, with text
+      // picked by contrast since it can be any lightness (a white sidebar is a legitimate choice).
+      const frameForeground = readableForeground(org.sidebarColor);
+      const isLightFrame = frameForeground === "#0a0a0a";
+      root.setProperty("--sidebar", org.sidebarColor);
+      root.setProperty("--frame", org.sidebarColor);
+      root.setProperty("--frame-foreground", frameForeground);
+      if (isLightFrame) root.setProperty("--frame-brand", "color-mix(in oklab, var(--org-primary) 80%, black)");
+      else root.removeProperty("--frame-brand");
+    } else if (org.sidebarColor === null) {
+      for (const prop of ["--sidebar", "--frame", "--frame-foreground", "--frame-brand"]) root.removeProperty(prop);
+    }
     if (org.logoUrl !== undefined) applyFavicon(org.logoUrl);
   },
 }));
