@@ -21,6 +21,15 @@ const TYPE_DOT: Record<ServiceEntryType, string> = {
   inspection: "bg-muted-foreground/60",
 };
 
+/**
+ * Fits a half-width tile on phones: "3 Oct" this year (the year goes without saying),
+ * "Oct 2025" for older dates. The full date is in the tile's tooltip.
+ */
+function shortServiceDate(date: string): string {
+  const isThisYear = formatDate(date, "yyyy") === String(new Date().getFullYear());
+  return formatDate(date, isThisYear ? "d MMM" : "MMM yyyy");
+}
+
 /** Asset detail tab for the optional "serviceHistory" add-on. Only rendered when the org has it on. */
 export function ServiceHistoryTab({ assetId }: { assetId: string }) {
   const currentUser = useAuthStore((s) => s.currentUser);
@@ -90,11 +99,10 @@ export function ServiceHistoryTab({ assetId }: { assetId: string }) {
           label={`${summary.entryCount === 1 ? "Entry" : "Entries"}, ${summary.repairCount} ${summary.repairCount === 1 ? "repair" : "repairs"}`}
           value={summary.entryCount}
         />
-        {/* Year goes in the label so the value fits a half-width tile on phones. */}
         <MiniStat
           icon={CalendarClock}
-          label={summary.lastServicedAt ? `Last serviced, ${formatDate(summary.lastServicedAt, "yyyy")}` : "Last serviced"}
-          value={summary.lastServicedAt ? formatDate(summary.lastServicedAt, "d MMM") : "Never"}
+          label="Last serviced"
+          value={summary.lastServicedAt ? shortServiceDate(summary.lastServicedAt) : "Never"}
           title={summary.lastServicedAt ? formatDate(summary.lastServicedAt, "dd MMM yyyy") : undefined}
         />
       </div>
