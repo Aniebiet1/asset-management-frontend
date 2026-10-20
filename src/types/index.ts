@@ -105,8 +105,16 @@ export interface Organization {
   planStatus: PlanStatus;
   planExpiresAt: string | null;
   lastActivityAt: string | null;
+  settings?: OrgSettings;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Optional per-org add-ons, switched on from the platform console (backend lib/features.ts). */
+export type OrgFeature = "serviceHistory";
+
+export interface OrgSettings {
+  features?: Partial<Record<OrgFeature, boolean>>;
 }
 
 export type LabelFormat = NonNullable<Organization["labelFormat"]>;
@@ -326,6 +334,27 @@ export interface MaintenanceRecord {
 
   assetName?: string;
   assetTag?: string;
+}
+
+export type ServiceEntryType = "repair" | "service" | "inspection";
+
+/** A completed maintenance record as shown in an asset's service history (GET /assets/:id/service-history). */
+export interface ServiceHistoryEntry extends Omit<MaintenanceRecord, "cost"> {
+  /** Absent for roles that can't see money values (no canViewAssetValuation). */
+  cost?: string;
+  vendorName: string | null;
+  loggedByName: string | null;
+}
+
+export interface ServiceHistory {
+  entries: ServiceHistoryEntry[];
+  summary: {
+    /** Absent for roles that can't see money values. */
+    totalCost?: number;
+    entryCount: number;
+    repairCount: number;
+    lastServicedAt: string | null;
+  };
 }
 
 // ---------------------------------------------------------------------------

@@ -115,6 +115,16 @@ and buttons for roles that can't use them. It is **not** a security boundary —
 `src/lib/permissions.ts` changes, update this copy to match, but never treat "the button is hidden"
 as equivalent to "the API is protected."
 
+## Optional per-org add-ons
+
+Some features are switched on per workspace by a Tecres platform admin (platform console → org →
+Add-ons), e.g. `serviceHistory` (`features/serviceHistory/`, shown as the asset page's "Service
+history" tab). `src/lib/features.ts` lists them (store-free, used by both apps);
+`src/lib/useOrgFeature.ts` is the tenant-side check. Gate the add-on's UI on it so that with the
+feature off the app looks exactly as it did before; the backend's `requireFeature()` is the real
+enforcement. A new add-on needs its key in both repos' `features.ts` and in the backend's
+`orgFeaturesUpdateSchema`.
+
 ## Auth token storage
 
 Access tokens live in memory (Zustand), never `localStorage` — refresh happens via an httpOnly

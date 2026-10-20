@@ -18,6 +18,8 @@ import { generateSingleLabelPdf } from "@/features/labels/lib/labelPdf";
 import { useAuthStore } from "@/store/auth.store";
 import { CorrectTagDialog } from "@/features/assets/components/CorrectTagDialog";
 import { useAssetValue } from "@/features/assets/useAssetValue";
+import { ServiceHistoryTab } from "@/features/serviceHistory/ServiceHistoryTab";
+import { useOrgFeature } from "@/lib/useOrgFeature";
 
 export function AssetDetailPage() {
   const { id } = useParams();
@@ -37,6 +39,7 @@ export function AssetDetailPage() {
   const [isPrinting, setIsPrinting] = useState(false);
   const [correctTagOpen, setCorrectTagOpen] = useState(false);
   const valueOf = useAssetValue();
+  const hasServiceHistory = useOrgFeature("serviceHistory");
 
   if (isLoading) {
     return (
@@ -168,7 +171,11 @@ export function AssetDetailPage() {
                 <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent px-3">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="history">History</TabsTrigger>
-                  <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
+                  {hasServiceHistory ? (
+                    <TabsTrigger value="service-history">Service history</TabsTrigger>
+                  ) : (
+                    <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
+                  )}
                 </TabsList>
                 <TabsContent value="overview" className="space-y-4 p-4">
                   <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
@@ -248,6 +255,11 @@ export function AssetDetailPage() {
                     <p className="text-sm text-muted-foreground">No check-out history for this asset yet.</p>
                   )}
                 </TabsContent>
+                {hasServiceHistory && (
+                  <TabsContent value="service-history" className="p-4">
+                    <ServiceHistoryTab assetId={asset.id} />
+                  </TabsContent>
+                )}
                 <TabsContent value="maintenance" className="p-4">
                   {maintenance.isLoading ? (
                     <Skeleton className="h-24 w-full" />

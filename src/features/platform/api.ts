@@ -5,6 +5,7 @@ import type {
   FleetAnalytics,
   LoginRiskEntry,
   Organization,
+  OrgFeature,
   PlanStatus,
   PlatformAdmin,
   PlatformAdminInvite,
@@ -97,6 +98,21 @@ export function useUpdateOrgQuotasMutation(orgId: string) {
       }).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["platform", "orgs", "list"] });
+      queryClient.invalidateQueries({ queryKey: ["platform", "orgs", "detail", orgId] });
+    },
+  });
+}
+
+/** Switch optional add-ons (lib/features.ts) on or off for one workspace. Off hides them; no data is deleted. */
+export function useUpdateOrgFeaturesMutation(orgId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (features: Partial<Record<OrgFeature, boolean>>) =>
+      platformApiFetch<{ data: Organization }>(`/platform/orgs/${orgId}/features`, {
+        method: "PATCH",
+        body: JSON.stringify(features),
+      }).then((r) => r.data),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["platform", "orgs", "detail", orgId] });
     },
   });

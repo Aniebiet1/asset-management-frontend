@@ -23,8 +23,11 @@ import {
   useOrgUsersQuery,
   useOrgActivityQuery,
   useForceResetPasswordMutation,
+  useUpdateOrgFeaturesMutation,
 } from "./api";
-import type { PlatformOrgUser } from "@/types";
+import { Switch } from "@/components/ui/switch";
+import { ORG_FEATURE_INFO, orgHasFeature } from "@/lib/features";
+import type { OrgFeature, PlatformOrgUser } from "@/types";
 import { ApiError } from "@/lib/http-error";
 import { toast } from "sonner";
 
@@ -42,6 +45,7 @@ export function PlatformOrgDetailPage() {
   const users = useOrgUsersQuery(id);
   const activity = useOrgActivityQuery(id);
   const forceReset = useForceResetPasswordMutation(id!);
+  const updateFeatures = useUpdateOrgFeaturesMutation(id!);
   const isOwner = usePlatformAuthStore((s) => s.admin?.role) === "platform_owner";
 
   const [assetQuota, setAssetQuota] = useState<string>("");
@@ -80,6 +84,15 @@ export function PlatformOrgDetailPage() {
       toast.success("Quotas updated");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Couldn't update quotas.");
+    }
+  };
+
+  const handleToggleFeature = async (feature: OrgFeature, enabled: boolean) => {
+    try {
+      await updateFeatures.mutateAsync({ [feature]: enabled });
+      toast.success(`${ORG_FEATURE_INFO[feature].label} ${enabled ? "switched on" : "switched off"} for ${org.name}`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't update add-ons.");
     }
   };
 
@@ -174,6 +187,32 @@ export function PlatformOrgDetailPage() {
                     Update quotas
                   </Button>
                 </form>
+              </CardContent>
+            </Card>
+
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-sm font-semibold">Add-ons</CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  Extra features for this workspace. Switching one off hides it from their users; nothing they recorded is deleted.
+                </p>
+              </CardHeader>
+              <CardContent className="divide-y divide-border">
+                {(Object.keys(ORG_FEATURE_INFO) as OrgFeature[]).map((feature) => (
+                  <label key={feature} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-foreground">{ORG_FEATURE_INFO[feature].label}</span>
+                      <span className="block text-xs text-muted-foreground">{ORG_FEATURE_INFO[feature].description}</span>
+                    </span>
+                    <Switch
+                      checked={orgHasFeature(org, feature)}
+                      disabled={!isOwner || updateFeatures.isPending}
+                      onCheckedChange={(checked) => handleToggleFeature(feature, checked)}
+                      aria-label={ORG_FEATURE_INFO[feature].label}
+                    />
+                  </label>
+                ))}
+                {!isOwner && <p className="pt-3 text-[11px] text-muted-foreground">Only a platform owner can change add-ons.</p>}
               </CardContent>
             </Card>
           </div>
