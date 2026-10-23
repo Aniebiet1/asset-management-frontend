@@ -1,11 +1,10 @@
 import type { Organization, OrgFeature } from "@/types";
 
 /**
- * Optional per-org add-ons. Mirrors the backend's lib/features.ts: a Tecres platform admin
- * switches them on per workspace from the platform console. Like permissions.ts this only decides
- * what to show; the backend's requireFeature() is what actually enforces it. Kept free of either
- * auth store so the tenant app and the platform console can both import it (tenant hook:
- * lib/useOrgFeature.ts).
+ * Optional per-org features. Mirrors the backend's lib/features.ts: each organization's admin
+ * switches them on or off in Settings > Features. Like permissions.ts this only decides what to
+ * show; the backend's requireFeature() is what actually enforces it. Tenant hook:
+ * lib/useOrgFeature.ts.
  */
 export const ORG_FEATURE_INFO: Record<OrgFeature, { label: string; description: string }> = {
   serviceHistory: {

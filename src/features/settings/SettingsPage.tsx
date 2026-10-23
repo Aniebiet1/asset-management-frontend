@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "cn";
-import { Building2, FolderTree, Loader2, Lock, Monitor, Palette, QrCode } from "lucide-react";
+import { Building2, FolderTree, Loader2, Lock, Monitor, Palette, QrCode, ToggleRight } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -10,12 +10,13 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { OrgProfileForm } from "@/features/settings/components/OrgProfileForm";
 import { BrandingForm } from "@/features/settings/components/BrandingForm";
 import { AppearanceForm } from "@/features/settings/components/AppearanceForm";
+import { FeaturesForm } from "@/features/settings/components/FeaturesForm";
 import { CatalogTab } from "@/features/catalog/components/CatalogTab";
 import { LabelSettingsForm } from "@/features/settings/components/LabelSettingsForm";
 import { hasPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/auth.store";
 
-const PAGE_DESCRIPTION = "Organization profile, branding, catalog and label defaults.";
+const PAGE_DESCRIPTION = "Organization profile, branding, catalog, label defaults and features.";
 
 /**
  * Settings as a whole is admin-only, not just the org-editing tabs within it: the Sidebar already
@@ -47,6 +48,7 @@ const SECTIONS = [
   { value: "branding", label: "Branding", icon: Palette },
   { value: "catalog", label: "Catalog", icon: FolderTree },
   { value: "labels", label: "Labels", icon: QrCode },
+  { value: "features", label: "Features", icon: ToggleRight },
   { value: "appearance", label: "Appearance", icon: Monitor },
 ] as const;
 
@@ -137,6 +139,12 @@ export function SettingsPage() {
         <TabsContent value="labels">
           <SettingsPanel>
             <LabelSettingsForm org={org} />
+          </SettingsPanel>
+        </TabsContent>
+
+        <TabsContent value="features">
+          <SettingsPanel className="max-w-2xl">
+            <FeaturesForm org={org} />
           </SettingsPanel>
         </TabsContent>
 
