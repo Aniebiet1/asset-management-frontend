@@ -421,13 +421,17 @@
 }
 
 /* Custom scrollbar — ported from ink-asset-management/src/app/globals.css */
-* {
-  scrollbar-width: auto;
-  scrollbar-color: var(--muted-foreground) transparent;
+/* Standard props only where ::-webkit-scrollbar is unsupported (Firefox) —
+   Chrome/Edge 121+ ignore the webkit pseudo-elements once these are set. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklch, var(--muted-foreground) 55%, transparent) transparent;
+  }
 }
 ::-webkit-scrollbar {
-  width: 14px;
-  height: 14px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -435,7 +439,7 @@
 ::-webkit-scrollbar-thumb {
   background: color-mix(in oklch, var(--muted-foreground) 55%, transparent);
   border-radius: 9999px;
-  border: 3px solid var(--background);
+  border: 2px solid transparent;
   background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {

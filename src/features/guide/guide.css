@@ -1,0 +1,110 @@
+/* Screen styling for the user guide's HTML (docs/manuals/src), mirroring the print classes in
+   docs/manuals/src/manual.css but built from the app's own tokens so it follows light/dark mode and
+   the org's brand color. */
+.guide-prose {
+  --guide-accent: color-mix(in oklab, var(--primary) 68%, var(--foreground));
+  --guide-panel: color-mix(in oklab, var(--primary) 7%, var(--card));
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: color-mix(in oklab, var(--foreground) 82%, var(--card));
+}
+.guide-prose > :first-child { margin-top: 0; }
+.guide-prose > :last-child { margin-bottom: 0; }
+.guide-prose b,
+.guide-prose strong { font-weight: 600; color: var(--foreground); }
+.guide-prose a { color: var(--guide-accent); text-decoration: underline; text-underline-offset: 2px; }
+.guide-prose p { margin: 0 0 0.875rem; }
+.guide-prose .lead { font-size: 1rem; color: var(--foreground); }
+.guide-prose .small { font-size: 0.8125rem; }
+.guide-prose .muted { color: var(--muted-foreground); }
+.guide-prose h3 { margin: 1.75rem 0 0.625rem; font-size: 1.0625rem; font-weight: 600; color: var(--foreground); }
+.guide-prose code {
+  font-size: 0.8125rem;
+  padding: 0.0625rem 0.3125rem;
+  border-radius: 0.3125rem;
+  background: var(--muted);
+}
+
+.guide-prose ul,
+.guide-prose ol { margin: 0 0 1rem; padding-left: 1.25rem; }
+.guide-prose ul { list-style: disc; }
+.guide-prose ol { list-style: decimal; }
+.guide-prose li { margin-bottom: 0.375rem; }
+.guide-prose ol.steps { counter-reset: step; list-style: none; padding-left: 0; }
+.guide-prose ol.steps > li { counter-increment: step; position: relative; padding-left: 2.25rem; margin-bottom: 0.75rem; }
+.guide-prose ol.steps > li::before {
+  content: counter(step);
+  position: absolute;
+  top: 0.125rem;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.guide-prose .guide-table { margin: 0.5rem 0 1.25rem; overflow-x: auto; border-radius: 0.75rem; border: 1px solid var(--border); }
+.guide-prose table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.guide-prose th {
+  padding: 0.625rem 0.875rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  background: color-mix(in oklab, var(--muted) 60%, transparent);
+}
+.guide-prose td { padding: 0.625rem 0.875rem; border-top: 1px solid var(--border); vertical-align: top; }
+.guide-prose td:first-child { min-width: 9rem; }
+
+.guide-prose .callout {
+  margin: 1rem 0 1.25rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0.75rem;
+  border-left: 3px solid var(--primary);
+  background: var(--guide-panel);
+}
+.guide-prose .callout .t { margin-bottom: 0.25rem; font-size: 0.8125rem; font-weight: 600; color: var(--guide-accent); }
+.guide-prose .callout > :last-child,
+.guide-prose .callout p:last-child { margin-bottom: 0; }
+.guide-prose .callout.warn { border-color: var(--viz-yellow); background: color-mix(in oklab, var(--viz-yellow) 10%, var(--card)); }
+.guide-prose .callout.warn .t { color: color-mix(in oklab, var(--viz-yellow) 70%, var(--foreground)); }
+.guide-prose .callout.ok { border-color: var(--viz-aqua); background: color-mix(in oklab, var(--viz-aqua) 10%, var(--card)); }
+.guide-prose .callout.ok .t { color: color-mix(in oklab, var(--viz-aqua) 70%, var(--foreground)); }
+
+.guide-prose figure { margin: 1rem 0 1.5rem; text-align: center; }
+.guide-prose figure img {
+  display: inline-block;
+  max-width: 100%;
+  max-height: 34rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  box-shadow: var(--card-shadow);
+}
+.guide-prose figcaption { margin-top: 0.5rem; font-size: 0.8125rem; color: var(--muted-foreground); }
+
+.guide-prose .two-col { display: grid; gap: 1.25rem; align-items: start; }
+@media (width >= 48rem) {
+  .guide-prose .two-col { grid-template-columns: 1fr 1fr; }
+}
+
+.guide-prose .flow { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.5rem; margin: 1rem 0 1.25rem; }
+.guide-prose .flow .node {
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.625rem;
+  border: 1.5px solid var(--guide-accent);
+  background: var(--card);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--foreground);
+}
+.guide-prose .flow .node small { display: block; font-size: 0.6875rem; font-weight: 400; color: var(--muted-foreground) !important; }
+.guide-prose .flow .node.fill { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
+.guide-prose .flow .node.fill small { color: color-mix(in oklab, var(--primary-foreground) 75%, transparent) !important; }
+.guide-prose .flow .arr { font-weight: 600; color: var(--muted-foreground); }

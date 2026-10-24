@@ -40,7 +40,7 @@
   </ul>
   <div class="callout" style="margin-top:8mm">
     <div class="t">About the examples</div>
-    <p>Screens in this guide come from the real application in dark mode, using a fictional company, <b>Harbor Logistics Ltd</b>. Your workspace shows your own logo, colors and data. The application also has a light mode (section 13).</p>
+    <p>Screens in this guide come from the real application in light mode, using a fictional company, <b>Harbor Logistics Ltd</b>. Your workspace shows your own logo, colors and data. The application also has a dark mode (section 13).</p>
   </div>
 </div>
 
@@ -81,6 +81,7 @@
     <li>Type the 6-digit code from the app and select <b>Verify and continue</b>.</li>
     <li>Save the <b>10 recovery codes</b> in a safe place (a password manager, or printed and locked away). Each can be used once if you lose your phone. Tick the confirmation box and select <b>Continue</b>.</li>
   </ol>
+  <figure><img src="../assets/shots/tenant-login.png" alt="Sign in"><figcaption>The sign-in page shows your company's logo and colors once your email is recognised.</figcaption></figure>
   <div class="two-col">
     <figure><img src="../assets/shots/tenant-totp-enroll-card.png" alt="Set up two-factor"><figcaption>Scan the QR code (blurred here).</figcaption></figure>
     <figure><img src="../assets/shots/tenant-recovery-codes-card.png" alt="Recovery codes"><figcaption>Save your recovery codes (blurred here).</figcaption></figure>
@@ -148,15 +149,15 @@
     <tr><td><b>Search bar</b></td><td>Click it and type any part of an asset's name, tag or serial number, or a person's name, to jump straight to it.</td></tr>
     <tr><td><b>Sun / moon icon</b></td><td>Switches between light and dark mode.</td></tr>
     <tr><td><b>Bell</b></td><td>Notifications, for example when an audit is assigned to you.</td></tr>
-    <tr><td><b>Your name</b></td><td>Your account menu and <b>Sign out</b>.</td></tr>
+    <tr><td><b>Your name</b></td><td>Your account menu, with this <b>User guide</b> and <b>Sign out</b>.</td></tr>
   </table>
 
   <h3>The dashboard</h3>
   <ul>
-    <li><b>Cards</b>: total assets, how many are available, in maintenance, and active users. Administrators and asset managers also see <b>Total Fleet Value</b>.</li>
-    <li><b>Charts</b>: assets by type and by status.</li>
-    <li><b>Recent Activity</b>: who did what, and when.</li>
-    <li><b>Maintenance Due</b>: upcoming and overdue maintenance jobs.</li>
+    <li><b>Cards</b>: total assets, how many are in use, overdue returns and maintenance due.</li>
+    <li><b>Asset activity</b>: what is checked out and with whom, what is overdue, and what is in for maintenance, with how far through its loan period each item is.</li>
+    <li><b>Asset status</b>: where every asset is right now, plus active users. Administrators and asset managers also see <b>Fleet value</b>.</li>
+    <li><b>Assets by type</b> and <b>Recent activity</b>: how your assets split across types, and who did what, and when.</li>
     <li><b>Scan Asset</b> opens the camera to scan an asset label; <b>New Asset</b> registers one.</li>
   </ul>
   <figure><img src="../assets/shots/t-command-palette.png" alt="Search"><figcaption>Quick search finding forklifts.</figcaption></figure>
@@ -182,7 +183,7 @@
 
   <h3>5.3 Registering a new asset</h3>
   <p>Select <b>New Asset</b>. The form has four tabs; only fields marked <span style="color:#e31e24">*</span> are required.</p>
-  <figure><img src="../assets/shots/t-asset-new.png" alt="New asset"><figcaption>Registering a new asset.</figcaption></figure>
+  <figure><img src="../assets/shots/t-asset-new.png" alt="New asset"><figcaption>Registering a new asset. The tag preview updates as you choose its details.</figcaption></figure>
   <table class="small">
     <tr><th style="width:36mm">Tab</th><th>What to fill in</th></tr>
     <tr><td><b>General</b></td><td>Asset tag details, name, location, department, vendor, custodian, status, condition and description.</td></tr>
@@ -211,8 +212,8 @@
 <!-- 6 -->
 <section class="chapter">
   <div class="chapter-head"><div class="num">6</div><div><div class="audience">Admins, asset managers</div><h2>Check-out and return</h2></div></div>
-  <p>Checking an asset out records who is responsible for it and when it is due back. <b>Check-Out / Return</b> shows every asset currently out; overdue ones are outlined in red.</p>
-  <figure><img src="../assets/shots/t-checkout.png" alt="Check-out page"><figcaption>Active check-outs, with an overdue vehicle highlighted.</figcaption></figure>
+  <p>Checking an asset out records who is responsible for it and when it is due back. <b>Check-Out / Return</b> shows every asset currently out, with late returns first and marked in red.</p>
+  <figure><img src="../assets/shots/t-checkout.png" alt="Check-out page"><figcaption>Active check-outs, with two overdue vehicles at the top.</figcaption></figure>
 
   <h3>Checking an asset out</h3>
   <ol class="steps">
@@ -376,7 +377,7 @@
     <tr><td>Labels print out of line</td><td>Print at 100% (not "fit to page") and check the calibration in Settings &rarr; Labels.</td></tr>
     <tr><td>The camera scanner doesn't start</td><td>Allow camera access in your browser, or type the tag instead.</td></tr>
   </table>
-  <div class="callout"><div class="t">Getting support</div><p>First ask your organization's TecresTrackIT administrator. Administrators can contact Tecres through the <b>Support</b> link at the bottom of every page.</p></div>
+  <div class="callout"><div class="t">Getting support</div><p>First ask your organization's TecresTrackIT administrator; administrators can contact Tecres directly. This guide is always available in the app under <b>User guide</b> in your account menu, or <b>Documentation</b> at the bottom of every page.</p></div>
 </section>
 
 </body>

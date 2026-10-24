@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Search, Menu, LogOut, Bell, ChevronDown } from "lucide-react";
+import { Search, Menu, LogOut, Bell, ChevronDown, BookOpen } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -145,6 +145,10 @@ export function Header({ onOpenCommandPalette, onOpenMobileMenu }: HeaderProps) 
                 <div className="truncate text-[11px] text-muted-foreground">{currentUser?.email}</div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate("/guide")} className="cursor-pointer">
+                <BookOpen className="mr-2 size-3.5" />
+                User guide
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:text-destructive">
                 <LogOut className="mr-2 size-3.5" />
                 Sign out

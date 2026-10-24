@@ -30,6 +30,7 @@ import { VendorsPage } from "@/features/vendors/VendorsPage";
 import { ReportsPage } from "@/features/reports/ReportsPage";
 import { LabelsPage } from "@/features/labels/LabelsPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
+import { UserGuidePage } from "@/features/guide/UserGuidePage";
 import { PlatformLoginPage } from "@/features/platform/PlatformLoginPage";
 import { PlatformTotpEnrollPage } from "@/features/platform/PlatformTotpEnrollPage";
 import { PlatformTotpChallengePage } from "@/features/platform/PlatformTotpChallengePage";
@@ -140,6 +141,7 @@ export function AppRouter() {
           <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
           <Route path="/labels" element={<ProtectedRoute><LabelsPage /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+          <Route path="/guide" element={<ProtectedRoute><UserGuidePage /></ProtectedRoute>} />
 
           {/* Tecres platform admin — fully separate auth/session, see BUILD_PLAN.md §1 */}
           <Route path="/platform/login" element={<PlatformLoginPage />} />

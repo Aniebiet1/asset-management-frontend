@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { MobileNav } from "./MobileNav";
@@ -36,10 +37,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           <footer className="hidden px-8 pb-5 text-xs text-muted-foreground lg:block">
             <div className="mx-auto flex max-w-7xl items-center justify-between border-t border-border pt-4">
               <span>© 2026 TecresTrackIT AMS</span>
-              <div className="flex items-center gap-4">
-                <span className="cursor-pointer hover:text-foreground">Documentation</span>
-                <span className="cursor-pointer hover:text-foreground">Support</span>
-              </div>
+              <Link to="/guide" className="hover:text-foreground">
+                Documentation
+              </Link>
             </div>
           </footer>
         }
