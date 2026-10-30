@@ -26,6 +26,9 @@ export const conditionColorMap: Record<string, StatusVisual> = {
   fair: { bg: "bg-yellow-500/10", text: "text-yellow-700 dark:text-yellow-400", border: "ring-yellow-500/25", label: "Fair" },
   poor: { bg: "bg-orange-500/10", text: "text-orange-700 dark:text-orange-400", border: "ring-orange-500/25", label: "Poor" },
   damaged: { bg: "bg-red-500/10", text: "text-red-700 dark:text-red-400", border: "ring-red-500/25", label: "Damaged" },
+  // Set by the system while a repair or service job is open on the asset, matching the amber the
+  // "In Maintenance" status badge uses.
+  maintenance: { bg: "bg-amber-500/10", text: "text-amber-700 dark:text-amber-400", border: "ring-amber-500/25", label: "Under Maintenance" },
 };
 
 export const priorityColorMap: Record<string, StatusVisual> = {

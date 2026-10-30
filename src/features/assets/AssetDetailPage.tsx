@@ -257,7 +257,7 @@ export function AssetDetailPage() {
                 </TabsContent>
                 {hasServiceHistory && (
                   <TabsContent value="service-history" className="p-4">
-                    <ServiceHistoryTab assetId={asset.id} />
+                    <ServiceHistoryTab assetId={asset.id} assetName={asset.name} assetTag={asset.assetTag} />
                   </TabsContent>
                 )}
                 <TabsContent value="maintenance" className="p-4">

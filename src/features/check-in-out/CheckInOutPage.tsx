@@ -42,10 +42,10 @@ import { BarcodeScanner } from "@/features/check-in-out/components/BarcodeScanne
 import { loanStatus } from "@/features/check-in-out/loanStatus";
 import { useAssetValue } from "@/features/assets/useAssetValue";
 import { useAuthStore } from "@/store/auth.store";
-import type { AssetAssignment, AssetCondition } from "@/types";
+import type { AssetAssignment, SelectableAssetCondition } from "@/types";
 
-const CONDITIONS: AssetCondition[] = ["excellent", "good", "fair", "poor", "damaged"];
-const CONDITION_LABEL: Record<AssetCondition, string> = {
+const CONDITIONS: SelectableAssetCondition[] = ["excellent", "good", "fair", "poor", "damaged"];
+const CONDITION_LABEL: Record<SelectableAssetCondition, string> = {
   excellent: "Excellent",
   good: "Good",
   fair: "Fair",
@@ -73,12 +73,12 @@ export function CheckInOutPage() {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [custodianId, setCustodianId] = useState("");
   const [expectedReturnDate, setExpectedReturnDate] = useState("");
-  const [conditionOut, setConditionOut] = useState<AssetCondition>("good");
+  const [conditionOut, setConditionOut] = useState<SelectableAssetCondition>("good");
   const [checkoutNotes, setCheckoutNotes] = useState("");
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   const [checkinTarget, setCheckinTarget] = useState<AssetAssignment | null>(null);
-  const [conditionIn, setConditionIn] = useState<AssetCondition>("good");
+  const [conditionIn, setConditionIn] = useState<SelectableAssetCondition>("good");
   const [checkinNotes, setCheckinNotes] = useState("");
   const [checkinError, setCheckinError] = useState<string | null>(null);
 
@@ -209,7 +209,7 @@ export function CheckInOutPage() {
       const isReturned = Boolean(receipt.returnedAt);
       const statusLabel = isReturned ? "RETURNED" : "ACTIVE";
       const statusRgb: [number, number, number] = isReturned ? [5, 150, 105] : [37, 99, 235];
-      const conditionRgb: Record<AssetCondition, [number, number, number]> = {
+      const conditionRgb: Record<SelectableAssetCondition, [number, number, number]> = {
         excellent: [5, 150, 105],
         good: [37, 99, 235],
         fair: [217, 119, 6],
@@ -263,7 +263,7 @@ export function CheckInOutPage() {
         ["Custodian", person?.name ?? receipt.userId],
         ["Checked Out", formatDateTime(receipt.assignedAt)],
         ["Expected Return", receipt.expectedReturnDate ? formatDate(receipt.expectedReturnDate) : "Not set"],
-        ["Condition Out", CONDITION_LABEL[receipt.conditionOut as AssetCondition] ?? receipt.conditionOut],
+        ["Condition Out", CONDITION_LABEL[receipt.conditionOut as SelectableAssetCondition] ?? receipt.conditionOut],
         ["Returned", receipt.returnedAt ? formatDateTime(receipt.returnedAt) : "Not yet returned"],
       ];
       if (receipt.notes) rows.push(["Notes", receipt.notes]);
@@ -282,7 +282,7 @@ export function CheckInOutPage() {
           if (data.section !== "body" || data.column.index !== 1) return;
           const label = rows[data.row.index]?.[0];
           if (label === "Condition Out") {
-            data.cell.styles.textColor = conditionRgb[receipt.conditionOut as AssetCondition] ?? [23, 23, 23];
+            data.cell.styles.textColor = conditionRgb[receipt.conditionOut as SelectableAssetCondition] ?? [23, 23, 23];
             data.cell.styles.fontStyle = "bold";
           }
           if (label === "Returned") {
@@ -663,7 +663,7 @@ export function CheckInOutPage() {
               />
             </FormField>
             <FormField label="Condition at check-out" htmlFor="conditionOut">
-              <Select value={conditionOut} onValueChange={(v) => setConditionOut(v as AssetCondition)}>
+              <Select value={conditionOut} onValueChange={(v) => setConditionOut(v as SelectableAssetCondition)}>
                 <SelectTrigger id="conditionOut" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
@@ -701,7 +701,7 @@ export function CheckInOutPage() {
           </DialogHeader>
           <form onSubmit={handleCheckinSubmit} className="space-y-4">
             <FormField label="Condition at check-in" htmlFor="conditionIn" required>
-              <Select value={conditionIn} onValueChange={(v) => setConditionIn(v as AssetCondition)}>
+              <Select value={conditionIn} onValueChange={(v) => setConditionIn(v as SelectableAssetCondition)}>
                 <SelectTrigger id="conditionIn" className="w-full">
                   <SelectValue />
                 </SelectTrigger>

@@ -90,6 +90,17 @@ const assetFormSchema = z.object({
 
   subsidiaryId: z.string().optional(),
   branchId: z.string().optional(),
+}).superRefine((values, ctx) => {
+  // An in-use asset is in someone's hands, so it has to say whose. The backend refuses to release
+  // the custodian of an in-use asset too (assets.service.ts updateAsset) - this is the same rule,
+  // caught before the request so the field itself can explain it.
+  if (values.status === "in_use" && values.custodianId === NONE) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["custodianId"],
+      message: "An asset that is in use needs a custodian. Check it in to release the custodian, or change the status.",
+    });
+  }
 });
 
 type AssetFormValues = z.infer<typeof assetFormSchema>;
@@ -131,7 +142,9 @@ function buildPayload(values: AssetFormValues, structured: boolean, batchIndex: 
     departmentId: values.departmentId === NONE ? undefined : values.departmentId,
     locationId: values.locationId,
     vendorId: values.vendorId === NONE ? undefined : values.vendorId,
-    custodianId: values.custodianId === NONE ? undefined : values.custodianId,
+    // null, not undefined: the backend's PUT is a partial update, so an absent key means "leave it"
+    // while null is what actually releases the custodian.
+    custodianId: values.custodianId === NONE ? null : values.custodianId,
     status: values.status,
     condition: values.condition,
     brand: values.brand || undefined,
@@ -171,12 +184,15 @@ const statusOptions = [
   { value: "lost", label: "Lost / Missing" },
 ];
 
+/** "Under maintenance" is included because the system sets it while a job is open on the asset,
+ * and a Select has to be able to render its own value - it's deliberately last. */
 const conditionOptions = [
   { value: "excellent", label: "Excellent" },
   { value: "good", label: "Good" },
   { value: "fair", label: "Fair" },
   { value: "poor", label: "Poor" },
   { value: "damaged", label: "Damaged" },
+  { value: "maintenance", label: "Under Maintenance" },
 ];
 
 export function AssetForm({ asset }: { asset?: Asset }) {
@@ -223,6 +239,8 @@ export function AssetForm({ asset }: { asset?: Asset }) {
   const watchedBranchId = useWatch({ control, name: "branchId" });
   const watchedCategoryId = useWatch({ control, name: "categoryId" });
   const watchedPurchaseDate = useWatch({ control, name: "purchaseDate" });
+  const watchedStatus = useWatch({ control, name: "status" });
+  const custodianLocked = watchedStatus === "in_use";
 
   const branches = useBranchesQuery();
 
@@ -571,7 +589,13 @@ export function AssetForm({ asset }: { asset?: Asset }) {
                   />
                 </FormField>
 
-                <FormField label="Custodian" htmlFor="custodianId">
+                <FormField
+                  label="Custodian"
+                  htmlFor="custodianId"
+                  required={custodianLocked}
+                  error={errors.custodianId?.message}
+                  hint={custodianLocked ? "An asset in use keeps a custodian. Check it in to release them." : undefined}
+                >
                   <Controller
                     control={control}
                     name="custodianId"
@@ -581,7 +605,9 @@ export function AssetForm({ asset }: { asset?: Asset }) {
                           <SelectValue placeholder="Unassigned" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value={NONE}>Unassigned</SelectItem>
+                          <SelectItem value={NONE} disabled={custodianLocked}>
+                            Unassigned
+                          </SelectItem>
                           {people.data?.map((p) => (
                             <SelectItem key={p.id} value={p.id}>
                               {p.name}
@@ -625,7 +651,12 @@ export function AssetForm({ asset }: { asset?: Asset }) {
                         </SelectTrigger>
                         <SelectContent>
                           {conditionOptions.map((o) => (
-                            <SelectItem key={o.value} value={o.value}>
+                            <SelectItem
+                              key={o.value}
+                              value={o.value}
+                              // Set by the system while a job is open, so it can be shown but not picked.
+                              disabled={o.value === "maintenance" && field.value !== "maintenance"}
+                            >
                               {o.label}
                             </SelectItem>
                           ))}

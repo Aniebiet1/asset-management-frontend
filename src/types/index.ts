@@ -226,7 +226,13 @@ export interface Vendor {
 // ---------------------------------------------------------------------------
 
 export type AssetStatus = "available" | "in_use" | "in_maintenance" | "reserved" | "disposed" | "lost";
-export type AssetCondition = "excellent" | "good" | "fair" | "poor" | "damaged";
+/**
+ * "maintenance" is set by the system, not chosen: an asset with an open repair or service job
+ * carries it until that job closes (backend maintenance.service.ts). Anywhere a person grades an
+ * asset by hand (check-in, audits) uses `SelectableAssetCondition` instead.
+ */
+export type AssetCondition = "excellent" | "good" | "fair" | "poor" | "damaged" | "maintenance";
+export type SelectableAssetCondition = Exclude<AssetCondition, "maintenance">;
 
 export interface Asset {
   id: string;

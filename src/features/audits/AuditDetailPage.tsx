@@ -35,11 +35,11 @@ import {
 } from "@/features/audits/api";
 import { useCategoriesQuery, useDepartmentsQuery, useLocationsQuery } from "@/features/catalog/api";
 import { useAuthStore } from "@/store/auth.store";
-import type { AssetCondition, AuditItem, AuditReport, User } from "@/types";
+import type { AuditItem, AuditReport, SelectableAssetCondition, User } from "@/types";
 
 const NONE = "__none__";
 
-const conditionOptions: { value: AssetCondition; label: string }[] = [
+const conditionOptions: { value: SelectableAssetCondition; label: string }[] = [
   { value: "excellent", label: "Excellent" },
   { value: "good", label: "Good" },
   { value: "fair", label: "Fair" },

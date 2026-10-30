@@ -1,11 +1,15 @@
-import { useState } from "react";
-import { CalendarClock, Loader2, Pencil, Plus, Trash2, Wallet, Wrench } from "lucide-react";
+import { useMemo, useState } from "react";
+import { CalendarClock, Download, FileSpreadsheet, FileText, Loader2, Pencil, Plus, Trash2, Wallet, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MiniStat } from "@/components/common/DashboardCard";
+import { exportRowsToCsv, exportRowsToExcel, exportRowsToPdf, type ExportColumn } from "@/features/reports/lib/export";
+import { resolveLogoDataUrl } from "@/lib/pdfLogo";
+import { useResolvedLogoSrc } from "@/lib/useResolvedLogoSrc";
 import { ApiError } from "@/lib/http-error";
 import { formatCompactCurrency, formatCurrency, formatDate } from "@/lib/format";
 import { hasPermission } from "@/lib/permissions";
@@ -31,9 +35,11 @@ function shortServiceDate(date: string): string {
 }
 
 /** Asset detail tab for the optional "serviceHistory" add-on. Only rendered when the org has it on. */
-export function ServiceHistoryTab({ assetId }: { assetId: string }) {
+export function ServiceHistoryTab({ assetId, assetName, assetTag }: { assetId: string; assetName: string; assetTag: string }) {
   const currentUser = useAuthStore((s) => s.currentUser);
   const org = useAuthStore((s) => s.org);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const logoSrc = useResolvedLogoSrc(org?.logoUrl ?? null, accessToken);
   const canLog = hasPermission(currentUser?.role, "canCompleteMaintenance");
   const { data, isLoading, isError } = useServiceHistoryQuery(assetId);
   const deleteEntry = useDeleteServiceEntryMutation(assetId);
@@ -43,6 +49,42 @@ export function ServiceHistoryTab({ assetId }: { assetId: string }) {
   const [deleting, setDeleting] = useState<ServiceHistoryEntry | null>(null);
 
   const money = (amount: number | string) => formatCurrency(amount, org?.currency, org?.currencySymbol);
+
+  const entries = data?.entries ?? [];
+  // Costs are left out of the file for the same roles the API leaves them out for, rather than
+  // exporting a blank column.
+  const canSeeCosts = data?.summary.totalCost != null;
+  const exportColumns = useMemo<ExportColumn<ServiceHistoryEntry>[]>(() => {
+    const columns: ExportColumn<ServiceHistoryEntry>[] = [
+      { header: "Date", accessor: (e) => formatDate(e.completedDate ?? e.scheduledDate, "dd MMM yyyy") },
+      { header: "Type", accessor: (e) => serviceTypeLabel(e.maintenanceType) },
+      { header: "Title", accessor: (e) => e.title },
+    ];
+    if (canSeeCosts) {
+      columns.push({
+        header: "Cost",
+        accessor: (e) => (e.cost != null ? formatCurrency(e.cost, org?.currency, org?.currencySymbol) : "-"),
+      });
+    }
+    columns.push(
+      { header: "Vendor", accessor: (e) => e.vendorName ?? "-" },
+      { header: "Technician", accessor: (e) => e.technicianName ?? "-" },
+      { header: "Logged by", accessor: (e) => e.loggedByName ?? "-" },
+      { header: "Comment", accessor: (e) => e.notes ?? "" }
+    );
+    return columns;
+  }, [canSeeCosts, org?.currency, org?.currencySymbol]);
+
+  const exportFileBase = `service-history-${assetTag}-${new Date().toISOString().slice(0, 10)}`.replace(/\s+/g, "-");
+  const handleExportCsv = () => exportRowsToCsv(entries, exportColumns, `${exportFileBase}.csv`);
+  const handleExportExcel = () => exportRowsToExcel(entries, exportColumns, `${exportFileBase}.xlsx`);
+  const handleExportPdf = async () => {
+    const logoDataUrl = await resolveLogoDataUrl(logoSrc);
+    exportRowsToPdf(entries, exportColumns, `${exportFileBase}.pdf`, `Service history: ${assetName} (${assetTag})`, {
+      orgName: org?.name ?? "",
+      logoDataUrl,
+    });
+  };
 
   const openLog = () => {
     setEditing(null);
@@ -77,13 +119,12 @@ export function ServiceHistoryTab({ assetId }: { assetId: string }) {
     return <p className="text-sm text-muted-foreground">Service history couldn't be loaded. Refresh the page to try again.</p>;
   }
 
-  const { entries, summary } = data;
-  const showCosts = summary.totalCost != null;
+  const { summary } = data;
 
   return (
     <div className="space-y-5">
-      <div className={cn("grid grid-cols-2 gap-2.5", showCosts ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
-        {showCosts && (
+      <div className={cn("grid grid-cols-2 gap-2.5", canSeeCosts ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
+        {canSeeCosts && (
           // Full width on phones so the other two tiles share the row below, instead of one orphan.
           <div className="col-span-2 sm:col-span-1">
             <MiniStat
@@ -109,12 +150,36 @@ export function ServiceHistoryTab({ assetId }: { assetId: string }) {
 
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-sm font-semibold text-foreground">History</h3>
-        {canLog && (
-          <Button size="sm" className="gap-1.5" onClick={openLog}>
-            <Plus className="size-3.5" />
-            Log service
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="gap-1.5" disabled={entries.length === 0}>
+                <Download className="size-3.5" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={handleExportCsv}>
+                <FileText className="size-3.5" />
+                CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleExportExcel}>
+                <FileSpreadsheet className="size-3.5" />
+                Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleExportPdf}>
+                <FileText className="size-3.5" />
+                PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {canLog && (
+            <Button size="sm" className="gap-1.5" onClick={openLog}>
+              <Plus className="size-3.5" />
+              Log service
+            </Button>
+          )}
+        </div>
       </div>
 
       {entries.length === 0 ? (
@@ -144,7 +209,7 @@ export function ServiceHistoryTab({ assetId }: { assetId: string }) {
                       <span className="mx-1.5">·</span>
                       <span className="font-medium text-foreground/80">{serviceTypeLabel(entry.maintenanceType)}</span>
                     </p>
-                    {showCosts && entry.cost != null && (
+                    {canSeeCosts && entry.cost != null && (
                       <p className="text-sm font-semibold text-foreground tabular-nums">{Number(entry.cost) > 0 ? money(entry.cost) : "No cost"}</p>
                     )}
                   </div>

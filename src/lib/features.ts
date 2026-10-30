@@ -13,7 +13,16 @@ export const ORG_FEATURE_INFO: Record<OrgFeature, { label: string; description: 
   },
 };
 
+/**
+ * What a feature is worth before an org has ever touched its switch. Mirrors the backend's
+ * ORG_FEATURE_DEFAULTS: service history ships on, so only an explicit off hides it.
+ */
+export const ORG_FEATURE_DEFAULTS: Record<OrgFeature, boolean> = {
+  serviceHistory: true,
+};
+
 export function orgHasFeature(org: Pick<Organization, "settings"> | null | undefined, feature: OrgFeature): boolean {
-  return org?.settings?.features?.[feature] === true;
+  const stored = org?.settings?.features?.[feature];
+  return typeof stored === "boolean" ? stored : ORG_FEATURE_DEFAULTS[feature];
 }
 

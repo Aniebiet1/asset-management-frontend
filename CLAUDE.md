@@ -120,8 +120,10 @@ as equivalent to "the API is protected."
 Some features are switched on or off by each organization's own admin in Settings > Features
 (`features/settings/components/FeaturesForm.tsx`, `PATCH /organizations/me/features`), e.g.
 `serviceHistory` (`features/serviceHistory/`, shown as the asset page's "Service history" tab).
-Not a platform-console control. `src/lib/features.ts` lists them; `src/lib/useOrgFeature.ts` is
-the check. Gate the add-on's UI on it so that with the
+Not a platform-console control. `src/lib/features.ts` lists them, along with
+`ORG_FEATURE_DEFAULTS` (what a feature is worth before an org ever touches its switch -
+`serviceHistory` defaults to **on**, mirroring the backend, so only an explicit off hides it);
+`src/lib/useOrgFeature.ts` is the check. Gate the add-on's UI on it so that with the
 feature off the app looks exactly as it did before; the backend's `requireFeature()` is the real
 enforcement. A new add-on needs its key in both repos' `features.ts` and in the backend's
 `orgFeaturesUpdateSchema`.
