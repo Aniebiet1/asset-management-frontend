@@ -1,6 +1,6 @@
-﻿import { useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { AlarmClock, ArrowLeftRight, Box, CalendarClock, Camera, ExternalLink, Loader2, Printer, Search, X } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -65,8 +65,14 @@ export function CheckInOutPage() {
   const canCheckInOut = hasPermission(currentUser?.role, "canCheckInOut");
   const canViewValuation = hasPermission(currentUser?.role, "canViewAssetValuation");
 
-  const [inputValue, setInputValue] = useState("");
-  const [activeQuery, setActiveQuery] = useState("");
+  // Arriving from an asset's own page (`?asset=<tag>&action=checkout`): the asset is already known,
+  // so the search is pre-filled with its tag, exactly as a scan would leave it, and the check-out
+  // dialog opens by itself once that asset resolves. Nobody retypes what they just clicked.
+  const [searchParams] = useSearchParams();
+  const assetParam = searchParams.get("asset")?.trim() ?? "";
+
+  const [inputValue, setInputValue] = useState(assetParam);
+  const [activeQuery, setActiveQuery] = useState(assetParam);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
 
@@ -112,6 +118,26 @@ export function CheckInOutPage() {
   const assignmentForSelected = selectedAsset
     ? activeAssignments.find((a) => a.assetId === selectedAsset.id) ?? null
     : null;
+
+  // A second visit from a different asset while this page is already mounted.
+  const lastAssetParam = useRef(assetParam);
+  useEffect(() => {
+    if (!assetParam || assetParam === lastAssetParam.current) return;
+    lastAssetParam.current = assetParam;
+    setInputValue(assetParam);
+    setActiveQuery(assetParam);
+    setSelectedAssetId(null);
+  }, [assetParam]);
+
+  // Opens once, and only when the asset really is free to go out - an asset that's already on loan
+  // shows its Return card instead.
+  const pendingCheckout = useRef(searchParams.get("action") === "checkout");
+  useEffect(() => {
+    if (!pendingCheckout.current || !selectedAsset) return;
+    pendingCheckout.current = false;
+    if (selectedAsset.status !== "available" || assignmentForSelected) return;
+    openCheckoutDialog();
+  });
 
   function resetSearch() {
     setInputValue("");

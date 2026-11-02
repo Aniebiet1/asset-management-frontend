@@ -128,7 +128,8 @@ export function AssetDetailPage() {
           )}
           {canCheckInOut && (
             <Button variant="outline" size="sm" className="gap-1.5" asChild>
-              <Link to="/check-in-out">
+              {/* Carries the asset through, so Check-Out opens on this asset instead of a blank search. */}
+              <Link to={`/check-in-out?asset=${encodeURIComponent(asset.assetTag)}&action=checkout`}>
                 <ArrowLeftRight className="size-3.5" />
                 Check Out
               </Link>
