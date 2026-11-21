@@ -3,6 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { cn } from "cn";
 import { Logo } from "@/components/brand/Logo";
 import { AssetIllustration } from "./AssetIllustration";
+import { AuthThemeToggle } from "./AuthThemeToggle";
 
 interface BrandedAuthCardProps {
   children: ReactNode;
@@ -66,6 +67,7 @@ export function BrandedAuthCard({ children, footer, logoUrl, orgName }: BrandedA
 
   return (
     <div className="bg-auth-backdrop flex min-h-screen flex-col items-center justify-center px-4 py-10 sm:px-6">
+      <AuthThemeToggle />
       <div className="grid w-full max-w-[960px] overflow-hidden rounded-2xl border border-border bg-card shadow-2xl shadow-black/10 md:min-h-[560px] md:grid-cols-[1.08fr_1fr] dark:shadow-black/50">
         <aside
           className="bg-auth-panel relative hidden flex-col justify-between gap-6 p-10 md:flex"

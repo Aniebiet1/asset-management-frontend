@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Check } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
+import { AuthThemeToggle } from "./AuthThemeToggle";
 
 const HERO_POINTS = [
   "Check-outs and returns without the chase",
@@ -31,6 +32,7 @@ interface AuthLayoutProps {
 export function AuthLayout({ children, footer, logoUrl, hero }: AuthLayoutProps) {
   return (
     <div className="flex min-h-screen bg-background">
+      <AuthThemeToggle />
       <div className="relative hidden w-[42%] shrink-0 flex-col justify-center bg-brand-hero p-10 text-white lg:flex xl:p-14">
         {hero ?? (
           <div className="max-w-sm space-y-8">
