@@ -51,7 +51,9 @@ function BadgeLogo({ src, alt, size, className }: { src: string; alt: string; si
       )}
       style={
         wide
-          ? { height: box, maxWidth: box * 4, paddingInline: pad * 1.5, paddingBlock: pad }
+          ? // Width set explicitly from the ratio: left to auto, the box sizes to the image's
+            // natural width before the height cap shrinks it, leaving a wide empty margin.
+            { height: box, width: Math.min(box * 4, Math.round((box - pad * 2) * ratio + pad * 3)), paddingInline: pad * 1.5, paddingBlock: pad }
           : tall
             ? { width: box, height: box * 1.4, padding: pad }
             : { width: box, height: box, padding: pad }
