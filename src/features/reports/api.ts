@@ -52,15 +52,35 @@ function buildQuery(filters: AssetReportFilters): string {
   return params.toString();
 }
 
-/** `GET /reports/assets` returns only `{ data: [...] }` - unlike `/assets`, there's no `pagination`
- * envelope with a total count, so the page infers "more rows exist" from whether a full page came
- * back rather than rendering a page count. */
+export interface AssetReportPage {
+  data: AssetReportRow[];
+  pagination: { page: number; pageSize: number; total: number };
+}
+
+function fetchAssetReportPage(filters: AssetReportFilters): Promise<AssetReportPage> {
+  return apiFetch<AssetReportPage>(`/reports/assets?${buildQuery(filters)}`);
+}
+
+/** One page of the report plus the total that matches the filters, so the page can say "Page 2 of 33". */
 export function useAssetReportQuery(filters: AssetReportFilters) {
   return useQuery({
     queryKey: ["reports", "assets", filters],
-    queryFn: () => apiFetch<{ data: AssetReportRow[] }>(`/reports/assets?${buildQuery(filters)}`).then((r) => r.data),
+    queryFn: () => fetchAssetReportPage(filters),
     placeholderData: (prev) => prev,
   });
+}
+
+/** Every row matching the filters, for export - pulled in pages of 500 (the backend's cap), so an export
+ * is never limited to whatever page happens to be on screen. */
+export async function fetchAllAssetReportRows(filters: Omit<AssetReportFilters, "page" | "pageSize">): Promise<AssetReportRow[]> {
+  const pageSize = 500;
+  const all: AssetReportRow[] = [];
+  for (let page = 1; ; page++) {
+    const res = await fetchAssetReportPage({ ...filters, page, pageSize });
+    all.push(...res.data);
+    if (res.data.length < pageSize || all.length >= res.pagination.total) break;
+  }
+  return all;
 }
 
 export interface ValuationDepreciationRow {

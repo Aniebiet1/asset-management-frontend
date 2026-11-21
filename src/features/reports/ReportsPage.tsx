@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { toast } from "sonner";
 import {
   ArrowDown,
   ArrowUp,
@@ -35,6 +36,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { IconTile, StatTile } from "@/components/common/DashboardCard";
 import { useCategoriesQuery, useLocationsQuery } from "@/features/catalog/api";
 import {
+  fetchAllAssetReportRows,
   useAssetReportQuery,
   usePeopleForReportsQuery,
   useValuationDepreciationReportQuery,
@@ -165,9 +167,9 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
   const valuation = useValuationDepreciationReportQuery({ enabled: canViewValuation });
 
   const pageSize = groupBy === "none" ? FLAT_PAGE_SIZE : GROUPED_PAGE_SIZE;
-  const effectivePage = groupBy === "none" ? page : 1;
+  const effectivePage = page;
 
-  const report = useAssetReportQuery({
+  const reportFilters = {
     categoryId: categoryId === "all" ? undefined : categoryId,
     locationId: locationId === "all" ? undefined : locationId,
     custodianId: custodianId === "all" ? undefined : custodianId,
@@ -176,9 +178,9 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
     dateTo: dateTo || undefined,
     sortBy,
     sortDir,
-    page: effectivePage,
-    pageSize,
-  });
+  };
+  const report = useAssetReportQuery({ ...reportFilters, page: effectivePage, pageSize });
+  const [exporting, setExporting] = useState(false);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -193,12 +195,14 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
   const locationById = useMemo(() => new Map((locations.data ?? []).map((l) => [l.id, l] as const)), [locations.data]);
   const personById = useMemo(() => new Map((people.data ?? []).map((p) => [p.id, p] as const)), [people.data]);
 
-  const rows = report.data ?? [];
-  const hasMore = rows.length >= pageSize;
+  const rows = useMemo(() => report.data?.data ?? [], [report.data]);
+  const total = report.data?.pagination.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const firstShown = total === 0 ? 0 : (effectivePage - 1) * pageSize + 1;
+  const lastShown = (effectivePage - 1) * pageSize + rows.length;
 
-  const displayRows: DisplayRow[] = useMemo(
-    () =>
-      rows.map((asset) => {
+  const toDisplayRow = useCallback(
+    (asset: AssetReportRow): DisplayRow => {
         const category = categoryById.get(asset.categoryId);
         const location = locationById.get(asset.locationId);
         const custodian = asset.custodianId ? personById.get(asset.custodianId) : undefined;
@@ -221,9 +225,11 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
           currentValue,
           percentDepreciated,
         };
-      }),
-    [rows, categoryById, locationById, personById, canViewValuation]
+    },
+    [categoryById, locationById, personById, canViewValuation]
   );
+
+  const displayRows: DisplayRow[] = useMemo(() => rows.map(toDisplayRow), [rows, toDisplayRow]);
 
   const groups = useMemo(() => {
     if (groupBy === "none") return null;
@@ -300,11 +306,24 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
   }, [canViewValuation, org.currency, org.currencySymbol]);
 
   const exportFilenameBase = `asset-report-${new Date().toISOString().slice(0, 10)}`;
-  const handleExportCsv = () => exportRowsToCsv(displayRows, exportColumns, `${exportFilenameBase}.csv`);
-  const handleExportExcel = () => exportRowsToExcel(displayRows, exportColumns, `${exportFilenameBase}.xlsx`);
-  const handleExportPdf = async () => {
-    const logoDataUrl = await resolveLogoDataUrl(logoSrc);
-    exportRowsToPdf(displayRows, exportColumns, `${exportFilenameBase}.pdf`, "Asset Report", { orgName: org.name, logoDataUrl });
+  /** Exports every asset matching the current filters and date range, not just the page on screen. */
+  const runExport = async (format: "csv" | "xlsx" | "pdf") => {
+    setExporting(true);
+    const toastId = toast.loading(`Preparing ${total.toLocaleString()} assets for export...`);
+    try {
+      const allRows = (await fetchAllAssetReportRows(reportFilters)).map(toDisplayRow);
+      if (format === "csv") exportRowsToCsv(allRows, exportColumns, `${exportFilenameBase}.csv`);
+      else if (format === "xlsx") exportRowsToExcel(allRows, exportColumns, `${exportFilenameBase}.xlsx`);
+      else {
+        const logoDataUrl = await resolveLogoDataUrl(logoSrc);
+        exportRowsToPdf(allRows, exportColumns, `${exportFilenameBase}.pdf`, "Asset Report", { orgName: org.name, logoDataUrl });
+      }
+      toast.success(`Exported ${allRows.length.toLocaleString()} assets`, { id: toastId });
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not export the report. Please try again.", { id: toastId });
+    } finally {
+      setExporting(false);
+    }
   };
 
   const activeFilterChips = [
@@ -424,7 +443,9 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
             <div className="min-w-0">
               <h2 className="text-[15px] font-semibold tracking-tight text-foreground">Build your report</h2>
               <p className="truncate text-xs text-muted-foreground">
-                {report.isLoading ? "Loading assets..." : `${displayRows.length.toLocaleString()} asset${displayRows.length === 1 ? "" : "s"} on this page`}
+                {report.isLoading
+                  ? "Loading assets..."
+                  : `${total.toLocaleString()} asset${total === 1 ? "" : "s"} match. Export includes all of them.`}
               </p>
             </div>
           </div>
@@ -451,21 +472,21 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button size="sm" className="h-8 gap-1.5 rounded-full px-3.5 text-xs" disabled={displayRows.length === 0}>
+                <Button size="sm" className="h-8 gap-1.5 rounded-full px-3.5 text-xs" disabled={total === 0 || exporting}>
                   <Download className="size-3.5" />
-                  Export
+                  {exporting ? "Exporting..." : "Export"}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={handleExportCsv}>
+                <DropdownMenuItem onSelect={() => void runExport("csv")}>
                   <FileText className="size-3.5" />
                   CSV
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={handleExportExcel}>
+                <DropdownMenuItem onSelect={() => void runExport("xlsx")}>
                   <FileSpreadsheet className="size-3.5" />
                   Excel
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={handleExportPdf}>
+                <DropdownMenuItem onSelect={() => void runExport("pdf")}>
                   <FileText className="size-3.5" />
                   PDF
                 </DropdownMenuItem>
@@ -574,7 +595,7 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
                   </button>
                 ))}
               </div>
-              <p className="mt-1.5 text-[11px] text-muted-foreground">One date at a time. Depreciation still shows as a column either way.</p>
+              <p className="mt-1.5 text-[11px] text-muted-foreground">One date at a time. Leave both dates empty to include every asset, including those with no date recorded.</p>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <BuilderField label="From" htmlFor="report-date-from">
@@ -682,7 +703,7 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
             </BuilderField>
             <p className="text-[11px] text-muted-foreground">
               {sortDir === "asc" ? "Oldest and A to Z first." : "Newest and Z to A first."}
-              {groupBy !== "none" && " Grouped views show up to 500 rows on one page."}
+              {groupBy !== "none" && " Grouped views show 500 rows per page."}
             </p>
           </BuilderSection>
         </div>
@@ -761,18 +782,21 @@ function ReportsPageContent({ org, canViewValuation }: { org: Organization; canV
             )}
           </Card>
 
-          {groupBy === "none" && displayRows.length > 0 && (
+          {displayRows.length > 0 && (
             <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
               <span>
-                Page {page}
-                {!hasMore && " (last page)"}
+                Page {effectivePage} of {totalPages}
+                <span className="hidden sm:inline">
+                  {" "}
+                  ({firstShown.toLocaleString()}-{lastShown.toLocaleString()} of {total.toLocaleString()})
+                </span>
               </span>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="gap-1">
                   <ChevronLeft className="size-3.5" />
                   Prev
                 </Button>
-                <Button variant="outline" size="sm" disabled={!hasMore} onClick={() => setPage((p) => p + 1)} className="gap-1">
+                <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="gap-1">
                   Next
                   <ChevronRight className="size-3.5" />
                 </Button>
