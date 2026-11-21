@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Building2, AlertTriangle, ShieldCheck, LogOut, Bell, ChevronDown } from "lucide-react";
+import { LayoutDashboard, Building2, AlertTriangle, ShieldCheck, LogOut, Bell, ChevronDown, KeyRound } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +14,7 @@ import { getInitials } from "@/lib/format";
 import { TECRES_DEFAULT_LOGO_URL } from "@/lib/brand";
 import { useTecresBrandTheme } from "@/features/platform/useTecresBrandTheme";
 import { useAlertsQuery } from "@/features/platform/api";
+import { ChangePasswordDialog } from "@/features/platform/ChangePasswordDialog";
 import type { PlatformAdminRole } from "@/types";
 import { ShellFrame } from "./shell/ShellFrame";
 import { ShellSidebar } from "./shell/ShellSidebar";
@@ -44,6 +45,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
   const admin = usePlatformAuthStore((s) => s.admin);
   const clearSession = usePlatformAuthStore((s) => s.clearSession);
   const { data: alerts } = useAlertsQuery();
+  const [passwordOpen, setPasswordOpen] = useState(false);
   useTecresBrandTheme();
 
   if (!admin) return null;
@@ -135,6 +137,10 @@ export function PlatformShell({ children }: { children: ReactNode }) {
                     <div className="truncate text-[11px] text-muted-foreground">{admin.email}</div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setPasswordOpen(true)} className="cursor-pointer">
+                    <KeyRound className="mr-2 size-3.5" />
+                    Change password
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:text-destructive">
                     <LogOut className="mr-2 size-3.5" />
                     Sign out
@@ -148,6 +154,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
       dock={<BottomDock items={[{ ...DASHBOARD, name: "Overview" }, { ...ORGS, name: "Orgs" }, ALERTS, ...(isOwner ? [ADMINS] : [])]} />}
     >
       {children}
+      <ChangePasswordDialog open={passwordOpen} onOpenChange={setPasswordOpen} />
     </ShellFrame>
   );
 }

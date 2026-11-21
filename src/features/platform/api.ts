@@ -149,6 +149,17 @@ export function useResolveAlertMutation() {
   });
 }
 
+/** Changes only the signed-in admin's password; their authenticator app and recovery codes are kept. */
+export function useChangePlatformPasswordMutation() {
+  return useMutation({
+    mutationFn: (input: { currentPassword: string; newPassword: string }) =>
+      platformApiFetch<{ message: string }>("/platform/auth/password", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+  });
+}
+
 // --- Platform admin management (platform_owner only) -----------------------
 
 interface PlatformAdminsResponse {
