@@ -65,7 +65,7 @@ export function AuthLayout({ children, footer, logoUrl, hero }: AuthLayoutProps)
       <div className="flex flex-1 items-center justify-center px-4 py-12">
         <div className="w-full max-w-sm">
           <div className="mb-8 flex justify-center">
-            <Logo size="lg" logoUrl={logoUrl} />
+            <Logo size="lg" logoUrl={logoUrl} circle />
           </div>
           <div className="rounded-xl border border-border bg-card p-6 shadow-sm">{children}</div>
           {footer && <div className="mt-6 text-center text-xs text-muted-foreground">{footer}</div>}

@@ -119,7 +119,7 @@ export function BrandedAuthCard({ children, footer, logoUrl, orgName }: BrandedA
           <div className="mx-auto w-full max-w-sm">
             {logoUrl !== null && (
               <div className="mb-8">
-                <Logo size="lg" logoUrl={logoUrl} orgName={orgName} />
+                <Logo size="lg" logoUrl={logoUrl} orgName={orgName} circle />
               </div>
             )}
             {children}
