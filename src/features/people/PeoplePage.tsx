@@ -3,6 +3,7 @@ import {
   Loader2,
   Mail,
   UserX,
+  Trash2,
   CheckCircle2,
   XCircle,
   Lock,
@@ -39,6 +40,7 @@ import {
   usePeopleQuery,
   useUpdatePersonMutation,
   useDeactivatePersonMutation,
+  useDeletePersonMutation,
   useInvitePersonMutation,
   usePendingInvitesQuery,
   useResendInviteMutation,
@@ -108,6 +110,7 @@ export function PeoplePage() {
   const departments = useDepartmentsQuery();
   const updatePerson = useUpdatePersonMutation();
   const deactivatePerson = useDeactivatePersonMutation();
+  const deletePerson = useDeletePersonMutation();
   const invitePerson = useInvitePersonMutation();
   const pendingInvites = usePendingInvitesQuery();
   const resendInvite = useResendInviteMutation();
@@ -120,6 +123,8 @@ export function PeoplePage() {
 
   const [deactivateTarget, setDeactivateTarget] = useState<User | null>(null);
   const [isDeactivating, setIsDeactivating] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -134,7 +139,8 @@ export function PeoplePage() {
 
   const loginActivity = useLoginActivityQuery(activityTarget?.id);
 
-  const rows = people.data ?? [];
+  // Deleted people stay in the API response so history elsewhere can still show their name.
+  const rows = (people.data ?? []).filter((u) => !u.deletedAt);
   const departmentMap = new Map((departments.data ?? []).map((d) => [d.id, d.name]));
 
   function openEdit(user: User) {
@@ -192,6 +198,20 @@ export function PeoplePage() {
       toast.error(err instanceof ApiError ? err.message : "Couldn't deactivate this person.");
     } finally {
       setIsDeactivating(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await deletePerson.mutateAsync(deleteTarget.id);
+      toast.success(deleteTarget.name + " deleted");
+      setDeleteTarget(null);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't delete this person.");
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -318,18 +338,32 @@ export function PeoplePage() {
                           <Button type="button" variant="outline" size="sm" onClick={() => openEdit(u)}>
                             Edit
                           </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            disabled={u.id === currentUser?.id || !u.isActive}
-                            title={u.id === currentUser?.id ? "You can't deactivate your own account." : undefined}
-                            className="gap-1 text-destructive hover:text-destructive"
-                            onClick={() => setDeactivateTarget(u)}
-                          >
-                            <UserX className="size-3.5" />
-                            Deactivate
-                          </Button>
+                          {u.isActive ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              disabled={u.id === currentUser?.id}
+                              title={u.id === currentUser?.id ? "You can't deactivate your own account." : undefined}
+                              className="gap-1 text-destructive hover:text-destructive"
+                              onClick={() => setDeactivateTarget(u)}
+                            >
+                              <UserX className="size-3.5" />
+                              Deactivate
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              disabled={u.id === currentUser?.id}
+                              className="gap-1 text-destructive hover:text-destructive"
+                              onClick={() => setDeleteTarget(u)}
+                            >
+                              <Trash2 className="size-3.5" />
+                              Delete
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     )}
@@ -392,18 +426,32 @@ export function PeoplePage() {
                       <Button type="button" variant="outline" size="sm" className="flex-1" onClick={() => openEdit(u)}>
                         Edit
                       </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={u.id === currentUser?.id || !u.isActive}
-                        title={u.id === currentUser?.id ? "You can't deactivate your own account." : undefined}
-                        className="flex-1 gap-1 text-destructive hover:text-destructive"
-                        onClick={() => setDeactivateTarget(u)}
-                      >
-                        <UserX className="size-3.5" />
-                        Deactivate
-                      </Button>
+                      {u.isActive ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={u.id === currentUser?.id}
+                          title={u.id === currentUser?.id ? "You can't deactivate your own account." : undefined}
+                          className="flex-1 gap-1 text-destructive hover:text-destructive"
+                          onClick={() => setDeactivateTarget(u)}
+                        >
+                          <UserX className="size-3.5" />
+                          Deactivate
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={u.id === currentUser?.id}
+                          className="flex-1 gap-1 text-destructive hover:text-destructive"
+                          onClick={() => setDeleteTarget(u)}
+                        >
+                          <Trash2 className="size-3.5" />
+                          Delete
+                        </Button>
+                      )}
                     </div>
                   )}
                 </CardContent>
@@ -599,7 +647,7 @@ export function PeoplePage() {
             <DialogTitle>Deactivate {deactivateTarget?.name}?</DialogTitle>
             <DialogDescription>
               They will no longer be able to sign in. Their history and past assignments are kept, and an admin can
-              reactivate them later from the Edit dialog.
+              reactivate them later from the Edit dialog, or delete them for good.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -609,6 +657,28 @@ export function PeoplePage() {
             <Button type="button" variant="destructive" disabled={isDeactivating} className="gap-1.5" onClick={handleDeactivate}>
               {isDeactivating && <Loader2 className="size-3.5 animate-spin" />}
               Deactivate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete {deleteTarget?.name}?</DialogTitle>
+            <DialogDescription>
+              Their account is removed and they disappear from this list. Past assignments, audits and activity still
+              show their name. {deleteTarget?.email} becomes free again, so you can invite them back later as a new
+              person. This can't be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button type="button" variant="destructive" disabled={isDeleting} className="gap-1.5" onClick={handleDelete}>
+              {isDeleting && <Loader2 className="size-3.5 animate-spin" />}
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>

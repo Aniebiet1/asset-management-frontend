@@ -30,6 +30,9 @@ export interface User {
   failedLoginAttempts: number;
   lockedUntil: string | null;
   lastLoginAt: string | null;
+  /** Set once an admin deletes a deactivated person. The row is kept only so history keeps its
+   * name; it's hidden from the People list and pickers. */
+  deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -49,6 +49,15 @@ export function useDeactivatePersonMutation() {
   });
 }
 
+/** Second step after deactivating: removes the account and frees the email for a new invite. */
+export function useDeletePersonMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiFetch<void>(`/people/${id}/permanent`, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["people"] }),
+  });
+}
+
 export function useInvitePersonMutation() {
   const queryClient = useQueryClient();
   return useMutation({

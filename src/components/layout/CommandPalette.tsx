@@ -61,7 +61,7 @@ export function CommandPalette({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const people = usePeopleQuery();
   const matchingPeople = canSeePeople && query.trim()
     ? (people.data ?? [])
-        .filter((u) => `${u.name} ${u.email}`.toLowerCase().includes(query.trim().toLowerCase()))
+        .filter((u) => !u.deletedAt && `${u.name} ${u.email}`.toLowerCase().includes(query.trim().toLowerCase()))
         .slice(0, 5)
     : [];
   const visiblePages = pages.filter((p) => !("permission" in p) || hasPermission(currentUser?.role, p.permission));
