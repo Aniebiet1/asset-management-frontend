@@ -17,6 +17,7 @@ import { useLabelSheetLayoutQuery } from "@/features/labels/api";
 import { generateSingleLabelPdf } from "@/features/labels/lib/labelPdf";
 import { useAuthStore } from "@/store/auth.store";
 import { CorrectTagDialog } from "@/features/assets/components/CorrectTagDialog";
+import { AssetGallery } from "@/features/assets/components/AssetGallery";
 import { useAssetValue } from "@/features/assets/useAssetValue";
 import { ServiceHistoryTab } from "@/features/serviceHistory/ServiceHistoryTab";
 import { useOrgFeature } from "@/lib/useOrgFeature";
@@ -333,13 +334,7 @@ export function AssetDetailPage() {
             </CardContent>
           </Card>
 
-          {asset.imageUrl && (
-            <Card className="h-fit overflow-hidden">
-              <CardContent className="p-0">
-                <img src={asset.imageUrl} alt={asset.name} className="aspect-square w-full object-cover" />
-              </CardContent>
-            </Card>
-          )}
+          <AssetGallery asset={asset} canEdit={canEdit} />
         </div>
       </div>
 

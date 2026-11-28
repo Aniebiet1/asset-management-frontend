@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Search, MoreHorizontal, MapPin, ChevronLeft, ChevronRight, Box } from "lucide-react";
+import { Plus, Search, MoreHorizontal, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatusBadge, ConditionBadge } from "@/components/common/StatusBadge";
+import { AssetImage } from "@/components/common/AssetImage";
 import { hasPermission } from "@/lib/permissions";
 import { formatCurrency } from "@/lib/format";
 import { useAssetsQuery } from "@/features/assets/api";
@@ -175,11 +176,7 @@ export function AssetsListPage() {
                     <TableCell>
                       <Link to={`/assets/${asset.id}`} className="flex items-center gap-3">
                         <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
-                          {asset.imageUrl ? (
-                            <img src={asset.imageUrl} alt={asset.name} className="size-full object-cover" />
-                          ) : (
-                            <Box className="size-4 text-muted-foreground" />
-                          )}
+                          <AssetImage src={asset.imageUrl} alt={asset.name} iconClassName="size-4" />
                         </div>
                         <div className="min-w-0">
                           <p className="font-medium text-foreground">{asset.name}</p>
@@ -242,11 +239,7 @@ export function AssetsListPage() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
-                          {asset.imageUrl ? (
-                            <img src={asset.imageUrl} alt={asset.name} className="size-full object-cover" />
-                          ) : (
-                            <Box className="size-4 text-muted-foreground" />
-                          )}
+                          <AssetImage src={asset.imageUrl} alt={asset.name} iconClassName="size-4" />
                         </div>
                         <div className="min-w-0">
                           <p className="truncate font-medium text-foreground">{asset.name}</p>

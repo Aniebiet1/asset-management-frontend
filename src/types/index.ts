@@ -265,7 +265,10 @@ export interface Asset {
   warrantyNotes: string | null;
   barcodeData: string | null;
   qrCodeData: string | null;
+  /** The cover photo - always one of `images` (the first, unless someone picked another). */
   imageUrl: string | null;
+  /** Every photo, in display order. May be absent on responses from a backend older than multi-photo support. */
+  images?: string[];
   customFields: Record<string, unknown>;
   notes: string | null;
   createdAt: string;

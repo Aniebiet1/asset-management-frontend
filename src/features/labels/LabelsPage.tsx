@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, ChevronLeft, ChevronRight, Box, Loader2, Lock, Printer, Settings2 } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Loader2, Lock, Printer, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatusBadge } from "@/components/common/StatusBadge";
+import { AssetImage } from "@/components/common/AssetImage";
 import { LabelPreview } from "@/features/labels/components/LabelPreview";
 import { useLabelSheetLayoutQuery } from "@/features/labels/api";
 import { generateLabelSheetPdf } from "@/features/labels/lib/labelPdf";
@@ -275,11 +276,7 @@ export function LabelsPage() {
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
-                              {asset.imageUrl ? (
-                                <img src={asset.imageUrl} alt={asset.name} className="size-full object-cover" />
-                              ) : (
-                                <Box className="size-4 text-muted-foreground" />
-                              )}
+                              <AssetImage src={asset.imageUrl} alt={asset.name} iconClassName="size-4" />
                             </div>
                             <div className="min-w-0">
                               <p className="font-medium text-foreground">{asset.name}</p>
@@ -319,11 +316,7 @@ export function LabelsPage() {
                           />
                         </div>
                         <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
-                          {asset.imageUrl ? (
-                            <img src={asset.imageUrl} alt={asset.name} className="size-full object-cover" />
-                          ) : (
-                            <Box className="size-4 text-muted-foreground" />
-                          )}
+                          <AssetImage src={asset.imageUrl} alt={asset.name} iconClassName="size-4" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium text-foreground">{asset.name}</p>

@@ -23,6 +23,7 @@ import { FormField } from "@/components/ui/form";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DashboardCard, Meter, StatTile } from "@/components/common/DashboardCard";
 import { ConditionBadge, StatusBadge } from "@/components/common/StatusBadge";
+import { AssetImage } from "@/components/common/AssetImage";
 import { hasPermission } from "@/lib/permissions";
 import { formatCurrency, formatDate, formatDateTime, getInitials } from "@/lib/format";
 import { ApiError } from "@/lib/http-error";
@@ -440,11 +441,7 @@ export function CheckInOutPage() {
                     >
                       <span className="flex min-w-0 items-center gap-2.5">
                         <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
-                          {asset.imageUrl ? (
-                            <img src={asset.imageUrl} alt={asset.name} className="size-full object-cover" />
-                          ) : (
-                            <Box className="size-4 text-muted-foreground" />
-                          )}
+                          <AssetImage src={asset.imageUrl} alt={asset.name} iconClassName="size-4" />
                         </span>
                         <span className="min-w-0">
                           <span className="block truncate font-medium text-foreground">{asset.name}</span>
@@ -461,11 +458,7 @@ export function CheckInOutPage() {
                 <div className="rounded-lg border border-border p-4">
                   <div className="flex gap-3">
                     <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted sm:size-20">
-                      {selectedAsset.imageUrl ? (
-                        <img src={selectedAsset.imageUrl} alt={selectedAsset.name} className="size-full object-cover" />
-                      ) : (
-                        <Box className="size-6 text-muted-foreground" />
-                      )}
+                      <AssetImage src={selectedAsset.imageUrl} alt={selectedAsset.name} iconClassName="size-6" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">

@@ -4,7 +4,7 @@ import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Sparkles, Upload, Layers } from "lucide-react";
+import { Loader2, Sparkles, Layers } from "lucide-react";
 import JsBarcode from "jsbarcode";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -18,15 +18,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FormField } from "@/components/ui/form";
 import { apiFetch } from "@/lib/api-client";
 import { ApiError } from "@/lib/http-error";
-import { compressImage } from "@/lib/compressImage";
 import { generateRandomCode } from "@/lib/format";
 import { useAuthStore } from "@/store/auth.store";
 import { useCategoriesQuery, useLocationsQuery, useDepartmentsQuery, useVendorsQuery, useSubsidiariesQuery, useBranchesQuery } from "@/features/catalog/api";
-import { useCreateAssetMutation, useUpdateAssetMutation, useUploadFileMutation, useAssetTagPreviewQuery } from "@/features/assets/api";
+import { useCreateAssetMutation, useUpdateAssetMutation, useAssetTagPreviewQuery } from "@/features/assets/api";
+import { AssetPhotosField, assetImages, coverOf, type AssetPhotos } from "@/features/assets/components/AssetPhotosField";
 import { DuplicateAssetPicker } from "@/features/assets/components/DuplicateAssetPicker";
 import type { Asset, User } from "@/types";
 
 const NONE = "__none__";
+
+function photosFromAsset(asset: Asset | null | undefined): AssetPhotos {
+  return { images: assetImages(asset), cover: asset?.imageUrl ?? null };
+}
 
 function generateAssetTag(orgSlug: string | undefined): string {
   return generateRandomCode(`${(orgSlug || "ORG").toUpperCase()}-AST`, 5);
@@ -212,12 +216,9 @@ export function AssetForm({ asset }: { asset?: Asset }) {
 
   const createAsset = useCreateAssetMutation();
   const updateAsset = useUpdateAssetMutation(asset?.id ?? "");
-  const uploadFile = useUploadFileMutation();
 
-  const [imageUrl, setImageUrl] = useState<string | null>(asset?.imageUrl ?? null);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [photos, setPhotos] = useState<AssetPhotos>(() => photosFromAsset(asset));
   const [formError, setFormError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [generatedTag] = useState(() => generateAssetTag(orgSlug));
   const [isDuplicate, setIsDuplicate] = useState(false);
   const [duplicateParent, setDuplicateParent] = useState<Asset | null>(null);
@@ -259,7 +260,7 @@ export function AssetForm({ asset }: { asset?: Asset }) {
 
   useEffect(() => {
     reset(defaultsFromAsset(asset, generatedTag));
-    setImageUrl(asset?.imageUrl ?? null);
+    setPhotos(photosFromAsset(asset));
     setIsDuplicate(false);
     setDuplicateParent(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -284,22 +285,6 @@ export function AssetForm({ asset }: { asset?: Asset }) {
     if (!watchedPurchaseDate && parent.purchaseDate) setValue("purchaseDate", parent.purchaseDate.slice(0, 10));
   }
 
-  async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploadingImage(true);
-    try {
-      const compressed = await compressImage(file);
-      const uploaded = await uploadFile.mutateAsync(compressed);
-      setImageUrl(uploaded.url);
-      toast.success("Image uploaded");
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Couldn't upload that image.");
-    } finally {
-      setIsUploadingImage(false);
-    }
-  }
-
   const onSubmit = async (values: AssetFormValues) => {
     setFormError(null);
 
@@ -319,7 +304,8 @@ export function AssetForm({ asset }: { asset?: Asset }) {
 
       const payload = {
         ...buildPayload(values, hasStructuredFlow && !isEdit, batchIndex),
-        imageUrl: imageUrl ?? undefined,
+        images: photos.images,
+        imageUrl: coverOf(photos),
       };
       if (isEdit && asset) {
         await updateAsset.mutateAsync(payload);
@@ -353,7 +339,7 @@ export function AssetForm({ asset }: { asset?: Asset }) {
               <TabsTrigger value="general">General</TabsTrigger>
               <TabsTrigger value="specs">Specifications</TabsTrigger>
               <TabsTrigger value="purchase">Purchase &amp; warranty</TabsTrigger>
-              <TabsTrigger value="photo">Photo &amp; notes</TabsTrigger>
+              <TabsTrigger value="photo">Photos &amp; notes</TabsTrigger>
             </TabsList>
 
             <TabsContent value="general" className="space-y-4 p-4">
@@ -718,23 +704,7 @@ export function AssetForm({ asset }: { asset?: Asset }) {
             </TabsContent>
 
             <TabsContent value="photo" className="space-y-4 p-4">
-              <div className="flex items-center gap-4">
-                <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed border-border bg-muted/30">
-                  {imageUrl ? (
-                    <img src={imageUrl} alt="Asset" className="size-full object-cover" />
-                  ) : (
-                    <span className="text-[10px] text-muted-foreground">No image</span>
-                  )}
-                </div>
-                <div>
-                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
-                  <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => fileInputRef.current?.click()} disabled={isUploadingImage}>
-                    {isUploadingImage ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
-                    Upload photo
-                  </Button>
-                  <p className="mt-1 text-[11px] text-muted-foreground">PNG or JPG, up to 20MB.</p>
-                </div>
-              </div>
+              <AssetPhotosField value={photos} onChange={setPhotos} />
 
               <FormField label="Notes" htmlFor="notes">
                 <Textarea id="notes" {...register("notes")} />
